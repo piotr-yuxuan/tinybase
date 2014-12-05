@@ -1,7 +1,14 @@
 tinybase
 ========
 
-inf345
+``` cpp
+#include <iostream>
+using namespace std;
+ 
+int main() {
+    cout << "Hello, new world !" << endl;
+}
+```
 
 Classe			|	Codeur
 --------------- | -------------
