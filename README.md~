@@ -1,7 +1,14 @@
 tinybase
 ========
 
-inf345
+``` cpp
+#include <iostream>
+using namespace std;
+ 
+int main() {
+    cout << "Hello, new world !" << endl;
+}
+```
 
 Classe			|	Codeur
 --------------- | -------------
@@ -12,11 +19,3 @@ RM_Record		|	Yixin
 RID				|	Pauline
 RM_PrintError	|	
 
-``` cpp
-#include <iostream>
-using namespace std;
- 
-int main() {
-    cout << "Hello, new world !" << endl;
-}
-```
