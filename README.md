@@ -1,15 +1,6 @@
 tinybase
 ========
 
-``` cpp
-#include <iostream>
-using namespace std;
- 
-int main() {
-    cout << "Hello, new world !" << endl;
-}
-```
-
 Pour copier le dépôt sur un ordinateur :
 ``` bash
 $ git clone https://github.com/piotr2b/tinybase.git tinybase
