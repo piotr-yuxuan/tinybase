@@ -10,6 +10,12 @@ int main() {
 }
 ```
 
+Pour copier le dépôt sur un ordinateur :
+``` bash
+$ git clone https://github.com/piotr2b/tinybase.git tinybase
+```
+Il faut se connecter au VPN de l'école pour que le script `./setup` marche.
+
 Classe			|	Codeur
 --------------- | -------------
 RM_Manager		|	Pauline
