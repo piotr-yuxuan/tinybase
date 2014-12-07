@@ -10,7 +10,7 @@ Mais j'ai l'impression que git ne copie pas le dossier build qu'il faut donc ré
 $ scp -r username@ssh.enst.fr:/cal/homes/username/tinybase tinybase
 ```
 
-Si vous avez besoin de réveiller une machine de l'école pour travailler dessus.
+Si vous avez besoin de réveiller une machine de l'école pour travailler dessus (je crois qu'il est mal vu de trop faire travailler la passerelle ssh.enst.fr).
 ``` bash
 $ ./wakeonlan -i 137.194.35.38 f8:bc:12:a6:50:ae
 Sending magic packet to 137.194.35.38:9 with f8:bc:12:a6:50:ae
