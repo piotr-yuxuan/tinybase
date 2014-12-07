@@ -6,10 +6,10 @@ Pour copier le dépôt sur un ordinateur :
 $ git clone https://github.com/piotr2b/tinybase.git tinybase
 ```
 
-Classe			|	Codeur
+Classe			|	Codeur  | Etat
 --------------- | -------------
 RM_Manager		|	Pauline
-RM_FileHandle	|	Pierre
+RM_FileHandle	|	Pierre  | Lecture de la doc ><
 RM_FileScan		|	Camille
 RM_Record		|	Yixin
 RID				|	Pauline
