@@ -17,6 +17,8 @@ Sending magic packet to 137.194.35.38:9 with f8:bc:12:a6:50:ae
 $ ssh c130-38
 ```
 
+Je ne sais pas si le prof a anticipé que nous donner un projet de Stanford nous permet d'aller voir [ce qui a déjà été fait](https://github.com/junkumar/redbase) ;-)
+
 Classe			|	Codeur  | Etat
 :---------------|:------------:|:--------
 RM_Manager		|	Pauline |
