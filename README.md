@@ -17,7 +17,7 @@ Sending magic packet to 137.194.35.38:9 with f8:bc:12:a6:50:ae
 $ ssh c130-38
 ```
 
-Je ne sais pas si le prof a anticipé que nous donner un projet de Stanford nous permet d'aller voir [ce qui a déjà été fait](https://github.com/junkumar/redbase) ;-)
+Je ne sais pas si le prof a anticipé que nous donner un projet de Stanford nous permet d'aller voir [ce qui a déjà été fait](https://github.com/junkumar/redbase). J'ai copié juste pour voir les fichiers `rm_*` qui nous correspondent et après quelques modifs de headers, ça compile ;-) Mais ce n'est as du jeu, je vais plutôt recommencer à la main.
 
 Classe			|	Codeur  | Etat
 :---------------|:------------:|:--------
