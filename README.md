@@ -1,21 +1,7 @@
 tinybase
 ========
 
-Pour copier le dépôt :
-``` bash
-$ git clone https://github.com/piotr2b/tinybase.git tinybase
-```
-Mais j'ai l'impression que git ne copie pas le dossier build qu'il faut donc récupérer à la main. Pour copier tout un répertoire d'un compte de l'école vers un ordi :
-``` bash
-$ scp -r username@ssh.enst.fr:/cal/homes/username/tinybase tinybase
-```
-
-Si vous avez besoin de réveiller une machine de l'école pour travailler dessus (je crois qu'il est mal vu de trop faire travailler la passerelle ssh.enst.fr).
-``` bash
-$ ./wakeonlan -i 137.194.35.38 f8:bc:12:a6:50:ae
-Sending magic packet to 137.194.35.38:9 with f8:bc:12:a6:50:ae
-$ ssh c130-38
-```
+Pour cloner le dépôt ou monter à distance votre répertoire de l'école, voir [ici](Trucs techniques.md).
 
 Je ne sais pas si le prof a anticipé que nous donner un projet de Stanford nous permet d'aller voir [ce qui a déjà été fait](https://github.com/junkumar/redbase). J'ai copié juste pour voir les fichiers `rm_*` qui nous correspondent et après quelques modifs de headers, ça compile ;-) Mais ce n'est as du jeu, je vais plutôt recommencer à la main.
 
