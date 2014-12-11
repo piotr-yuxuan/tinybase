@@ -8,7 +8,7 @@ Bitmap::bitmap(int nbBits):
 {
     this->size(nbBits);
     //Allocates enough memory (could be improved in the future)
-    this->bitValues = new char[(size / 8)+1];
+    this->bitValues = new char[this->getByteSize()];
     //Sets all bits to 0
     this->reset();
 }
@@ -58,4 +58,21 @@ bool Bitmap::test(unsigned int bitNumber){
     int offset = bitNumber%8;
     //Return the actual value
     return this->bitValues[byte] & (1 << offset);
+}
+
+//Writes into a buffer
+bool Bitmap::to_buf(char *&buf) const{
+    memcpy(buf, &bitValues, sizeof(bitValues));
+    return 0;
+}
+
+//Reads from a buffer
+bool Bitmap::from_buf(char *&buf) const{
+    memcpy(&bitValues, buf, sizeof(bitValues));
+    return 0;
+}
+
+//Gets the size in Bytes of the map (simplist implementation for now)
+int Bitmap::getByteSize() const{
+    return (size / 8)+1;
 }

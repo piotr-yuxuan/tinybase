@@ -33,7 +33,7 @@ int PageHeader::to_buf(char *& buf) const{
     //Writes the number of free slots
     memcpy(buf + offset, &nbFreeSlots, sizeof(nbFreeSlots));
     offset += sizeOf(nbFreeSlots);
-    //Writes the bitMap using Bitmap method (not implemented yet)
+    //Writes the bitMap using Bitmap method
     this->freeSlots->to_buf(buf+offset);
     return 0;
 }
@@ -50,7 +50,7 @@ int PageHeader::from_buf(char *& buf) const{
     //Reads the number of free slots
     memcpy(&nbFreeSlots, buf + offset, sizeof(nbFreeSlots));
     offset += sizeOf(nbFreeSlots);
-    //Reads the bitMap using Bitmap method (not implemented yet)
+    //Reads the bitMap using Bitmap method
     this->freeSlots->from_buf(buf+offset);
     return 0;
 }

@@ -125,10 +125,16 @@ public:
   void reset();
   //Returns the current value of a bit in the Bitmap
   bool test(unsigned int bitNumber) const;
+  //Writes bitmap into a buffer
+  int to_buf(char *& buf) const;
+  //Reads from a buffer
+  int from_buf(const char * buf);
   //Gives the size
   int getSize() const {
       return size;
   }
+  //Gives the size in Bytes i.e around size/8 but not exactly
+  int Bitmap::getByteSize() const;
 private:
     //Size of the bitmap
     unsigned int size;
