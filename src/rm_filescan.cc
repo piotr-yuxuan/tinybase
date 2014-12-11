@@ -85,7 +85,7 @@ RC RM_FileScan::GetNextRec(RM_Record &rec){
     assert(this->fileHandle != NULL && this->scaning);
     //Loops through the pages to find next RID
     //Methods of the currentRID class should be changed when implemented
-    for (int i=this->currentRID->getPageNumber(); i < this->fileHandle->getNbPages(); i++){
+    for (int i=currentRID.GetPage(); i < this->fileHandle->getNbPages(); i++){
         PageHeader pHeader(fileHandle->GetNumSlots());
         PF_PageHandle ph;
         fileHandle->getPageHeader(ph, pHeader);
