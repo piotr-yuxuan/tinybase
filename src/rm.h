@@ -78,14 +78,14 @@ public:
     RC CloseScan ();                             // Close the scan
 private:
     //boolean to represent the current state of the FileScan
-    bool scaning = false;
+    bool scaning;
     //Attributes (for the current ongoing scan)
     RM_FileHandle *fileHandle;
     AttrType attrType;
     int attrLength;
     int attrOffset;
     CompOp compOp;
-    void value;
+    void *value;
     //Current RID
     RID currentRID;
     //Method to perform the value comparison
@@ -172,5 +172,21 @@ private:
 // Print-error function
 //
 void RM_PrintError(RC rc);
+
+//
+// Warning codes
+//
+#define RM_ALREADYOPEN      (START_RM_WARN + 0) // File is already open
+#define RM_EOF              (START_RM_WARN + 1) // End Of File
+
+//
+// Error codes
+//
+#define RM_FSCREATEFAIL     (START_RM_ERR - 0) // couldn't create the FileScan object
+#define RM_FILENOTOPEN      (START_RM_ERR - 1) // File is not open
+
+
+
+
 
 #endif

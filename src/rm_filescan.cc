@@ -4,9 +4,10 @@
 // Authors:     Camille TIENNOT (camille.tiennot@telecom-paristech.fr)
 //
 
-#include <unistd.h>
 #include <sys/types.h>
 #include "rm.h"
+#include <cassert>
+#include <string.h>
 
 //
 // Class RM_FileScan declaration
@@ -14,15 +15,14 @@
 
 //Constructor
 RM_FileScan::RM_FileScan(){
-    this->scaning(false);
+    this->scaning = false;
     this->fileHandle = NULL;
     this->currentRID = RID(1,-1);
 }
 
 //Destructor
 RM_FileScan::~RM_FileScan(){
-    delete currentRID;
-    delete fileHandle;
+    //Nothing to do for now
 }
 
 //Initializes a scan
@@ -40,13 +40,13 @@ RC RM_FileScan::OpenScan(const RM_FileHandle &fileHandle,
     }
 
     //Copies all the paramters into attributes
-    this->fileHandle = &fileHandle;
+    this->fileHandle = const_cast<RM_FileHandle*>(&fileHandle);;
     this->attrType = attrType;
     this->attrOffset = attrOffset;
     this->compOp = compOp;
 
     //Copies the value to our value attribute
-    this->value = *value;
+    this->value = value;
 
     //If the value is not NULL we check all the parameters
     if(value!=NULL){
@@ -113,7 +113,7 @@ RC RM_FileScan::GetNextRec(RM_Record &rec){
 //Terminates a file scan
 RC RM_FileScan::CloseScan(){
     if(!scaning){
-        return RM_NOTOPEN;
+        return RM_FILENOTOPEN;
     }
     if(this->fileHandle!=NULL){
         delete fileHandle;
@@ -141,7 +141,7 @@ bool RM_FileScan::performMatching(char *pData){
             if(attrType == INT) {
                 return *((int *)attr) < *((int *)value);
             }
-            if(AttrType == FLOAT) {
+            if(attrType == FLOAT) {
                 return *((float *)attr) < *((float *)value);
             }
             if(attrType == STRING) {
@@ -153,7 +153,7 @@ bool RM_FileScan::performMatching(char *pData){
             if(attrType == INT) {
                 return *((int *)attr) == *((int *)value);
             }
-            if(AttrType == FLOAT) {
+            if(attrType == FLOAT) {
                 return *((float *)attr) == *((float *)value);
             }
             if(attrType == STRING) {
@@ -165,7 +165,7 @@ bool RM_FileScan::performMatching(char *pData){
             if(attrType == INT) {
                 return *((int *)attr) > *((int *)value);
             }
-            if(AttrType == FLOAT) {
+            if(attrType == FLOAT) {
                 return *((float *)attr) > *((float *)value);
             }
             if(attrType == STRING) {
@@ -177,7 +177,7 @@ bool RM_FileScan::performMatching(char *pData){
             if(attrType == INT) {
                 return *((int *)attr) <= *((int *)value);
             }
-            if(AttrType == FLOAT) {
+            if(attrType == FLOAT) {
                 return *((float *)attr) <= *((float *)value);
             }
             if(attrType == STRING) {
@@ -189,7 +189,7 @@ bool RM_FileScan::performMatching(char *pData){
             if(attrType == INT) {
                 return *((int *)attr) != *((int *)value);
             }
-            if(AttrType == FLOAT) {
+            if(attrType == FLOAT) {
                 return *((float *)attr) != *((float *)value);
             }
             if(attrType == STRING) {
@@ -201,7 +201,7 @@ bool RM_FileScan::performMatching(char *pData){
             if(attrType == INT) {
                 return *((int *)attr) >= *((int *)value);
             }
-            if(AttrType == FLOAT) {
+            if(attrType == FLOAT) {
                 return *((float *)attr) >= *((float *)value);
             }
             if(attrType == STRING) {
