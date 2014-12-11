@@ -78,7 +78,6 @@ public:
     RC CloseScan ();                             // Close the scan
 private:
     //boolean to represent the current state of the FileScan
-    // If scan  curently open -> true, else -> false
     bool scaning = false;
     //Attributes (for the current ongoing scan)
     RM_FileHandle *fileHandle;
@@ -89,6 +88,8 @@ private:
     void value;
     //Current RID
     RID currentRID;
+    //Method to perform the value comparison
+    bool performMatching(char *pData);
 };
 
 //

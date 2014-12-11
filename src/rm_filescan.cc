@@ -96,10 +96,8 @@ RC RM_FileScan::GetNextRec(RM_Record &rec){
                 this->fileHandle->GetRec(currentRID, rec);
                 char * pData = NULL;
                 rec.GetData(pData);
-                //The actual testing of the record should be implemented there
-                //Or deferred to an other class/method
-                //(coming soon)
-                if(true){
+                //Testing
+                if(this->performMatching(pData)){
                     return 0;
                 }
             }
@@ -119,4 +117,95 @@ RC RM_FileScan::CloseScan(){
     }
     currentRID = RID(1,-1);
     return 0;
+}
+
+//Performs the matching between given criteria and rec data
+bool RM_FileScan::performMatching(char *pData){
+    //First case: NULL value => anything matches
+    if(this->value==NULL){
+        return true;
+    }
+    //the attribute itself
+    const char * attr = pData + attrOffset;
+    //Else we switch according to which compOp we have got
+    switch (this->compOp) {
+        //No operator
+        case NO_OP:
+            return true;
+            break;
+        //Less than op
+        case LT_OP:
+            if(attrType == INT) {
+                return *((int *)attr) < *((int *)value);
+            }
+            if(AttrType == FLOAT) {
+                return *((float *)attr) < *((float *)value);
+            }
+            if(attrType == STRING) {
+                return strncmp(attr, (char *)value, attrLength) < 0;
+            }
+            break;
+        //Equal op
+        case EQ_OP:
+            if(attrType == INT) {
+                return *((int *)attr) == *((int *)value);
+            }
+            if(AttrType == FLOAT) {
+                return *((float *)attr) == *((float *)value);
+            }
+            if(attrType == STRING) {
+                return strncmp(attr, (char *)value, attrLength) == 0;
+            }
+            break;
+        //Greater than op
+        case GT_OP:
+            if(attrType == INT) {
+                return *((int *)attr) > *((int *)value);
+            }
+            if(AttrType == FLOAT) {
+                return *((float *)attr) > *((float *)value);
+            }
+            if(attrType == STRING) {
+                return strncmp(attr, (char *)value, attrLength) > 0;
+            }
+            break;
+        //Less or Equal than op
+        case LE_OP:
+            if(attrType == INT) {
+                return *((int *)attr) <= *((int *)value);
+            }
+            if(AttrType == FLOAT) {
+                return *((float *)attr) <= *((float *)value);
+            }
+            if(attrType == STRING) {
+                return strncmp(attr, (char *)value, attrLength) <= 0;
+            }
+            break;
+        //Non equal op
+        case NE_OP:
+            if(attrType == INT) {
+                return *((int *)attr) != *((int *)value);
+            }
+            if(AttrType == FLOAT) {
+                return *((float *)attr) != *((float *)value);
+            }
+            if(attrType == STRING) {
+                return strncmp(attr, (char *)value, attrLength) != 0;
+            }
+            break;
+        //Greater or equal than op
+        case GE_OP:
+            if(attrType == INT) {
+                return *((int *)attr) >= *((int *)value);
+            }
+            if(AttrType == FLOAT) {
+                return *((float *)attr) >= *((float *)value);
+            }
+            if(attrType == STRING) {
+                return strncmp(attr, (char *)value, attrLength) >= 0;
+            }
+            break;
+    }
+    //Should never get so far
+    return true;
 }
