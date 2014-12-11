@@ -21,7 +21,8 @@ RM_FileScan::RM_FileScan(){
 
 //Destructor
 RM_FileScan::~RM_FileScan(){
-    //Don't need to do anything
+    delete currentRID;
+    delete fileHandle;
 }
 
 //Initializes a scan
@@ -66,7 +67,9 @@ RC RM_FileScan::OpenScan(const RM_FileHandle &fileHandle,
             return RM_FSCREATEFAIL;
         }
         //Checks the offset is not larger than record size
-        //-> To do
+        if(attrOffset >= fileHandle->fullRecordSize() || attrOffset<0){
+            return RM_FSCREATEFAIL;
+        }
     }
 
     return 0;
