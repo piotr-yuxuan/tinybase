@@ -111,5 +111,12 @@ RC RM_FileScan::GetNextRec(RM_Record &rec){
 
 //Terminates a file scan
 RC RM_FileScan::CloseScan(){
-    // Don't need to do anything
+    if(!scaning){
+        return RM_NOTOPEN;
+    }
+    if(this->fileHandle!=NULL){
+        delete fileHandle;
+    }
+    currentRID = RID(1,-1);
+    return 0;
 }
