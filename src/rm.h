@@ -78,10 +78,10 @@ public:
     RC CloseScan ();                             // Close the scan
 private:
     //boolean to represent the current state of the FileScan
-    // If scan  curently opene -> true, else -> false
+    // If scan  curently open -> true, else -> false
     bool scaning = false;
     //Attributes (for the current ongoing scan)
-    RM_FileHandle * fileHandle;
+    RM_FileHandle *fileHandle;
     AttrType attrType;
     int attrLength;
     int attrOffset;
@@ -102,6 +102,36 @@ public:
     RC OpenFile   (const char *fileName, RM_FileHandle &fileHandle);
 
     RC CloseFile  (RM_FileHandle &fileHandle);
+};
+
+//
+// Bitmap: a class to keep track of free record slots on a given page
+//
+class Bitmap {
+public:
+  //Constructor & Destructor
+  bitmap(int nbBits);
+  ~bitmap();
+
+  //Sets a specific bit to 1
+  void set(unsigned int bitNumber);
+  //Sets all the bits to 1
+  void set();
+  //Sets a specific bit to 0
+  void reset(unsigned int bitNumber);
+  //Sets all the bits to 0
+  void reset();
+  //Returns the current value of a bit in the Bitmap
+  bool test(unsigned int bitNumber) const;
+  //Gives the size
+  int getSize() const {
+      return size;
+  }
+private:
+  //Size of the bitmap
+  unsigned int size;
+  //To actually store the values
+  char * bitValues;
 };
 
 //
