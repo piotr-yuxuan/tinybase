@@ -76,6 +76,17 @@ public:
                   ClientHint pinHint = NO_HINT); // Initialize a file scan
     RC GetNextRec(RM_Record &rec);               // Get next matching record
     RC CloseScan ();                             // Close the scan
+private:
+    //boolean to represent the current state of the FileScan
+    // If scan  curently opene -> true, else -> false
+    bool scaning = false;
+    //Attributes (for the current ongoing scan)
+    RM_FileHandle * fileHandle;
+    AttrType attrType;
+    int attrLength;
+    int attrOffset;
+    CompOp compOp;
+    void value;
 };
 
 //
