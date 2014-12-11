@@ -158,11 +158,13 @@ public:
     //Returns the size of the header IN BYTES
     int size() const;
 
+    //Bitmap attribute
+    Bitmap freeSlots;
+
 private:
-  int nbSlots;
-  int nbFreeSlots;
-  int nextFreePage;
-  Bitmap freeSlots;
+    int nbSlots;
+    int nbFreeSlots;
+    int nextFreePage;
 };
 
 //

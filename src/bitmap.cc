@@ -1,3 +1,11 @@
+//
+// File:        bitmap.cc
+// Description: Bitmap class implementation
+//
+// Note: 1 means that the slot is free, 0 means there is data in it
+//
+
+
 #include "rm.h"
 #include <cmath>
 #include <cstring>

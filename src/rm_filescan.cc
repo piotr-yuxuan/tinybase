@@ -6,7 +6,7 @@
 
 #include <unistd.h>
 #include <sys/types.h>
-#include "rm_internal.h"
+#include "rm.h"
 
 //
 // Class RM_FileScan declaration
@@ -14,7 +14,9 @@
 
 //Constructor
 RM_FileScan::RM_FileScan(){
-
+    this->scaning(false);
+    this->fileHandle = NULL;
+    this->currentRID = RID(1,-1);
 }
 
 //Destructor
@@ -72,7 +74,37 @@ RC RM_FileScan::OpenScan(const RM_FileHandle &fileHandle,
 
 //Gets next matching record
 RC RM_FileScan::GetNextRec(RM_Record &rec){
-    while()
+    //Makes sure scan is open
+    if(!this->scaning){
+        return RM_FILENOTOPEN;
+    }
+    //Assertions
+    assert(this->fileHandle != NULL && this->scaning);
+    //Loops through the pages to find next RID
+    //Methods of the currentRID class should be changed when implemented
+    for (int i=this->currentRID->getPageNumber(); i < this->fileHandle->getNbPages(); i++){
+        PageHeader pHeader(fileHandle->GetNumSlots());
+        PF_PageHandle ph;
+        fileHandle->getPageHeader(ph, pHeader);
+        //The bitmap we'll use then
+        Bitmap b = pHeader.freeSlots;
+        //Loops through the bitmap
+        for(int j=0; j<b.getSize(); j++){
+            //Slots that interest us are the non-empty ones
+            if(b.test(j)==false){
+                currentRID=RID(i, j);
+                this->fileHandle->GetRec(currentRID, rec);
+                char * pData = NULL;
+                rec.GetData(pData);
+                //The actual testing of the record should be implemented there
+                //Or deferred to an other class/method
+                //(coming soon)
+                if(true){
+                    return 0;
+                }
+            }
+        }
+    }
     //If there is no more matching record we return RM_EOF
     return RM_EOF;
 }
