@@ -14,3 +14,7 @@ RM_Record		|	Yixin |
 RID				|	Pauline |
 RM_PrintError	|	  |
 
+
+De la part de Camille :
+J'ai ajouté la classe Bitmap comme recommandé dans l'énoncé en m'inspirant largement de https://github.com/junkumar/redbase/blob/master/src/bitmap.cc mais j'ai changé quelques trucs pour qu'elle soit plus simple (un peu moins efficace mais on pourra améliorer ça par la suite)
+Les interfaces sont dans rm.h
