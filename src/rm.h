@@ -87,6 +87,8 @@ private:
     int attrOffset;
     CompOp compOp;
     void value;
+    //Current RID
+    RID currentRID;
 };
 
 //
@@ -110,8 +112,8 @@ public:
 class Bitmap {
 public:
   //Constructor & Destructor
-  bitmap(int nbBits);
-  ~bitmap();
+  Bitmap(int nbBits);
+  ~Bitmap();
 
   //Sets a specific bit to 1
   void set(unsigned int bitNumber);
@@ -128,10 +130,33 @@ public:
       return size;
   }
 private:
-  //Size of the bitmap
-  unsigned int size;
-  //To actually store the values
-  char * bitValues;
+    //Size of the bitmap
+    unsigned int size;
+    //To actually store the values
+    char * bitValues;
+};
+
+//
+// PageHeader: a class to represent the header of a page (not to be mistaken with the first page of a file)
+//
+class PageHeader {
+public:
+    //Constructor takes the number of slots as a parameter
+    PageHeader(int nbSlots);
+    ~PageHeader();
+
+    //Writes and reads from/to the buffer
+    int to_buf(char *& buf) const;
+    int from_buf(const char * buf);
+
+    //Returns the size of the header IN BYTES
+    int size() const;
+
+private:
+  int nbSlots;
+  int nbFreeSlots;
+  int nextFreePage;
+  Bitmap freeSlots;
 };
 
 //
