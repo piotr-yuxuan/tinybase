@@ -8,7 +8,7 @@ Je ne sais pas si le prof a anticipé que nous donner un projet de Stanford nous
 Classe			|	Codeur  | Etat
 :---------------|:------------:|:--------
 RM_Manager		|	Pauline |
-RM_FileHandle	|	Pierre  | Ca ne compile pas sur mon pc, je ne peux pas travailler ><
+RM_FileHandle	|	Pierre  | Being processed
 RM_FileScan		|	Camille | Implémentation de base terminé, pas compilable
 RM_Record		|	Yixin |
 RID				|	Camille | J'ai fait une première version dans rm_rid.h et rm_rid.cc
