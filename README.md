@@ -1,6 +1,8 @@
 tinybase
 ========
 
+> Ne pas montrer ce dépôt et ce README au prof, on évoque trop ce qui a déjà été fait sur redbase.
+
 Pour cloner le dépôt ou monter à distance votre répertoire de l'école, voir [ici](Trucs techniques.md).
 
 Je ne sais pas si le prof a anticipé que nous donner un projet de Stanford nous permet d'aller voir [ce qui a déjà été fait](https://github.com/junkumar/redbase). J'ai copié juste pour voir les fichiers `rm_*` qui nous correspondent et après quelques modifs de headers, ça compile ;-) Mais ce n'est as du jeu, je vais plutôt recommencer à la main.
