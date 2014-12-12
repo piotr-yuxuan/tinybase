@@ -1,7 +1,7 @@
 tinybase
 ========
 
-> Ne pas montrer ce dépôt et ce README au prof, on évoque trop ce qui a déjà été fait sur redbase.
+> __**Ne pas montrer ce dépôt et ce README au prof, on évoque trop ce qui a déjà été fait sur redbase.**__
 
 Pour cloner le dépôt ou monter à distance votre répertoire de l'école, voir [ici](Trucs techniques.md).
 
