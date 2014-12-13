@@ -91,8 +91,13 @@ RC RM_FileScan::GetNextRec(RM_Record &rec){
         fileHandle->getPageHeader(ph, pHeader);
         //The bitmap we'll use then
         Bitmap b = pHeader.freeSlots;
-        //Loops through the bitmap
-        for(int j=0; j<b.getSize(); j++){
+        //Gets the starting slot in the page
+        int j=0;
+        if(currentRID.GetPage()==i && currentRID.GetSlot()>=0){
+            j = currentRID.GetSlot() + 1;
+        }
+        //Loops through the next slots in the page
+        for(; j<b.getSize(); j++){
             //Slots that interest us are the non-empty ones
             if(b.test(j)==false){
                 currentRID=RID(i, j);
