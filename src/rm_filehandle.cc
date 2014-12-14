@@ -41,12 +41,12 @@ RC RM_FileHandle::GetRec(const RID &rid, RM_Record &rec) const
     //Retrieves the pageHandle for page p
     PF_PageHandle ph();
     RC rc1 = this->pf_FileHandle->GetThisPage(p, ph);
-    if(rc1!=0){
+    if(rc1 != 0) {
         return rc1;
     }
     char *& pData;
     RC rc2 = ph.GetData(pData);
-    if(rc2!=0){
+    if(rc2 != 0) {
         return rc2;
     }
 
@@ -59,8 +59,8 @@ RC RM_FileHandle::GetRec(const RID &rid, RM_Record &rec) const
     }
 
     //Should be edited according to what Yixin will do for RM_Record class
-    //hdr should a RM_FileHeader attribute of RM_FileHandle, not defined yet
-    rec.Set(pData, hdr.extRecordSize, rid);
+    //hdr should be a RM_FileHeader attribute of RM_FileHandle, not defined yet
+    rec.Set(pData, fileHeader.recordSize, rid);
 	
     return 0;
 }
@@ -72,9 +72,35 @@ RC RM_FileHandle::GetRec(const RID &rid, RM_Record &rec) const
 //
 RC RM_FileHandle::InsertRec(const char *pData, RID &rid)
 {
+	if(pData == NULL) {
+		return RM_NULLRECORD;
+	}
+
 	RC rc = 0;
-	// TODO To be populated
-	return rc;
+
+	PF_PageHandle pageHandle;
+	RM_PageHdr pageHeader(this->GetNumSlots());
+	PageNum p;
+	SlotNum s;
+
+	this->GetNextFreeSlot(pageHandle, p, s));
+	this->GetPageHeader(pageHandle, pageHeader));
+	
+	char * pSlot;
+	this->GetSlotPointer(pageHandle, s, pSlot)
+
+	rid = RID(p, s);
+	memcpy(pSlot, pData, fileHeader.recordsize);
+
+	pHdr.numFreeSlots--;
+	if(pHdr.numFreeSlots == 0) {
+		hdr.firstFree = pHdr.nextFree;
+		pHdr.nextFree = RM_PAGE_FULLY_USED;
+	}
+	
+	rc = this->SetPageHeader(ph, pHdr);
+
+	return 0;
 }
 
 //
@@ -85,7 +111,21 @@ RC RM_FileHandle::InsertRec(const char *pData, RID &rid)
 RC RM_FileHandle::DeleteRec(const RID &rid)
 {
 	RC rc = 0;
-	// TODO To be populated
+	PageNum p; rid.GetPageNum(p);
+	SlotNum s; rid.GetSlotNum(s);
+	PF_PageHandle ph;
+
+	// TODO: handle returns.
+	pfHandle->GetThisPage(p, ph);
+	pfHandle->MarkDirty(p);
+	pfHandle->UnpinPage(p);
+
+	if(pageHeader.numFreeSlots == 0)
+	{
+		pageHeader.nextFree = fileHeader.firstFree;
+		fileHeader.firstFreePage = p; 
+	}
+	pageHeader.freeSlotsNumber++;
 	return rc;
 }
 
@@ -96,9 +136,32 @@ RC RM_FileHandle::DeleteRec(const RID &rid)
 //
 RC RM_FileHandle::UpdateRec(const RM_Record &rec)
 {
-	RC rc = 0;
-	// TODO To be populated
-	return rc;
+	RC rc;
+
+	// Identify the record.
+	RID rid; rec.GetRid(rid);
+
+	// We get page and slot numbers
+	PageNum p; rid.GetPageNum(p);
+	SlotNum s; rid.GetSlotNum(s);
+
+	char * pSlot, * pData = NULL;
+	RC rc1 = rec.GetData(pData);
+	if (rc1 != 0) {
+		return rc1;
+	}
+
+	// Before going further, we could try to figure out whether the record actually needs to be updated -- or is it ensured by design?
+
+	RC rc2 = this->GetPageHeader(ph, pHdr);
+	if (rc2 != 0) {
+		return rc2;
+	}
+
+	// pSlot has to be define.
+
+	memcpy(pSlot, pData, fileHeader.recordsize); // Copy from pData to pSlot for fileHeader.recordsize length
+	return 0;
 }
 
 //
@@ -108,8 +171,6 @@ RC RM_FileHandle::UpdateRec(const RM_Record &rec)
 //
 RC RM_FileHandle::ForcePages(PageNum pageNum = ALL_PAGES) const
 {
-	RC rc = 0;
-	// TODO To be populated
-	return rc;
+	return pf_FileHandle->ForcePages(pageNum);
 }
 

@@ -23,6 +23,23 @@
 #include "pf.h"
 
 //
+// RM_FileHeader: Header structure for files. Should it be accessible from the outside? I mean, in Java, shouldn't it be a private class of RM_FileHandle?
+//
+struct RM_FileHeader {
+	int firstFreePage; // first free page
+	int pagesNumber; // How many pages there are in that file
+	int recordSize; // Size of the record.
+};
+
+//
+// RM_PageHdr: Header structure for pages. Same question: should it be accessible from the outside? I mean, in Java, shouldn't it be a private class of RM_FileHandle?
+//
+struct RM_PageHeader {
+  int totalSlotsNumber;
+  int freeSlotsNumber;
+};
+
+//
 // RM_Record: RM Record interface
 //
 class RM_Record {
@@ -50,19 +67,20 @@ public:
     RM_FileHandle ();
     ~RM_FileHandle();
 
-    // Given a RID, return the record
-    RC GetRec     (const RID &rid, RM_Record &rec) const;
+    RC GetRec     (const RID &rid, RM_Record &rec) const; // Given a RID, return the record
+    RC InsertRec  (const char *pData, RID &rid); // Insert a new record
+    RC DeleteRec  (const RID &rid); // Delete a record
+    RC UpdateRec  (const RM_Record &rec); // Update a record
+    RC ForcePages (PageNum pageNum = ALL_PAGES); // Forces a page (along with any contents stored in this class) from the buffer pool to disk.  Default value forces all pages.
+    int getRecordSize() // Size of the record.
+    {
+    	return fileHeader->recordSize;
+    };
+};
 
-    RC InsertRec  (const char *pData, RID &rid);       // Insert a new record
-
-    RC DeleteRec  (const RID &rid);                    // Delete a record
-    RC UpdateRec  (const RM_Record &rec);              // Update a record
-
-    // Forces a page (along with any contents stored in this class)
-    // from the buffer pool to disk.  Default value forces all pages.
-    RC ForcePages (PageNum pageNum = ALL_PAGES);
 private:
-    PF_FileHandle *pf_FileHandle;
+	PF_FileHandle *pf_FileHandle;
+	RM_FileHeader fileHeader; // File header
 };
 
 //
