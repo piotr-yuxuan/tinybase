@@ -4,8 +4,7 @@
 // Authors:     Pierre de Boissset (pdeboisset@enst.fr)
 //
 
-#include "rm_internal.h"
-#include "rm_filehandle.h"
+#include "rm.h"
 
 //
 // RM_FileHandle
@@ -34,19 +33,36 @@ RM_FileHandle::~RM_FileHandle()
 //
 // Misc: Euh, j'ai un vrai doute de langage : que signifie le const de la fin de la signature ?
 RC RM_FileHandle::GetRec(const RID &rid, RM_Record &rec) const
-{
-	RC rc = 0;
-	
-	PageNum p; rid.GetPageNum(p);
+{	
+    //We get page and slot number
+    PageNum p; rid.GetPageNum(p);
 	SlotNum s; rid.GetSlotNum(s);
-	PF_PageHandle ph;
-	RC rc1 = pf_FileHandle->GetThisPage(p, ph);
-	char *& pData;
-	RC rc2 = ph.GetData(pData);
+
+    //Retrieves the pageHandle for page p
+    PF_PageHandle ph();
+    RC rc1 = this->pf_FileHandle->GetThisPage(p, ph);
+    if(rc1!=0){
+        return rc1;
+    }
+    char *& pData;
+    RC rc2 = ph.GetData(pData);
+    if(rc2!=0){
+        return rc2;
+    }
+
+    //PageHeader for the page p
+    PageHeader pHeader(this->GetNumSlots());
+
+    //If the slot is free means the rid given is wrong
+    if(pHeader.freeSlots.test(s)){
+        return RM_INVALIDRID;
+    }
+
+    //Should be edited according to what Yixin will do for RM_Record class
+    //hdr should a RM_FileHeader attribute of RM_FileHandle, not defined yet
+    rec.Set(pData, hdr.extRecordSize, rid);
 	
-	// Mais que faire de ce pointeur bizarre avec RM_Record ?
-	
-	return rc;
+    return 0;
 }
 
 //
