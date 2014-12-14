@@ -35,7 +35,18 @@ RM_FileHandle::~RM_FileHandle()
 // Misc: Euh, j'ai un vrai doute de langage : que signifie le const de la fin de la signature ?
 RC RM_FileHandle::GetRec(const RID &rid, RM_Record &rec) const
 {
-	// TODO To be populated
+	RC rc = 0;
+	
+	PageNum p; rid.GetPageNum(p);
+	SlotNum s; rid.GetSlotNum(s);
+	PF_PageHandle ph;
+	RC rc1 = pf_FileHandle->GetThisPage(p, ph);
+	char *& pData;
+	RC rc2 = ph.GetData(pData);
+	
+	// Mais que faire de ce pointeur bizarre avec RM_Record ?
+	
+	return rc;
 }
 
 //
@@ -45,7 +56,9 @@ RC RM_FileHandle::GetRec(const RID &rid, RM_Record &rec) const
 //
 RC RM_FileHandle::InsertRec(const char *pData, RID &rid)
 {
+	RC rc = 0;
 	// TODO To be populated
+	return rc;
 }
 
 //
@@ -55,7 +68,9 @@ RC RM_FileHandle::InsertRec(const char *pData, RID &rid)
 //
 RC RM_FileHandle::DeleteRec(const RID &rid)
 {
+	RC rc = 0;
 	// TODO To be populated
+	return rc;
 }
 
 //
@@ -65,7 +80,9 @@ RC RM_FileHandle::DeleteRec(const RID &rid)
 //
 RC RM_FileHandle::UpdateRec(const RM_Record &rec)
 {
+	RC rc = 0;
 	// TODO To be populated
+	return rc;
 }
 
 //
@@ -75,6 +92,8 @@ RC RM_FileHandle::UpdateRec(const RM_Record &rec)
 //
 RC RM_FileHandle::ForcePages(PageNum pageNum = ALL_PAGES) const
 {
+	RC rc = 0;
 	// TODO To be populated
+	return rc;
 }
 

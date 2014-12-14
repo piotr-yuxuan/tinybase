@@ -24,6 +24,8 @@ class RM_FileHandle {
     RC UpdateRec      (const RM_Record &rec);              // Update a record
     RC ForcePages     (PageNum pageNum = ALL_PAGES) const; // Write dirty page(s)
                                                            //   to disk
+  private:
+    PF_FileHandle *pf_FileHandle;
  };
 
 #endif
