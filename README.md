@@ -31,5 +31,9 @@ Il faut aussi qu'on se mette d'accord sur les methodes qu'on a besoin dans les c
 - fileHandle->getNbPages()
 - fileHandle->getPageHeader(ph, pHeader);
 
+<h2>Une autre source suffisante pour se référer </h2>
+
+J'ai trouvé un projet avec les docs rendus qui bien explique la structure de cette base et toutes les autre choses. Une bonne source supplémentaire.
+https://github.com/yifeih/redbase
 
 <!-- Désolé pour le html je ne savais pas comment faire autrement^^ -->
