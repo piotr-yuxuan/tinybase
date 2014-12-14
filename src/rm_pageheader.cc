@@ -1,5 +1,5 @@
 //
-// File:        rm_pageheader.cc
+// File:        RM_PageHeader.cc
 // Description: RM_PageHeader class implementation
 //
 
@@ -12,17 +12,17 @@
 //
 
 //Constructor
-PageHeader::PageHeader(int nbSlots){
+RM_PageHeader::RM_PageHeader(int nbSlots){
     this->freeSlots = new Bitmap(nbSlots);
 }
 
 //Destructor
-PageHeader::~PageHeader(){
+RM_PageHeader::~RM_PageHeader(){
     delete freeSlots;
 }
 
 //Writes into a buffer
-int PageHeader::to_buf(char *& buf) const{
+int RM_PageHeader::to_buf(char *& buf) const{
     int offset(0);
     //Writes the next free page
     memcpy(buf + offset, &nextFreePage, sizeof(nextFreePage));
@@ -39,7 +39,7 @@ int PageHeader::to_buf(char *& buf) const{
 }
 
 //Reads from a buffer
-int PageHeader::from_buf(char *& buf){
+int RM_PageHeader::from_buf(char *& buf){
     int offset(0);
     //Reads the next free page
     memcpy(&nextFreePage, buf + offset, sizeof(nextFreePage));

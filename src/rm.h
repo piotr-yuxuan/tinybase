@@ -180,8 +180,16 @@ private:
 //
 class RM_FileHeader {
 public:
-    int FileHeader::to_buf(char *& buf) const;
-    int FileHeader::from_buf(char *& buf);
+    //Constructor takes the number of slots as a parameter
+    RM_FileHeader();
+    ~RM_FileHeader();
+
+    //Writes and reads from/to the buffer
+    int to_buf(char *& buf) const;
+    int from_buf(char *& buf);
+
+    //Getter for recordSize
+    int getRecordSize();
 private:
     int firstFreePage; // first free page
     int pagesNumber; // How many pages there are in that file

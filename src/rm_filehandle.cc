@@ -60,7 +60,7 @@ RC RM_FileHandle::GetRec(const RID &rid, RM_Record &rec) const
 
     //Should be edited according to what Yixin will do for RM_Record class
     //hdr should be a RM_FileHeader attribute of RM_FileHandle, not defined yet
-    rec.Set(pData, fileHeader.recordSize, rid);
+    rec.Set(pData, fileHeader.getRecordSize(), rid);
 	
     return 0;
 }

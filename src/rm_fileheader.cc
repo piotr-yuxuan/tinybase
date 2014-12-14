@@ -12,17 +12,17 @@
 //
 
 //Constructor
-FileHeader::FileHeader(int nbSlots){
+RM_FileHeader::RM_FileHeader(){
     //Nothing to do for now
 }
 
 //Destructor
-FileHeader::~FileHeader(){
+RM_FileHeader::~RM_FileHeader(){
     //Nothing to d for now
 }
 
 //Writes into a buffer
-int FileHeader::to_buf(char *& buf) const{
+int RM_FileHeader::to_buf(char *& buf) const{
     int offset(0);
     //Writes the first free page
     memcpy(buf + offset, &firstFreePage, sizeof(firstFreePage));
@@ -36,7 +36,7 @@ int FileHeader::to_buf(char *& buf) const{
 }
 
 //Reads from a buffer
-int PageHeader::from_buf(char *& buf) const{
+int RM_FileHeader::from_buf(char *& buf) const{
     int offset(0);
     //Reads the first free page
     memcpy(&firstFreePage, buf + offset, sizeof(firstFreePage));
@@ -48,4 +48,9 @@ int PageHeader::from_buf(char *& buf) const{
     memcpy(&recordSize, buf + offset, sizeof(recordSize));
     offset += sizeOf(recordSize);
     return 0;
+}
+
+//Getter for recordSize
+int RM_FileHeader::getRecordSize() const{
+    return this->recordSize;
 }
