@@ -117,7 +117,7 @@ public:
     int from_buf(char *& buf);
 
     //Getter for recordSize
-    int getRecordSize();
+    int getRecordSize() const;
 private:
     int firstFreePage; // first free page
     int pagesNumber; // How many pages there are in that file
@@ -137,10 +137,12 @@ public:
     RC DeleteRec  (const RID &rid); // Delete a record
     RC UpdateRec  (const RM_Record &rec); // Update a record
     RC ForcePages (PageNum pageNum = ALL_PAGES); // Forces a page (along with any contents stored in this class) from the buffer pool to disk.  Default value forces all pages.
-    int getRecordSize() // Size of the record.
+    int getRecordSize() const // Size of the record.
     {
         return fileHeader.getRecordSize();
     }
+    //Gives the number of slots in one page
+    int GetNumSlots() const;
 
 private:
 	PF_FileHandle *pf_FileHandle;

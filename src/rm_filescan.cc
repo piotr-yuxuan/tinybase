@@ -67,7 +67,7 @@ RC RM_FileScan::OpenScan(const RM_FileHandle &fileHandle,
             return RM_FSCREATEFAIL;
         }
         //Checks the offset is not larger than record size
-        if(attrOffset >= fileHandle->fullRecordSize() || attrOffset<0){
+        if(attrOffset >= fileHandle.getRecordSize() || attrOffset<0){
             return RM_FSCREATEFAIL;
         }
     }

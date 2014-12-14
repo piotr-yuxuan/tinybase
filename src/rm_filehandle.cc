@@ -174,3 +174,21 @@ RC RM_FileHandle::ForcePages(PageNum pageNum = ALL_PAGES) const
 	return pf_FileHandle->ForcePages(pageNum);
 }
 
+//Gives the number of slots in one page
+int RM_FileHandle::GetNumSlots() const{
+    //Makes sure RecordSize is > 0
+    if(this->getRecordSize()==0){
+        return RM_NULLRECORDSIZE;
+    }
+    //Increments slotsNb until we find the max value
+    int slotsNb = 0;
+    while(1>0){
+        slotsNb++;
+        RM_PageHeader pHeader(slotsNb);
+        if(pHeader.size()+ slotsNb*this->getRecordSize() > PF_PAGE_SIZE){
+            return slotsNb - 1;
+        }
+        delete pHeader;
+    }
+}
+

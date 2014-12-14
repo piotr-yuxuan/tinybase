@@ -21,6 +21,11 @@ RM_PageHeader::~RM_PageHeader(){
     delete freeSlots;
 }
 
+//Returns size of the header in bytes
+int RM_PageHeader::size() const{
+    return sizeof(nextFreePage)+sizeof(nbSlots)+sizeOf(nbFreeSlots)+freeSlots.getSize();
+}
+
 //Writes into a buffer
 int RM_PageHeader::to_buf(char *& buf) const{
     int offset(0);
