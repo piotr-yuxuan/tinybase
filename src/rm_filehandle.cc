@@ -51,7 +51,7 @@ RC RM_FileHandle::GetRec(const RID &rid, RM_Record &rec) const
     }
 
     //PageHeader for the page p
-    PageHeader pHeader(this->GetNumSlots());
+    RM_PageHeader pHeader(this->GetNumSlots());
 
     //If the slot is free means the rid given is wrong
     if(pHeader.freeSlots.test(s)){
