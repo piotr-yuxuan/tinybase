@@ -58,8 +58,7 @@ public:
     int getRecordSize() // Size of the record.
     {
     	return fileHeader->recordSize;
-    };
-};
+    }
 
 private:
 	PF_FileHandle *pf_FileHandle;
@@ -181,7 +180,8 @@ private:
 //
 class RM_FileHeader {
 public:
-    //To be written
+    int FileHeader::to_buf(char *& buf) const;
+    int FileHeader::from_buf(char *& buf);
 private:
     int firstFreePage; // first free page
     int pagesNumber; // How many pages there are in that file
