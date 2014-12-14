@@ -23,23 +23,6 @@
 #include "pf.h"
 
 //
-// RM_FileHeader: Header structure for files. Should it be accessible from the outside? I mean, in Java, shouldn't it be a private class of RM_FileHandle?
-//
-struct RM_FileHeader {
-	int firstFreePage; // first free page
-	int pagesNumber; // How many pages there are in that file
-	int recordSize; // Size of the record.
-};
-
-//
-// RM_PageHdr: Header structure for pages. Same question: should it be accessible from the outside? I mean, in Java, shouldn't it be a private class of RM_FileHandle?
-//
-struct RM_PageHeader {
-  int totalSlotsNumber;
-  int freeSlotsNumber;
-};
-
-//
 // RM_Record: RM Record interface
 //
 class RM_Record {
@@ -168,13 +151,13 @@ private:
 };
 
 //
-// PageHeader: a class to represent the header of a page (not to be mistaken with the first page of a file)
+// RM_PageHeader: a class to represent the header of a page (not to be mistaken with the first page of a file)
 //
-class PageHeader {
+class RM_PageHeader {
 public:
     //Constructor takes the number of slots as a parameter
-    PageHeader(int nbSlots);
-    ~PageHeader();
+    RM_PageHeader(int nbSlots);
+    ~RM_PageHeader();
 
     //Writes and reads from/to the buffer
     int to_buf(char *& buf) const;
@@ -190,6 +173,19 @@ private:
     int nbSlots;
     int nbFreeSlots;
     int nextFreePage;
+};
+
+
+//
+// RM_FileHeader: a class to represent the header of a file (not to be mistaken with the header of a page)
+//
+class RM_FileHeader {
+public:
+    //To be written
+private:
+    int firstFreePage; // first free page
+    int pagesNumber; // How many pages there are in that file
+    int recordSize; // Size of the record.
 };
 
 //

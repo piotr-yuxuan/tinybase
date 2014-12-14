@@ -86,7 +86,7 @@ RC RM_FileScan::GetNextRec(RM_Record &rec){
     //Loops through the pages to find next RID
     //Methods of the currentRID class should be changed when implemented
     for (int i=currentRID.GetPage(); i < this->fileHandle->getNbPages(); i++){
-        PageHeader pHeader(fileHandle->GetNumSlots());
+        RM_PageHeader pHeader(fileHandle->GetNumSlots());
         PF_PageHandle ph;
         fileHandle->getPageHeader(ph, pHeader);
         //The bitmap we'll use then
