@@ -22,16 +22,15 @@ typedef int PageNum;
 //
 typedef int SlotNum;
 
-
-//Consts for Page and Slot
-static const PageNum NULL_PAGE = -1;
-static const SlotNum NULL_SLOT = -1;
-
 //
 // RID: Record id interface
 //
 class RID {
 public:
+    //Consts for Page and Slot
+    static const PageNum NULL_PAGE = -1;
+    static const SlotNum NULL_SLOT = -1;
+
     RID();                                          // Default constructor
     RID(PageNum pageNum, SlotNum slotNum);
     ~RID();                                        // Destructor

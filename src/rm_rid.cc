@@ -40,10 +40,10 @@ RC RID::GetSlotNum(SlotNum &slotNum) const{
 
 //Allows to compare two RIDs with ==
 bool RID::operator==(const RID & rhs) const
-  {
+{
     PageNum p;
     SlotNum s;
     rhs.GetPageNum(p);
     rhs.GetSlotNum(s);
     return (p == page && s == slot);
-  }
+}
