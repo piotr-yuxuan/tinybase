@@ -57,6 +57,8 @@ public:
     // Forces a page (along with any contents stored in this class)
     // from the buffer pool to disk.  Default value forces all pages.
     RC ForcePages (PageNum pageNum = ALL_PAGES);
+private:
+    PF_FileHandle *pf_FileHandle;
 };
 
 //
