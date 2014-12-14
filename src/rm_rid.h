@@ -32,14 +32,8 @@ static const SlotNum NULL_SLOT = -1;
 //
 class RID {
 public:
-    RID(){                                          // Default constructor
-        page = NULL_PAGE;
-        slot = NULL_SLOT;
-    }
-    RID(PageNum pageNum, SlotNum slotNum){
-        page = pageNum;
-        slot = slotNum;
-    }
+    RID();                                          // Default constructor
+    RID(PageNum pageNum, SlotNum slotNum);
     ~RID();                                        // Destructor
 
     RC GetPageNum(PageNum &pageNum) const;         // Return page number

@@ -11,12 +11,14 @@
 
 //Constructor
 RID::RID(){
-    //Nothing to do for now
+    page = NULL_PAGE;
+    slot = NULL_SLOT;
 }
 
 //Second constructor
 RID::RID(PageNum pageNum, SlotNum slotNum){
-
+    page = pageNum;
+    slot = slotNum;
 }
 
 //Destructor
