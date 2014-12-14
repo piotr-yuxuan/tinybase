@@ -36,6 +36,10 @@ public:
 
     // Return the RID associated with the record
     RC GetRid (RID &rid) const;
+    
+private:
+    char *pData;
+    RID  rid;
 };
 
 //
@@ -180,6 +184,7 @@ void RM_PrintError(RC rc);
 //
 #define RM_ALREADYOPEN      (START_RM_WARN + 0) // File is already open
 #define RM_EOF              (START_RM_WARN + 1) // End Of File
+#define RM_UNREADRECORD     (START_RM_WARN + 2) // record is not read
 
 //
 // Error codes
