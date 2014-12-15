@@ -148,8 +148,8 @@ public:
     int GetNumPages() const;
 
     //Gives or set the right File or Page Header for ph
-    RC GetPageHeader(PF_PageHandle ph, RM_PageHeader& pHdr) const;
-    RC SetPageHeader(PF_PageHandle ph, const RM_PageHeader& pHdr);
+    RC GetPageHeader(PF_PageHandle ph, RM_PageHeader& pageHeader) const;
+    RC SetPageHeader(PF_PageHandle ph, const RM_PageHeader& pageHeader);
     RC GetFileHeader(PF_PageHandle ph);
     RC SetFileHeader(PF_PageHandle ph) const ;
     RC GetSlotPointer(PF_PageHandle ph, SlotNum s, char *& pData) const;
@@ -160,6 +160,8 @@ public:
 private:
 	PF_FileHandle *pf_FileHandle;
 	RM_FileHeader fileHeader; // File header
+	bool bFileOpen; // file open flag
+	bool bHdrChanged; // flag for file hdr
 };
 
 //
