@@ -116,8 +116,9 @@ public:
     int to_buf(char *& buf) const;
     int from_buf(char *& buf);
 
-    //Getter for recordSize
+    //Getters
     int getRecordSize() const;
+    int getPagesNumber() const;
 private:
     int firstFreePage; // first free page
     int pagesNumber; // How many pages there are in that file

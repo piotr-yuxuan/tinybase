@@ -54,3 +54,8 @@ int RM_FileHeader::from_buf(char *& buf) const{
 int RM_FileHeader::getRecordSize() const{
     return this->recordSize;
 }
+
+//Getter for pagesNumber
+int RM_FileHeader::getPagesNumber() const{
+    return this->pagesNumber;
+}
