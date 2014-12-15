@@ -7,12 +7,19 @@ tinybase
 
 Classe			|	Codeur  | Etat
 :---------------|:------------:|:--------
-RM_Manager		|	Pauline |
+RM_Manager		|	Pauline | Being processed
 RM_FileHandle	|	Pierre  | Being processed
 RM_FileScan		|	Camille | Implémentation de base terminé, pas compilable
 RM_Record		|	Yixin |
 RID				|	Camille | J'ai fait une première version dans rm_rid.h et rm_rid.cc
 RM_PrintError	|	  |
+
+<h2>De la part de Pauline</h2>
+
+Les garçons, pensez à déclarer vos classes et leur méthodes dans des fichiers headers! :-)
+Par exemple pour rm_Manager : 
+rm_manager.h contient les déclarations des méthodes (en virtual) et les #include des bibliothèques et fichiers headers des autres classes.
+rm_manager.cpp contient les implémentations des méthodes déclarées dans le header. 
 
 
 <h2>De la part de Camille</h2>
