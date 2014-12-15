@@ -163,19 +163,22 @@ RC RM_FileHandle::GetSlotPointer(PF_PageHandle ph, SlotNum s, char *& pData) con
 	return rc;
 }
 
-int RM_FileHandle::GetNumSlots() const {
-	if(this->fullRecordSize() != 0) {
-		int bytes_available = PF_PAGE_SIZE - sizeof(RM_PageHdr);
-		int slots = floor(1.0 * bytes_available/ (this->fullRecordSize() + 1/8));
-		int r = sizeof(RM_PageHdr) + bitmap(slots).numChars();
-		while ((slots*this->fullRecordSize()) + r > PF_PAGE_SIZE) {
-			slots--;
-			r = sizeof(RM_PageHdr) + bitmap(slots).numChars();
-		}
-		return slots;
-	} else {
-		return RM_RECSIZEMISMATCH;
-	}
+//Gives the number of slots in one page
+int RM_FileHandle::GetNumSlots() const{
+    //Makes sure RecordSize is > 0
+    if(this->getRecordSize()==0){
+        return RM_NULLRECORDSIZE;
+    }
+    //Increments slotsNb until we find the max value
+    int slotsNb = 0;
+    while(1>0){
+        slotsNb++;
+        RM_PageHeader pHeader(slotsNb);
+        if(pHeader.size()+ slotsNb*this->getRecordSize() > PF_PAGE_SIZE){
+            return slotsNb - 1;
+        }
+        delete pHeader;
+    }
 }
 
 int RM_FileHandle::GetNumPages() const {
