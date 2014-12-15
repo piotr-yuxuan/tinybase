@@ -178,6 +178,10 @@ int RM_FileHandle::GetNumSlots() const {
 	}
 }
 
+int RM_FileHandle::GetNumPages() const {
+    return this->fileHeader.getPagesNumber();
+}
+
 RM_FileHandle::~RM_FileHandle() {
 	if(pfHandle != NULL)
 	delete pfHandle;

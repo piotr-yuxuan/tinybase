@@ -144,6 +144,8 @@ public:
     }
     //Gives the number of slots in one page
     int GetNumSlots() const;
+    //Gives the number of pages in the file
+    int GetNumPages() const;
 
 private:
 	PF_FileHandle *pf_FileHandle;
