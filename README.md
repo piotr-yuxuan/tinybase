@@ -8,7 +8,7 @@ tinybase
 Classe			|	Codeur  | Etat
 :---------------|:------------:|:--------
 RM_Manager		|	Pauline | Being processed
-RM_FileHandle	|	Pierre  | Being processed
+RM_FileHandle	|	Pierre  | Le code devrait être terminé
 RM_FileScan		|	Camille | Implémentation de base terminé, pas compilable
 RM_Record		|	Yixin |
 RID				|	Camille | J'ai fait une première version dans rm_rid.h et rm_rid.cc
