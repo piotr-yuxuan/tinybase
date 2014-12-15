@@ -333,7 +333,7 @@ RC RM_FileHandle::UpdateRec (const RM_Record &rec) {
 }
 
 //Allows to get the PF_FileHandle attribute
-RC RM_FileHandle::GetPF_FileHandle(PF_FileHandle &pf_FileHandle) const
+RC RM_FileHandle::GetPF_FileHandle(PF_FileHandle pf_FileHandle) const
 {
   fileHandle = *pfHandle;
   return 0;

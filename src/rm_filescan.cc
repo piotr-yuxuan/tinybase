@@ -88,13 +88,13 @@ RC RM_FileScan::GetNextRec(RM_Record &rec){
     for (int i=currentRID.GetPage(); i < this->fileHandle->GetNumPages(); i++){
         RM_PageHeader pHeader(fileHandle->GetNumSlots());
         PF_PageHandle ph;
-        PF_FileHandle pf_FileHandle();
+        PF_FileHandle pf_FileHandle;
         //Retrieves the pf_fileHandle from fileHandle
         if(RC = fileHandle->GetPF_FileHandle(pf_FileHandle)){
                 return RC;
         }
         //Retrieves the page from the pf_fileHandle
-        if(RC = pf_FileHandle().GetThisPage(i, ph)){
+        if(RC = pf_FileHandle.GetThisPage(i, ph)){
             return RC;
         }
         fileHandle->GetPageHeader(ph, pHeader);
