@@ -16,10 +16,7 @@ RM_PrintError	|	  |
 
 <h2>De la part de Pauline</h2>
 
-Les garçons, pensez à déclarer vos classes et leur méthodes dans des fichiers headers! :-)
-Par exemple pour rm_Manager : 
-rm_manager.h contient les déclarations des méthodes (en virtual) et les #include des bibliothèques et fichiers headers des autres classes.
-rm_manager.cpp contient les implémentations des méthodes déclarées dans le header. 
+Non en fait il faut juste inclure rm.h, ça suffit! Désolée :-)
 
 
 <h2>De la part de Camille</h2>
