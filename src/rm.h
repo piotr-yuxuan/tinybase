@@ -147,8 +147,12 @@ public:
     //Gives the number of pages in the file
     int GetNumPages() const;
 
-    //Returns the right RM_PageHeader for ph
+    //Gives or set the right File or Page Header for ph
     RC GetPageHeader(PF_PageHandle ph, RM_PageHeader& pHdr) const;
+    RC SetPageHeader(PF_PageHandle ph, const RM_PageHdr& pHdr);
+    RC GetFileHeader(PF_PageHandle ph);
+    RC SetFileHeader(PF_PageHandle ph) const ;
+    RC GetSlotPointer(PF_PageHandle ph, SlotNum s, char *& pData) const;
 
 private:
 	PF_FileHandle *pf_FileHandle;
