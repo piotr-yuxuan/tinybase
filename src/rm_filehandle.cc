@@ -332,6 +332,13 @@ RC RM_FileHandle::UpdateRec (const RM_Record &rec) {
 	return rc;
 }
 
+//Allows to get the PF_FileHandle attribute
+RC RM_FileHandle::GetPF_FileHandle(PF_FileHandle &pf_FileHandle) const
+{
+  fileHandle = *pfHandle;
+  return 0;
+}
+
 // Forces a page (along with any contents stored in this class)
 // from the buffer pool to disk. Default value forces all pages.
 RC RM_FileHandle::ForcePages (PageNum pageNum) {

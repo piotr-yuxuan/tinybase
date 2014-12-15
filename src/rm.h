@@ -149,10 +149,13 @@ public:
 
     //Gives or set the right File or Page Header for ph
     RC GetPageHeader(PF_PageHandle ph, RM_PageHeader& pHdr) const;
-    RC SetPageHeader(PF_PageHandle ph, const RM_PageHdr& pHdr);
+    RC SetPageHeader(PF_PageHandle ph, const RM_PageHeader& pHdr);
     RC GetFileHeader(PF_PageHandle ph);
     RC SetFileHeader(PF_PageHandle ph) const ;
     RC GetSlotPointer(PF_PageHandle ph, SlotNum s, char *& pData) const;
+
+    //Getter for pf_FileHandle
+    RC GetPF_FileHandle(PF_FileHandle &pf_FileHandle) const;
 
 private:
 	PF_FileHandle *pf_FileHandle;
