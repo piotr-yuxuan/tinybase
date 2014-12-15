@@ -121,10 +121,10 @@ RC RM_FileHandle::GetNextFreePage(PageNum& pageNum) {
 	return 0;
 }
 
-RC RM_FileHandle::GetPageHeader(PF_PageHandle ph, RM_PageHdr& pHdr) const {
+RC RM_FileHandle::GetPageHeader(PF_PageHandle ph, RM_PageHeader& pHdr) const {
 	char * buf;
-	RC rc = ph.GetData(buf);
-	pHdr.from_buf(buf);
+    RC rc = ph.GetData(buf);
+    pHdr.from_buf(buf);
 	return rc;
 }
 

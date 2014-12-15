@@ -70,7 +70,7 @@ public:
       return size;
   }
   //Gives the size in Bytes i.e around size/8 but not exactly
-  int Bitmap::getByteSize() const;
+  int getByteSize() const;
 private:
     //Size of the bitmap
     unsigned int size;
@@ -146,6 +146,9 @@ public:
     int GetNumSlots() const;
     //Gives the number of pages in the file
     int GetNumPages() const;
+
+    //Returns the right RM_PageHeader for ph
+    RC GetPageHeader(PF_PageHandle ph, RM_PageHeader& pHdr) const;
 
 private:
 	PF_FileHandle *pf_FileHandle;

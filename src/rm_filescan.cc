@@ -77,6 +77,7 @@ RC RM_FileScan::OpenScan(const RM_FileHandle &fileHandle,
 
 //Gets next matching record
 RC RM_FileScan::GetNextRec(RM_Record &rec){
+    int RC;
     //Makes sure scan is open
     if(!this->scaning){
         return RM_FILENOTOPEN;
@@ -84,11 +85,13 @@ RC RM_FileScan::GetNextRec(RM_Record &rec){
     //Assertions
     assert(this->fileHandle != NULL && this->scaning);
     //Loops through the pages to find next RID
-    //Methods of the currentRID class should be changed when implemented
     for (int i=currentRID.GetPage(); i < this->fileHandle->GetNumPages(); i++){
         RM_PageHeader pHeader(fileHandle->GetNumSlots());
         PF_PageHandle ph;
-        fileHandle->getPageHeader(ph, pHeader);
+        if(RC = fileHandle->pf_FileHandle->GetThisPage(i, ph)){
+            return RC;
+        }
+        fileHandle->GetPageHeader(ph, pHeader);
         //The bitmap we'll use then
         Bitmap b = pHeader.freeSlots;
         //Gets the starting slot in the page
