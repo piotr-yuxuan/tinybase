@@ -47,6 +47,8 @@ public:
     }
 
     bool operator==(const RID & rhs) const;
+    
+    RC isValidRID() const;                         // checks if it is a valid RID
 
 private:
     PageNum page;
