@@ -21,27 +21,28 @@
 #include "tinybase.h"
 #include "rm_rid.h"
 #include "pf.h"
+#include <stdio.h>
 
 //
 // RM_Record: RM Record interface
 //
 class RM_Record {
 public:
-    RM_Record ();
-    ~RM_Record();
+	RM_Record();
+	~RM_Record();
 
-    // Return the data corresponding to the record.  Sets *pData to the
-    // record contents.
-    RC GetData(char *&pData) const;
+	// Return the data corresponding to the record.  Sets *pData to the
+	// record contents.
+	RC GetData(char *&pData) const;
 
-    // Return the RID associated with the record
-    RC GetRid (RID &rid) const;
-    
-    // Sets the record with an RID, data contents, and its size
-    RC Set(char *pData, int size, RID rid);
+	// Return the RID associated with the record
+	RC GetRid(RID &rid) const;
+
+	// Sets the record with an RID, data contents, and its size
+	RC Set(char *pData, int size, RID rid);
 private:
-    char *pData;
-    RID  rid;
+	char *pData;
+	RID rid;
 };
 
 //
@@ -49,35 +50,35 @@ private:
 //
 class Bitmap {
 public:
-  //Constructor & Destructor
-  Bitmap(int nbBits);
-  ~Bitmap();
+	//Constructor & Destructor
+	Bitmap(int nbBits);
+	~Bitmap();
 
-  //Sets a specific bit to 1
-  void set(unsigned int bitNumber);
-  //Sets all the bits to 1
-  void set();
-  //Sets a specific bit to 0
-  void reset(unsigned int bitNumber);
-  //Sets all the bits to 0
-  void reset();
-  //Returns the current value of a bit in the Bitmap
-  bool test(unsigned int bitNumber) const;
-  //Writes bitmap into a buffer
-  int to_buf(char *& buf) const;
-  //Reads from a buffer
-  int from_buf(const char * buf);
-  //Gives the size
-  int getSize() const {
-      return size;
-  }
-  //Gives the size in Bytes i.e around size/8 but not exactly
-  int getByteSize() const;
+	//Sets a specific bit to 1
+	void set(unsigned int bitNumber);
+	//Sets all the bits to 1
+	void set();
+	//Sets a specific bit to 0
+	void reset(unsigned int bitNumber);
+	//Sets all the bits to 0
+	void reset();
+	//Returns the current value of a bit in the Bitmap
+	bool test(unsigned int bitNumber) const;
+	//Writes bitmap into a buffer
+	int to_buf(char *& buf) const;
+	//Reads from a buffer
+	int from_buf(const char * buf);
+	//Gives the size
+	int getSize() const {
+		return size;
+	}
+	//Gives the size in Bytes i.e around size/8 but not exactly
+	int getByteSize() const;
 private:
-    //Size of the bitmap
-    unsigned int size;
-    //To actually store the values
-    char * bitValues;
+	//Size of the bitmap
+	unsigned int size;
+	//To actually store the values
+	char * bitValues;
 };
 
 //
@@ -85,24 +86,24 @@ private:
 //
 class RM_PageHeader {
 public:
-    //Constructor takes the number of slots as a parameter
-    RM_PageHeader(int nbSlots);
-    ~RM_PageHeader();
+	//Constructor takes the number of slots as a parameter
+	RM_PageHeader(int nbSlots);
+	~RM_PageHeader();
 
-    //Writes and reads from/to the buffer
-    int to_buf(char *& buf) const;
-    int from_buf(const char * buf);
+	//Writes and reads from/to the buffer
+	int to_buf(char *& buf) const;
+	int from_buf(const char * buf);
 
-    //Returns the size of the header IN BYTES
-    int size() const;
+	//Returns the size of the header IN BYTES
+	int size() const;
 
-    //Bitmap attribute
-    Bitmap freeSlots;
+	//Bitmap attribute
+	Bitmap freeSlots;
 
 private:
-    int nbSlots;
-    int nbFreeSlots;
-    int nextFreePage;
+	int nbSlots;
+	int nbFreeSlots;
+	int nextFreePage;
 };
 
 //
@@ -110,21 +111,21 @@ private:
 //
 class RM_FileHeader {
 public:
-    //Constructor takes the number of slots as a parameter
-    RM_FileHeader();
-    ~RM_FileHeader();
+	//Constructor takes the number of slots as a parameter
+	RM_FileHeader();
+	~RM_FileHeader();
 
-    //Writes and reads from/to the buffer
-    int to_buf(char *& buf) const;
-    int from_buf(char *& buf);
+	//Writes and reads from/to the buffer
+	int to_buf(char *& buf) const;
+	int from_buf(char *& buf);
 
-    //Getters
-    int getRecordSize() const;
-    int getPagesNumber() const;
+	//Getters
+	int getRecordSize() const;
+	int getPagesNumber() const;
 private:
-    int firstFreePage; // first free page
-    int pagesNumber; // How many pages there are in that file
-    int recordSize; // Size of the record.
+	int firstFreePage; // first free page
+	int pagesNumber; // How many pages there are in that file
+	int recordSize; // Size of the record.
 };
 
 //
@@ -132,38 +133,46 @@ private:
 //
 class RM_FileHandle {
 public:
-    RM_FileHandle ();
-    ~RM_FileHandle();
+	RM_FileHandle();
+	~RM_FileHandle();
 
-    RC GetRec     (const RID &rid, RM_Record &rec) const; // Given a RID, return the record
-    RC InsertRec  (const char *pData, RID &rid); // Insert a new record
-    RC DeleteRec  (const RID &rid); // Delete a record
-    RC UpdateRec  (const RM_Record &rec); // Update a record
-    RC ForcePages (PageNum pageNum = ALL_PAGES); // Forces a page (along with any contents stored in this class) from the buffer pool to disk.  Default value forces all pages.
-    int getRecordSize() const // Size of the record.
-    {
-        return fileHeader.getRecordSize();
-    }
-    //Gives the number of slots in one page
-    int GetNumSlots() const;
-    //Gives the number of pages in the file
-    int GetNumPages() const;
+	RC GetRec(const RID &rid, RM_Record &rec) const; // Given a RID, return the record
+	RC InsertRec(const char *pData, RID &rid); // Insert a new record
+	RC DeleteRec(const RID &rid); // Delete a record
+	RC UpdateRec(const RM_Record &rec); // Update a record
+	RC ForcePages(PageNum pageNum = ALL_PAGES); // Forces a page (along with any contents stored in this class) from the buffer pool to disk.  Default value forces all pages.
+	// Size of the record
+	int getRecordSize() const {
+		return fileHeader.getRecordSize();
+	}
+	//Gives the number of slots in one page
+	int GetNumSlots() const;
+	//Gives the number of pages in the file
+	int GetNumPages() const;
 
-    //Gives or set the right File or Page Header for ph
-    RC GetPageHeader(PF_PageHandle ph, RM_PageHeader& pageHeader) const;
-    RC SetPageHeader(PF_PageHandle ph, const RM_PageHeader& pageHeader);
-    RC GetFileHeader(PF_PageHandle ph);
-    RC SetFileHeader(PF_PageHandle ph) const ;
-    RC GetSlotPointer(PF_PageHandle ph, SlotNum s, char *& pData) const;
+	//Gives or set the right File or Page Header for ph
+	RC GetPageHeader(PF_PageHandle ph, RM_PageHeader& pageHeader) const;
+	RC SetPageHeader(PF_PageHandle ph, const RM_PageHeader& pageHeader);
+	RC GetFileHeader(PF_PageHandle ph);
+	RC SetFileHeader(PF_PageHandle ph) const;
+	RC GetSlotPointer(PF_PageHandle ph, SlotNum s, char *& pData) const;
 
-    //Getter for pf_FileHandle
-    RC GetPF_FileHandle(PF_FileHandle &pf_FileHandle) const;
+	//Getter for pf_FileHandle
+	RC GetPF_FileHandle(PF_FileHandle &pf_FileHandle) const;
 
 private:
 	PF_FileHandle *pf_FileHandle;
 	RM_FileHeader fileHeader; // File header
 	bool bFileOpen; // file open flag
 	bool bHdrChanged; // flag for file hdr
+
+	RC Open(PF_FileHandle* pfh, int size);
+	RC GetNextFreeSlot(PF_PageHandle & ph, PageNum& pageNum, SlotNum& slotNum);
+	RC GetNextFreePage(PageNum& pageNum);
+
+	bool IsValidPageNum(const PageNum pageNum) const;
+	bool IsValidRID(const RID rid) const;
+	RC IsValid() const;
 };
 
 //
@@ -171,32 +180,28 @@ private:
 //
 class RM_FileScan {
 public:
-    RM_FileScan  ();
-    ~RM_FileScan ();
+	RM_FileScan();
+	~RM_FileScan();
 
-    RC OpenScan  (const RM_FileHandle &fileHandle,
-                  AttrType   attrType,
-                  int        attrLength,
-                  int        attrOffset,
-                  CompOp     compOp,
-                  void       *value,
-                  ClientHint pinHint = NO_HINT); // Initialize a file scan
-    RC GetNextRec(RM_Record &rec);               // Get next matching record
-    RC CloseScan ();                             // Close the scan
+	RC OpenScan(const RM_FileHandle &fileHandle, AttrType attrType,
+			int attrLength, int attrOffset, CompOp compOp, void *value,
+			ClientHint pinHint = NO_HINT); // Initialize a file scan
+	RC GetNextRec(RM_Record &rec);               // Get next matching record
+	RC CloseScan();                             // Close the scan
 private:
-    //boolean to represent the current state of the FileScan
-    bool scaning;
-    //Attributes (for the current ongoing scan)
-    RM_FileHandle *fileHandle;
-    AttrType attrType;
-    int attrLength;
-    int attrOffset;
-    CompOp compOp;
-    void *value;
-    //Current RID
-    RID currentRID;
-    //Method to perform the value comparison
-    bool performMatching(char *pData);
+	//boolean to represent the current state of the FileScan
+	bool scaning;
+	//Attributes (for the current ongoing scan)
+	RM_FileHandle *fileHandle;
+	AttrType attrType;
+	int attrLength;
+	int attrOffset;
+	CompOp compOp;
+	void *value;
+	//Current RID
+	RID currentRID;
+	//Method to perform the value comparison
+	bool performMatching(char *pData);
 };
 
 //
@@ -204,14 +209,14 @@ private:
 //
 class RM_Manager {
 public:
-    RM_Manager    (PF_Manager &pfm);
-    ~RM_Manager   ();
+	RM_Manager(PF_Manager &pfm);
+	~RM_Manager();
 
-    RC CreateFile (const char *fileName, int recordSize);
-    RC DestroyFile(const char *fileName);
-    RC OpenFile   (const char *fileName, RM_FileHandle &fileHandle);
+	RC CreateFile(const char *fileName, int recordSize);
+	RC DestroyFile(const char *fileName);
+	RC OpenFile(const char *fileName, RM_FileHandle &fileHandle);
 
-    RC CloseFile  (RM_FileHandle &fileHandle);
+	RC CloseFile(RM_FileHandle &fileHandle);
 };
 
 //
@@ -235,8 +240,18 @@ void RM_PrintError(RC rc);
 #define RM_FSCREATEFAIL     (START_RM_ERR - 0) // couldn't create the FileScan object
 #define RM_FILENOTOPEN      (START_RM_ERR - 1) // File is not open
 
-
-
-
-
+//
+// Definition to be checked: error or warning?
+// Put here to solve reference trouble
+//
+#define RM_PAGE_LIST_END    (START_RM_ERR - 2)
+#define RM_HANDLEOPEN       (START_RM_ERR - 3)
+#define RM_FCREATEFAIL      (START_RM_ERR - 4)
+#define RM_NORECATRID       (START_RM_ERR - 5)
+#define RM_NULLRECORD       (START_RM_ERR - 6)
+#define RM_PAGE_FULLY_USED  (START_RM_ERR - 6)
+#define RM_BAD_RID          (START_RM_ERR - 6)
+#define RM_FNOTOPEN         (START_RM_ERR - 6)
+#define RM_RECSIZEMISMATCH  (START_RM_ERR - 6)
+#define RM_NULLRECORDSIZE  (START_RM_ERR - 6)
 #endif
