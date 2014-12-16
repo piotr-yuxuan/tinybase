@@ -18,6 +18,7 @@ RM_PrintError	|	  |
 
 Love Jean-Benoît ---> Deadline = mardi prochain :-D
 
+C'est cool, tu vas pouvoir committer du Japon \o/ ah ah
 
 <h2>De la part de Camille</h2>
 
