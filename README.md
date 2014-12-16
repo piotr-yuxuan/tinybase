@@ -41,4 +41,7 @@ Il faut aussi qu'on se mette d'accord sur les methodes qu'on a besoin dans les c
 J'ai trouvé un projet avec les docs rendus qui bien explique la structure de cette base et toutes les autre choses. Une bonne source supplémentaire.
 https://github.com/yifeih/redbase
 
+J'ai l'impression que le code du prof est très similaire à ce projet (avec des goto). Peut-être qu'il s'en est directement inspiré :p
+
 <!-- Désolé pour le html je ne savais pas comment faire autrement^^ -->
+<!-- ah ah, mais ça marche aussi le html. Sinon tu as un guide du markdown ici  : https://help.github.com/articles/github-flavored-markdown/ -->
