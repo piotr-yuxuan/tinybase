@@ -37,6 +37,8 @@ public:
     // Return the RID associated with the record
     RC GetRid (RID &rid) const;
     
+    // Sets the record with an RID, data contents, and its size
+    RC Set(char *pData, int size, RID rid);
 private:
     char *pData;
     RID  rid;
@@ -223,6 +225,9 @@ void RM_PrintError(RC rc);
 #define RM_ALREADYOPEN      (START_RM_WARN + 0) // File is already open
 #define RM_EOF              (START_RM_WARN + 1) // End Of File
 #define RM_UNREADRECORD     (START_RM_WARN + 2) // record is not read
+#define RM_INVALIDRID       (START_RM_WARN + 3) // invalid RID
+#define RM_BADRECORDSIZE    (START_RM_WARN + 4) // record size is invalid
+#define RM_INVALIDRECORD    (START_RM_WARN + 5) // invalid record
 
 //
 // Error codes
