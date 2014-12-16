@@ -16,7 +16,7 @@ RM_PrintError	|	  |
 
 <h2>De la part de Pauline</h2>
 
-Non en fait il faut juste inclure rm.h, ça suffit! Désolée :-)
+Love Jean-Benoît ---> Deadline = mardi prochain :-D
 
 
 <h2>De la part de Camille</h2>
