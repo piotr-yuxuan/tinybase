@@ -1,15 +1,18 @@
-pvt
+build/
+lib/
 
 # OS files
 *.DS_Store
 *~
 
-
-# Qt Project
+# Qt and Eclipse project files
 *.config
-*.creator
+*.creator*
 *.files
 *.includes
+*.cproject
+*.project
+.settings/
 
 # Compiled Object files
 *.slo
