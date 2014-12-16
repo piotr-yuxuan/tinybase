@@ -71,3 +71,25 @@ RC RM_Record::GetRid(RID &rid) const
    // Return ok
    return OK_RC;
 }
+
+//
+//Desc:Set the contents of this record object with specified data and RID.
+//     the RID must be a valid RID.
+//
+RC RM_Record::Set(char *pData, int size, RID rid){
+
+  if(rid.isValidRID())
+    return RM_INVALIDRID;
+
+  if(size <= 0 )
+    return RM_BADRECORDSIZE;
+
+  if(pData == NULL)
+    return RM_INVALIDRECORD;
+
+  this->rid = rid;
+	if (this->pData == NULL)
+		this->pData = new char[size];
+  memcpy(this->pData, pData, size);
+	return 0;
+}
