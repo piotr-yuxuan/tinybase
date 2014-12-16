@@ -47,3 +47,11 @@ bool RID::operator==(const RID & rhs) const
     rhs.GetSlotNum(s);
     return (p == page && s == slot);
 }
+
+//checks if it is a valid RID
+RC RID::isValidRID() const{
+  if(page > 0 && slot >= 0)
+    return 0;
+  else
+    return RM_INVALIDRID;
+}
