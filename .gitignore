@@ -1,6 +1,12 @@
 pvt
 *~
 
+# Qt Project
+*.config
+*.creator
+*.files
+*.includes
+
 # Compiled Object files
 *.slo
 *.lo
