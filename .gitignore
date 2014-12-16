@@ -1,5 +1,9 @@
 pvt
+
+# OS files
+*.DS_Store
 *~
+
 
 # Qt Project
 *.config
