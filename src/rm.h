@@ -117,7 +117,7 @@ public:
 
 	//Writes and reads from/to the buffer
 	int to_buf(char *& buf) const;
-	int from_buf(char *& buf);
+    int from_buf(const char *& buf);
 
 	//Getters
 	int getRecordSize() const;

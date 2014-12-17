@@ -44,7 +44,7 @@ int RM_PageHeader::to_buf(char *& buf) const{
 }
 
 //Reads from a buffer
-int RM_PageHeader::from_buf(char *& buf){
+int RM_PageHeader::from_buf(const char *& buf){
     int offset(0);
     //Reads the next free page
     memcpy(&nextFreePage, buf + offset, sizeof(nextFreePage));
