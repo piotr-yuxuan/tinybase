@@ -12,9 +12,9 @@
 #include <cassert>
 
 //Constructor
-Bitmap::bitmap(int nbBits):
+Bitmap::Bitmap(int nbBits)
 {
-    this->size(nbBits);
+    this->size = nbBits;
     //Allocates enough memory (could be improved in the future)
     this->bitValues = new char[this->getByteSize()];
     //Sets all bits to 0
@@ -22,7 +22,7 @@ Bitmap::bitmap(int nbBits):
 }
 
 //Destructor
-Bitmap::~bitmap()
+Bitmap::~Bitmap()
 {
     delete [] this->bitValues;
 }
@@ -60,7 +60,7 @@ void Bitmap::reset(){
 }
 
 //Returns a specific bit value
-bool Bitmap::test(unsigned int bitNumber){
+bool Bitmap::test(unsigned int bitNumber) const{
     assert(bitNumber <= size - 1);
     int byte = bitNumber/8;
     int offset = bitNumber%8;
@@ -76,7 +76,7 @@ bool Bitmap::to_buf(char *&buf) const{
 
 //Reads from a buffer
 bool Bitmap::from_buf(char *&buf) const{
-    memcpy(&bitValues, buf, sizeof(bitValues));
+    memcpy(bitValues, buf, sizeof(bitValues));
     return 0;
 }
 
