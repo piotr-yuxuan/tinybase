@@ -67,7 +67,7 @@ public:
 	//Writes bitmap into a buffer
 	bool to_buf(char *& buf) const;
 	//Reads from a buffer
-	bool from_buf(const char *& buf) const;
+    bool from_buf(const char *& buf);
 	//Gives the size
 	int getSize() const {
 		return size;
