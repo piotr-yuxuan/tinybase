@@ -65,9 +65,9 @@ public:
 	//Returns the current value of a bit in the Bitmap
 	bool test(unsigned int bitNumber) const;
 	//Writes bitmap into a buffer
-	int to_buf(char *& buf) const;
+	bool to_buf(char *& buf) const;
 	//Reads from a buffer
-	int from_buf(const char * buf);
+	bool from_buf(const char *& buf) const;
 	//Gives the size
 	int getSize() const {
 		return size;
