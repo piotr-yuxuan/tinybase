@@ -5,6 +5,7 @@
 
 #include <unistd.h>
 #include <sys/types.h>
+#include <cstring>
 #include "rm.h"
 
 //
@@ -36,7 +37,7 @@ int RM_FileHeader::to_buf(char *& buf) const{
 }
 
 //Reads from a buffer
-int RM_FileHeader::from_buf(char *& buf) const{
+int RM_FileHeader::from_buf(const char *& buf) const{
     int offset(0);
     //Reads the first free page
     memcpy(&firstFreePage, buf + offset, sizeof(firstFreePage));

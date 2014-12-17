@@ -75,7 +75,7 @@ bool Bitmap::to_buf(char *&buf) const{
 }
 
 //Reads from a buffer
-bool Bitmap::from_buf(char *&buf) const{
+bool Bitmap::from_buf(const char *&buf) const{
     memcpy(bitValues, buf, sizeof(bitValues));
     return 0;
 }
