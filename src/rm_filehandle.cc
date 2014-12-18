@@ -5,6 +5,7 @@
 //
 
 #include "rm.h"
+#include <cstring>
 
 RM_FileHandle::RM_FileHandle() :
 		pf_FileHandle(NULL), bFileOpen(false), bHdrChanged(false) {
@@ -33,9 +34,10 @@ RC RM_FileHandle::Open(PF_FileHandle* pfh, int size) {
 	return 0;
 }
 
+//Allows to get the PF_FileHandle attribute
 RC RM_FileHandle::GetPF_FileHandle(PF_FileHandle &lvalue) const {
-	lvalue = *pf_FileHandle;
-	return 0;
+    lvalue = *pf_FileHandle;
+    return 0;
 }
 
 RC RM_FileHandle::GetNextFreeSlot(PF_PageHandle & ph, PageNum& pageNum,
@@ -70,7 +72,7 @@ RC RM_FileHandle::GetNextFreePage(PageNum& pageNum) {
         if ((rc = pf_FileHandle->GetThisPage(fileHeader.getFirstFreePage(), ph))
 				|| (rc = ph.GetPageNum(p)) || (rc = pf_FileHandle->MarkDirty(p))
 				// Needs to be called everytime GetThisPage is called.
-				|| (rc = pf_FileHandle->UnpinPage(fileHeader.firstFreePage))
+                || (rc = pf_FileHandle->UnpinPage(fileHeader.getFirstFreePage()))
 				|| (rc = this->GetPageHeader(ph, pageHeader))) {
 			return rc;
 		}
@@ -170,7 +172,6 @@ int RM_FileHandle::GetNumSlots() const {
 				> PF_PAGE_SIZE) {
 			return slotsNb - 1;
 		}
-		delete pageHeader;
 	}
 }
 
@@ -199,8 +200,7 @@ RC RM_FileHandle::GetRec(const RID &rid, RM_Record &rec) const {
 		return rc;
 	}
 
-	Bitmap b(pageHeader.freeSlotMap, this->GetNumSlots());
-	if (b.test(s)) { // already free
+    if (pageHeader.freeSlots.test(s)) { // already free
 		return RM_NORECATRID;
 	}
 
@@ -208,7 +208,7 @@ RC RM_FileHandle::GetRec(const RID &rid, RM_Record &rec) const {
 	if (rc = this->GetSlotPointer(ph, s, pData)) {
 		return rc;
 	}
-	rec.Set(pData, fileHeader.extRecordSize, rid);
+    rec.Set(pData, fileHeader.getRecordSize(), rid);
 	return 0;
 }
 
@@ -299,9 +299,7 @@ RC RM_FileHandle::UpdateRec(const RM_Record &rec) {
 		return rc;
 	}
 
-	Bitmap b(pageHeader.freeSlotMap, this->GetNumSlots());
-
-	if (b.test(s)) { // free - cannot update
+    if (pageHeader.freeSlots.test(s)) { // free - cannot update
 		return RM_NORECATRID;
 	}
 
@@ -315,12 +313,6 @@ RC RM_FileHandle::UpdateRec(const RM_Record &rec) {
 	memcpy(pSlot, pData, this->getRecordSize());
 
 	return rc;
-}
-
-//Allows to get the PF_FileHandle attribute
-RC RM_FileHandle::GetPF_FileHandle(PF_FileHandle &pf_FileHandle) const {
-	pf_FileHandle = *pf_FileHandle;
-	return 0;
 }
 
 // Forces a page (along with any contents stored in this class)
@@ -339,7 +331,7 @@ RC RM_FileHandle::ForcePages(PageNum pageNum) {
 // Ret: TRUE or FALSE
 //
 bool RM_FileHandle::IsValidPageNum(const PageNum pageNum) const {
-	return (bFileOpen && pageNum >= 0 && pageNum < fileHeader.pagesNumber);
+    return (bFileOpen && pageNum >= 0 && pageNum < fileHeader.getPagesNumber());
 }
 
 //
