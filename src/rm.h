@@ -51,6 +51,7 @@ private:
 class Bitmap {
 public:
 	//Constructor & Destructor
+    Bitmap();
 	Bitmap(int nbBits);
 	~Bitmap();
 
@@ -67,7 +68,7 @@ public:
 	//Writes bitmap into a buffer
 	bool to_buf(char *& buf) const;
 	//Reads from a buffer
-    bool from_buf(const char *& buf);
+    bool from_buf(const char * buf);
 	//Gives the size
 	int getSize() const {
 		return size;
@@ -87,7 +88,7 @@ private:
 class RM_PageHeader {
 public:
 	//Constructor takes the number of slots as a parameter
-	RM_PageHeader(int nbSlots);
+    RM_PageHeader(int nbSlots);
 	~RM_PageHeader();
 
 	//Writes and reads from/to the buffer
@@ -97,13 +98,13 @@ public:
 	//Returns the size of the header IN BYTES
 	int size() const;
 
-	//Bitmap attribute
-	Bitmap freeSlots;
+    //Bitmap attribute
+    Bitmap freeSlots;
 
 private:
 	int nbSlots;
 	int nbFreeSlots;
-	int nextFreePage;
+    int nextFreePage;
 };
 
 //
@@ -117,7 +118,7 @@ public:
 
 	//Writes and reads from/to the buffer
 	int to_buf(char *& buf) const;
-    int from_buf(const char *& buf);
+    int from_buf(const char * buf);
 
 	//Getters
 	int getRecordSize() const;

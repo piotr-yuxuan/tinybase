@@ -28,27 +28,27 @@ int RM_FileHeader::to_buf(char *& buf) const{
     int offset(0);
     //Writes the first free page
     memcpy(buf + offset, &firstFreePage, sizeof(firstFreePage));
-    offset += sizeOf(firstFreePage);
+    offset += sizeof(firstFreePage);
     //Writes the number of pages
     memcpy(buf + offset, &pagesNumber, sizeof(pagesNumber));
-    offset += sizeOf(pagesNumber);
+    offset += sizeof(pagesNumber);
     //Writes the size of records
     memcpy(buf + offset, &recordSize, sizeof(recordSize));
     return 0;
 }
 
 //Reads from a buffer
-int RM_FileHeader::from_buf(const char *& buf) {
+int RM_FileHeader::from_buf(const char * buf) {
     int offset(0);
     //Reads the first free page
     memcpy(&firstFreePage, buf + offset, sizeof(firstFreePage));
-    offset += sizeOf(firstFreePage);
+    offset += sizeof(firstFreePage);
     //Reads the number of pages
     memcpy(&pagesNumber, buf + offset, sizeof(pagesNumber));
-    offset += sizeOf(pagesNumber);
+    offset += sizeof(pagesNumber);
     //Reads the size of records
     memcpy(&recordSize, buf + offset, sizeof(recordSize));
-    offset += sizeOf(recordSize);
+    offset += sizeof(recordSize);
     return 0;
 }
 

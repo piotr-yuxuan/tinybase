@@ -12,6 +12,10 @@
 #include <cassert>
 
 //Constructor
+Bitmap::Bitmap()
+{
+    this->bitValues = NULL;
+}
 Bitmap::Bitmap(int nbBits)
 {
     this->size = nbBits;
@@ -69,13 +73,13 @@ bool Bitmap::test(unsigned int bitNumber) const{
 }
 
 //Writes into a buffer
-bool Bitmap::to_buf(char *&buf) const{
+bool Bitmap::to_buf(char *& buf) const{
     memcpy(buf, &bitValues, sizeof(bitValues));
     return 0;
 }
 
 //Reads from a buffer
-bool Bitmap::from_buf(const char *&buf) {
+bool Bitmap::from_buf(const char * buf) {
     memcpy(bitValues, buf, sizeof(bitValues));
     return 0;
 }
