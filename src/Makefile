@@ -40,7 +40,7 @@ PF_SOURCES     = pf_buffermgr.cc pf_error.cc pf_filehandle.cc \
 # New sources (for RM step)
 RM_SOURCES     = bitmap.cc rm_fileheader.cc rm_pageheader.cc \
                  rm_rid.cc rm_filehandle.cc rm_filescan.cc \
-                 rm_record.cc
+                 rm_record.cc rm_manager.cc
 IX_SOURCES     =
 SM_SOURCES     = #sm_stub.cc printer.cc
 QL_SOURCES     = #ql_manager_stub.cc
