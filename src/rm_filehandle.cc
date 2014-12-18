@@ -35,6 +35,7 @@ RC RM_FileHandle::Open(PF_FileHandle* pfh, int size) {
 
 //Allows to get the PF_FileHandle attribute
 RC RM_FileHandle::GetPF_FileHandle(PF_FileHandle &lvalue) const {
+    RC invalid = IsValid(); if(invalid) return invalid;
     lvalue = *pf_FileHandle;
     return 0;
 }
@@ -131,18 +132,30 @@ RC RM_FileHandle::SetPageHeader(PF_PageHandle ph,
 
 // get header from the first page of a newly opened file
 RC RM_FileHandle::GetFileHeader(PF_PageHandle ph) {
-	char * buf;
-	RC rc = ph.GetData(buf);
-	memcpy(&fileHeader, buf, sizeof(fileHeader));
-	return rc;
+    char * buf;
+    Rc rc(0);
+    if( (rc = ph.GetData(buf)) ){
+        return rc;
+    }
+    //Loads the fileHeader from data
+    if( (rc = this->fileHeader.from_buf(buf)) ){
+        return rc;
+    }
+    return 0;
 }
 
 // persist header into the first page of a file for later
 RC RM_FileHandle::SetFileHeader(PF_PageHandle ph) const {
-	char * buf;
-	RC rc = ph.GetData(buf);
-	memcpy(buf, &fileHeader, sizeof(fileHeader));
-	return rc;
+    char * buf;
+    Rc rc(0);
+    if( (rc = ph.GetData(buf)) ){
+        return rc;
+    }
+    //Loads the fileHeader from data
+    if( (rc = this->fileHeader.to_buf(buf)) ){
+        return rc;
+    }
+    return 0;
 }
 
 RC RM_FileHandle::GetSlotPointer(PF_PageHandle ph, SlotNum s,
