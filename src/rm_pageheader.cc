@@ -62,3 +62,24 @@ int RM_PageHeader::from_buf(const char * buf) {
     this->freeSlots.from_buf(buf+offset);
     return 0;
 }
+
+
+//Returns the number of free slots
+int RM_PageHeader::getNbFreeSlots() {
+    int freeSlotsCount = 0;
+    for(int i=0; i<this->size(); i++){
+        freeSlotsCount += freeSlots.test(i);
+    }
+    return freeSlotsCount;
+}
+
+//Getter for nextFreePage
+int RM_PageHeader::getNextFreePage(){
+    return this->nextFreePage;
+}
+
+//Setter for nextFreePage
+RC RM_PageHeader::setNextFreePage(int i) {
+    this->nextFreePage = i;
+    return 0;
+}

@@ -49,10 +49,8 @@ RC RM_FileHandle::GetNextFreeSlot(PF_PageHandle & ph, PageNum& pageNum,
 		return rc;
 	}
 
-	Bitmap b(pageHeader.freeSlotMap, this->GetNumSlots());
-
 	for (int i = 0; i < this->GetNumSlots(); i++) {
-		if (b.test(i)) {
+        if (pageHeader.freeSlots.test(i)) {
 			slotNum = i;
 			return 0;
 		}
@@ -66,10 +64,10 @@ RC RM_FileHandle::GetNextFreePage(PageNum& pageNum) {
 	PF_PageHandle ph;
 	RM_PageHeader pageHeader(this->GetNumSlots());
 	PageNum p;
-	if (fileHeader.firstFreePage != RM_PAGE_LIST_END) {
+    if (fileHeader.getFirstFreePage() != RM_PAGE_LIST_END) {
 		// this last page on the free list might actually be full
 		RC rc;
-		if ((rc = pf_FileHandle->GetThisPage(fileHeader.firstFreePage, ph))
+        if ((rc = pf_FileHandle->GetThisPage(fileHeader.getFirstFreePage(), ph))
 				|| (rc = ph.GetPageNum(p)) || (rc = pf_FileHandle->MarkDirty(p))
 				// Needs to be called everytime GetThisPage is called.
 				|| (rc = pf_FileHandle->UnpinPage(fileHeader.firstFreePage))
@@ -77,9 +75,9 @@ RC RM_FileHandle::GetNextFreePage(PageNum& pageNum) {
 			return rc;
 		}
 	}
-	if (fileHeader.pagesNumber == 0
-			|| fileHeader.firstFreePage == RM_PAGE_LIST_END
-			|| (pageHeader.nbFreeSlots == 0)) {
+    if (fileHeader.getPagesNumber() == 0
+            || fileHeader.getFirstFreePage() == RM_PAGE_LIST_END
+            || (pageHeader.getNbFreeSlots() == 0)) {
 
 		char *pData;
 		if ((rc = pf_FileHandle->AllocatePage(ph)) || (rc = ph.GetData(pData))
@@ -88,10 +86,8 @@ RC RM_FileHandle::GetNextFreePage(PageNum& pageNum) {
 		}
 		// Add page header
 		RM_PageHeader pageHeader(this->GetNumSlots());
-		pageHeader.nextFreePage = RM_PAGE_LIST_END;
-		Bitmap b(this->GetNumSlots());
-		b.set(); // Initially all slots are free
-		b.to_char_buf(pageHeader.freeSlotMap, b.numChars());
+        pageHeader.setNextFreePage(RM_PAGE_LIST_END);
+        pageHeader.freeSlots.set(); // Initially all slots are free
 
 		pageHeader.to_buf(pData);
 
@@ -103,14 +99,14 @@ RC RM_FileHandle::GetNextFreePage(PageNum& pageNum) {
 		}
 
 		// add page to the free list
-		fileHeader.firstFreePage = pageNum;
-		fileHeader.pagesNumber++;
+        fileHeader.setFirstFreePage(pageNum);
+        fileHeader.setPagesNumber(fileHeader.getPagesNumber()+1);
 
 		bHdrChanged = true;
 		return 0; // pageNum is set correctly
 	}
 	// return existing free page
-	pageNum = fileHeader.firstFreePage;
+    pageNum = fileHeader.getFirstFreePage();
 	return 0;
 }
 
@@ -231,32 +227,29 @@ RC RM_FileHandle::InsertRec(const char *pData, RID &rid) {
 		return rc;
 	}
 
-	Bitmap b(pageHeader.freeSlotMap, this->GetNumSlots());
-
 	if ((rc = this->GetSlotPointer(ph, s, pSlot))) {
 		return rc;
 	}
 
 	rid = RID(p, s);
 	memcpy(pSlot, pData, this->getRecordSize());
-	b.reset(s); // slot s is no longer free
-	pageHeader.nbFreeSlots--;
+    pageHeader.freeSlots.reset(s); // slot s is no longer free
 
-	if (pageHeader.nbFreeSlots == 0) {
+    if (pageHeader.getNbFreeSlots() == 0) {
 		// remove from free list
-		fileHeader.firstFreePage = pageHeader.nextFreePage;
-		pageHeader.nextFreePage = RM_PAGE_FULLY_USED;
+        fileHeader.setFirstFreePage(pageHeader.getNextFreePage());
+        pageHeader.setNextFreePage(RM_PAGE_FULLY_USED);
 	}
 
-	b.to_char_buf(pageHeader.freeSlotMap, b.numChars());
-	rc = this->SetPageHeader(ph, pageHeader);
+    rc = this->SetPageHeader(ph, pageHeader);
 	return rc;
 }
 
 RC RM_FileHandle::DeleteRec(const RID &rid) {
 	PageNum p;
 	SlotNum s;
-	rid.GetPageNum(p);
+    //Gives p and s their actual values
+    rid.GetPageNum(p);
 	rid.GetSlotNum(s);
 	RC rc = 0;
 	PF_PageHandle ph;
@@ -269,23 +262,18 @@ RC RM_FileHandle::DeleteRec(const RID &rid) {
 		return rc;
 	}
 
-	Bitmap b(pageHeader.freeSlotMap, this->GetNumSlots());
-
-	if (b.test(s)) { // already free
+    if (pageHeader.freeSlots.test(s)) { // already free
 		return RM_NORECATRID;
 	}
 
-	b.set(s); // s is now free
-	if (pageHeader.nbFreeSlots == 0) {
+    pageHeader.freeSlots.set(s); // s is now free
+    if (pageHeader.getNbFreeSlots() == 0) {
 		// this page used to be full and used to not be on the free list
 		// add it to the free list now.
-		pageHeader.nextFreePage = hdr.firstFree;
-		hdr.firstFree = p;
+        pageHeader.setNextFreePage(fileHeader.getFirstFreePage());
+        fileHeader.setFirstFreePage(p);
 	}
 
-	pageHeader.nbFreeSlots++;
-
-	b.to_char_buf(pageHeader.freeSlotMap, b.numChars());
 	rc = this->SetPageHeader(ph, pageHeader);
 
 	return rc;

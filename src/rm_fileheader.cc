@@ -61,3 +61,20 @@ int RM_FileHeader::getRecordSize() const{
 int RM_FileHeader::getPagesNumber() const{
     return this->pagesNumber;
 }
+
+//Getter for firstFreePage
+int RM_FileHeader::getFirstFreePage() {
+    return this->firstFreePage;
+}
+
+//Setter for firstFreePage
+int RM_FileHeader::setFirstFreePage(int i) {
+    this->firstFreePage = i;
+    return 0;
+}
+
+//Setter for pagesNumber
+RC RM_FileHeader::setPagesNumber(int i) {
+    this->pagesNumber = i;
+    return 0;
+}

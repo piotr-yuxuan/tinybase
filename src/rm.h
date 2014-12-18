@@ -101,6 +101,13 @@ public:
     //Bitmap attribute
     Bitmap freeSlots;
 
+    //Returns the number of free slots
+    int getNbFreeSlots();
+    int getNextFreePage();
+
+    //Setters
+    RC setNextFreePage(int i);
+
 private:
 	int nbSlots;
 	int nbFreeSlots;
@@ -123,6 +130,12 @@ public:
 	//Getters
 	int getRecordSize() const;
 	int getPagesNumber() const;
+    int getFirstFreePage();
+
+    //Setters
+    RC setFirstFreePage(int i);
+    RC setPagesNumber(int i);
+
 private:
 	int firstFreePage; // first free page
 	int pagesNumber; // How many pages there are in that file
