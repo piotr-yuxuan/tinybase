@@ -28,7 +28,7 @@ static char *RM_ErrorMsg[] = {
   (char*)"File is not open",
   (char*)"",
   (char*)"",
-  (char*)"RM_NORECATRID",
+  (char*)"RM_FCREATEFAIL",
   (char*)"",
   (char*)"",
   (char*)"",

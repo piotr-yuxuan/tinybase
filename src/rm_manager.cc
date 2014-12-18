@@ -70,7 +70,7 @@ RC RM_Manager::CreateFile(const char *fileName, int recordSize){
     fileHeader.setPagesNumber(1); // hdr page
     fileHeader.setRecordSize(recordSize);
 
-    fileHeader.from_buf(pData);
+    fileHeader.to_buf(pData);
     //memcpy(pData, &hdr, sizeof(hdr));
 
     PageNum headerPageNum;
@@ -134,11 +134,16 @@ RC RM_Manager::OpenFile(const char *fileName, RM_FileHandle &fileHandle){
     if ((rc = pfh.GetThisPage(0, ph)) || (rc = ph.GetData(pData))){
         return(rc);
     }
-    memcpy(&hdr, pData, sizeof(hdr));
+
+    //Loads the heade from the data
+    if ( (rc = hdr.from_buf(pData)) ){
+        return rc;
+    }
+
     rc = fileHandle.Open(&pfh, hdr.getRecordSize());
     
     if (rc < 0){
-        PF_PrintError(rc);
+        RM_PrintError(rc);
         return rc;
     }
     rc = pfh.UnpinPage(0);
