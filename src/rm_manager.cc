@@ -14,188 +14,197 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 
+RM_Manager::RM_Manager(PF_Manager &pfm) :
+		pfm(pfm) {
+}
 
-RM_Manager::RM_Manager(PF_Manager &pfm) : pfm(pfm) {}
-
-
-RM_Manager::~RM_Manager(){} /** Destructor */
-
-
+RM_Manager::~RM_Manager() {
+} /** Destructor */
 
 // create a new file for a given filename and a recordSize
-RC RM_Manager::CreateFile(const char *fileName, int recordSize){
+RC RM_Manager::CreateFile(const char *fileName, int recordSize) {
 
-    RM_PageHeader pageHeader(0); //A page Header with 0 slot
+	RM_PageHeader pageHeader(0); //A page Header with 0 slot
 
-    //First makes sur recordSize is a strictly positive integer
-    if(recordSize <= 0){
-        return RM_NEGATIVERECSIZE;
-    }
-    //Then just in case recordSize were too big
-    if(recordSize >= PF_PAGE_SIZE - pageHeader.size()) {
-        return RM_RECORDTOOBIG;
-    }
+	//First makes sur recordSize is a strictly positive integer
+	if (recordSize <= 0) {
+		return RM_NEGATIVERECSIZE;
+	}
+	//Then just in case recordSize were too big
+	if (recordSize >= PF_PAGE_SIZE - pageHeader.size()) {
+		return RM_RECORDTOOBIG;
+	}
 
-    //Creates the file in PageFile
-    int RC = 0;
-    if( (RC = this->pfm.CreateFile(fileName)) < 0 ) {
-        PF_PrintError(RC);
-        return RC;
-    }
+	//Creates the file in PageFile
+	RC rc = 0;
+	rc = this->pfm.CreateFile(fileName);
+	if (rc < 0) {
+		PF_PrintError(rc);
+		return rc;
+	}
 
-    //Opens it
-    PF_FileHandle pfh;
-    if( (RC = pfm.OpenFile(fileName, pfh)) < 0 ) {
-        PF_PrintError(RC);
-        return RC;
-    }
+	//Opens it
+	PF_FileHandle pfh;
+	rc = pfm.OpenFile(fileName, pfh);
+	if (rc < 0) {
+		PF_PrintError(rc);
+		return rc;
+	}
 
+	PF_PageHandle headerPage;
+	char * pData;
 
-    PF_PageHandle headerPage;
-    char * pData;
+	rc = pfh.AllocatePage(headerPage);
+	if (rc < 0) {
+		PF_PrintError(rc);
+		return RM_PFERROR;
+	}
 
-    if( (RC = pfh.AllocatePage(headerPage)) < 0) {
-      PF_PrintError(RC);
-      return RM_PFERROR;
-    }
+	rc = headerPage.GetData(pData);
+	if (rc < 0) {
+		PF_PrintError(rc);
+		return RM_PFERROR;
+	}
 
-    if ( (RC = headerPage.GetData(pData)) < 0)
-    {
-      PF_PrintError(RC);
-      return RM_PFERROR;
-    }
+	RM_FileHeader fileHeader;
+	fileHeader.setFirstFreePage(RM_PAGE_LIST_END);
+	fileHeader.setPagesNumber(1); // hdr page
+	fileHeader.setRecordSize(recordSize);
 
-    RM_FileHeader fileHeader;
-    fileHeader.setFirstFreePage(RM_PAGE_LIST_END);
-    fileHeader.setPagesNumber(1); // hdr page
-    fileHeader.setRecordSize(recordSize);
+	fileHeader.to_buf(pData);
+	//memcpy(pData, &hdr, sizeof(hdr));
 
-    fileHeader.to_buf(pData);
-    //memcpy(pData, &hdr, sizeof(hdr));
+	PageNum headerPageNum;
+	headerPage.GetPageNum(headerPageNum);
+	assert(headerPageNum == 0);
 
-    PageNum headerPageNum;
-    headerPage.GetPageNum(headerPageNum);
-    assert(headerPageNum == 0);
+	rc = pfh.MarkDirty(headerPageNum);
+	if (rc < 0) {
+		PF_PrintError(rc);
+		return RM_PFERROR;
+	}
 
-    if ( (RC = pfh.MarkDirty(headerPageNum)) < 0) {
-        PF_PrintError(RC);
-        return RM_PFERROR;
-    }
+	rc = pfh.UnpinPage(headerPageNum);
+	if (rc < 0) {
+		PF_PrintError(rc);
+		return RM_PFERROR;
+	}
 
-    if ( (RC = pfh.UnpinPage(headerPageNum)) < 0) {
-        PF_PrintError(RC);
-        return RM_PFERROR;
-    }
+	rc = pfm.CloseFile(pfh);
+	if (rc < 0) {
+		PF_PrintError(rc);
+		return RM_PFERROR;
+	}
 
-    if ( (RC = pfm.CloseFile(pfh)) < 0) {
-        PF_PrintError(RC);
-        return RM_PFERROR;
-    }
+	/**RC monFichier = PF_Manager::CreateFile(fileName);
+	 RM_FileHeader* monHeader = new RM_FileHeader();
+	 RM_FileHandle* monGestionnaire = new RM_FileHandle();
+	 monGestionnaire->RM_FileHandle::SetFileHeader(monHeader);
+	 monHeader. */
 
-    /**RC monFichier = PF_Manager::CreateFile(fileName);
-     RM_FileHeader* monHeader = new RM_FileHeader();
-     RM_FileHandle* monGestionnaire = new RM_FileHandle();
-     monGestionnaire->RM_FileHandle::SetFileHeader(monHeader);
-     monHeader. */
-
-    return 0;
+	return 0;
 }
 
 // destroys the fileName file
-RC RM_Manager::DestroyFile(const char *fileName){
-    int RC;
-    
-    //Handles destruction at the lower level ie PF
-    if ( (RC = pfm.DestroyFile(fileName)) < 0){
-        PF_PrintError(RC);
-        return RM_PFERROR;
-    }
+RC RM_Manager::DestroyFile(const char *fileName) {
+	int RC;
 
-    return 0;
+	//Handles destruction at the lower level ie PF
+	if ((RC = pfm.DestroyFile(fileName)) < 0) {
+		PF_PrintError(RC);
+		return RM_PFERROR;
+	}
+
+	return 0;
 }
 
 //Opens a given file and passes it to given fileHandle
-RC RM_Manager::OpenFile(const char *fileName, RM_FileHandle &fileHandle){
-    PF_FileHandle pfh;
-    PF_Manager pfm;
-    PF_PageHandle ph;
-    char * pData;
-    RM_FileHeader hdr;
+RC RM_Manager::OpenFile(const char *fileName, RM_FileHandle &fileHandle) {
+	PF_FileHandle pfh;
+	PF_Manager pfm;
+	PF_PageHandle ph;
+	char * pData;
+	RM_FileHeader hdr;
 
-    RC rc = pfm.OpenFile(fileName, pfh);
-    
-    if (rc < 0)
-    {
-        PF_PrintError(rc);
-        return RM_PFERROR;
-    }
-    // header page is at 0
-    
-    if ((rc = pfh.GetThisPage(0, ph)) || (rc = ph.GetData(pData))){
-        return(rc);
-    }
+	RC rc = pfm.OpenFile(fileName, pfh);
 
-    //Loads the heade from the data
-    if ( (rc = hdr.from_buf(pData)) ){
-        return rc;
-    }
+	if (rc < 0) {
+		PF_PrintError(rc);
+		return RM_PFERROR;
+	}
+	// header page is at 0
 
-    rc = fileHandle.Open(&pfh, hdr.getRecordSize());
-    
-    if (rc < 0){
-        RM_PrintError(rc);
-        return rc;
-    }
-    rc = pfh.UnpinPage(0);
-    
-    if (rc < 0){
-        PF_PrintError(rc);
-        return rc;
-    }
-    
-    return 0;
+	if ((rc = pfh.GetThisPage(0, ph)) || (rc = ph.GetData(pData))) {
+		return (rc);
+	}
+
+	//Loads the heade from the data
+	// DEBUG: rentre toujours dans ce test.
+//	rc = hdr.from_buf(pData);
+//	if (rc != 0) {
+//		return rc;
+//	}
+
+	rc = fileHandle.Open(&pfh, hdr.getRecordSize());
+
+	if (rc < 0) {
+		RM_PrintError(rc);
+		return rc;
+	}
+	rc = pfh.UnpinPage(0);
+
+	if (rc < 0) {
+		PF_PrintError(rc);
+		return rc;
+	}
+
+	return 0;
 }
 
 //Close a file
-RC RM_Manager::CloseFile(RM_FileHandle& fileHandle){
-    RC rc;
-    PF_PageHandle ph;
+RC RM_Manager::CloseFile(RM_FileHandle& fileHandle) {
+	RC rc;
+	PF_PageHandle ph;
 
-    //pif is the PF_FileHandle associated with fileHandle
-    PF_FileHandle pif;
-    if( (rc = fileHandle.GetPF_FileHandle(pif)) < 0){
-        return rc;
-    }
-    
-    // If header was modified, put the first page into buffer again,
-    // and update its contents, marking the page as dirty
-    if( fileHandle.headerModified() == true){
-        
-        //ph is the PF_PageHandle for the header
-        if( (rc = pif.GetFirstPage(ph)) < 0){
-            return rc;
-        }
+	//pif is the PF_FileHandle associated with fileHandle
+	PF_FileHandle pif;
+	if ((rc = fileHandle.GetPF_FileHandle(pif)) < 0) {
+		return rc;
+	}
 
-        //Writes into the file
-        if( (rc = fileHandle.SetFileHeader(ph)) < 0 ){
-            return rc;
-        }
+	// If header was modified, put the first page into buffer again,
+	// and update its contents, marking the page as dirty
+	if (fileHandle.headerModified() == true) {
 
-        //Marks header dirty and unip
-        if( ((rc = pif.MarkDirty(0)) || (rc = pif.UnpinPage(0))) < 0 ){
-            return rc;
-        }
+		//ph is the PF_PageHandle for the header
+		// DEBUG: la ligne suivante génère une segfault. Plus
+		// profondément dans le code, la fonction GetNextPage renvoie
+		// le code d'erreur PF_CLOSEDFILE ca le fichier n'est pas vu
+		// comme « ouvert ».
+		if ((rc = pif.GetFirstPage(ph)) < 0) {
+			return rc;
+		}
 
-        //Forces pages
-        if( (rc = fileHandle.ForcePages()) < 0 ){
-            return rc;
-        }
-    }
-    
-    // Close the file
-    if( (rc = pfm.CloseFile(pif)) < 0 ) {
-        return rc;
-    }
+		//Writes into the file
+		if ((rc = fileHandle.SetFileHeader(ph)) < 0) {
+			return rc;
+		}
 
-    return 0;
+		//Marks header dirty and unip
+		if (((rc = pif.MarkDirty(0)) || (rc = pif.UnpinPage(0))) < 0) {
+			return rc;
+		}
+
+		//Forces pages
+		if ((rc = fileHandle.ForcePages()) < 0) {
+			return rc;
+		}
+	}
+
+	// Close the file
+	if ((rc = pfm.CloseFile(pif)) < 0) {
+		return rc;
+	}
+
+	return 0;
 }
