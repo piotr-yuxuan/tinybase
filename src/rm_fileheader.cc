@@ -77,3 +77,9 @@ RC RM_FileHeader::setPagesNumber(int i) {
     this->pagesNumber = i;
     return 0;
 }
+
+//Setter for recordSize
+RC RM_FileHeader::setRecordSize(int i) {
+    this->recordSize = i;
+    return 0;
+}

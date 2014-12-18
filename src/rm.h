@@ -135,6 +135,7 @@ public:
     //Setters
     RC setFirstFreePage(int i);
     RC setPagesNumber(int i);
+    RC setRecordSize(int i);
 
 private:
 	int firstFreePage; // first free page
@@ -155,7 +156,8 @@ public:
 	RC DeleteRec(const RID &rid); // Delete a record
 	RC UpdateRec(const RM_Record &rec); // Update a record
 	RC ForcePages(PageNum pageNum = ALL_PAGES); // Forces a page (along with any contents stored in this class) from the buffer pool to disk.  Default value forces all pages.
-	// Size of the record
+
+    // Size of the record
 	int getRecordSize() const {
 		return fileHeader.getRecordSize();
 	}
@@ -173,6 +175,9 @@ public:
 
 	//Getter for pf_FileHandle
 	RC GetPF_FileHandle(PF_FileHandle &pf_FileHandle) const;
+
+    //Says if header was modified
+    bool headerModified();
 
 private:
 	PF_FileHandle *pf_FileHandle;
@@ -231,6 +236,9 @@ public:
 	RC OpenFile(const char *fileName, RM_FileHandle &fileHandle);
 
 	RC CloseFile(RM_FileHandle &fileHandle);
+private:
+    // A PF_Manager attribute (reference)
+    PF_Manager&   pfm;
 };
 
 //
@@ -263,9 +271,12 @@ void RM_PrintError(RC rc);
 #define RM_FCREATEFAIL      (START_RM_ERR - 4)
 #define RM_NORECATRID       (START_RM_ERR - 5)
 #define RM_NULLRECORD       (START_RM_ERR - 6)
-#define RM_PAGE_FULLY_USED  (START_RM_ERR - 6)
-#define RM_BAD_RID          (START_RM_ERR - 6)
-#define RM_FNOTOPEN         (START_RM_ERR - 6)
-#define RM_RECSIZEMISMATCH  (START_RM_ERR - 6)
-#define RM_NULLRECORDSIZE  (START_RM_ERR - 6)
+#define RM_PAGE_FULLY_USED  (START_RM_ERR - 7)
+#define RM_BAD_RID          (START_RM_ERR - 8)
+#define RM_FNOTOPEN         (START_RM_ERR - 9)
+#define RM_RECSIZEMISMATCH  (START_RM_ERR - 10)
+#define RM_NULLRECORDSIZE   (START_RM_ERR - 11)
+#define RM_PFERROR          (START_RM_ERR - 12)
+#define RM_RECORDTOOBIG     (START_RM_ERR -13)
+#define RM_NEGATIVERECSIZE  (START_RM_ERR -14)
 #endif
