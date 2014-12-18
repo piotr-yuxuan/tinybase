@@ -79,7 +79,10 @@ RC Bitmap::to_buf(char *& buf) const{
 
 //Reads from a buffer
 RC Bitmap::from_buf(const char * buf) {
-    memcpy(bitValues, buf, sizeof(bitValues));
+	// Provide explicit length to avoid warning -Wsizeof-pointer-memaccess
+	size_t length = sizeof(bitValues);
+	
+    memcpy(bitValues, buf, length);
     return 0;
 }
 
