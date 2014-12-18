@@ -244,6 +244,11 @@ private:
 };
 
 //
+// Print-error function and PF return code defines
+//
+void RM_PrintError(RC rc);
+
+//
 // Warning codes
 //
 #define RM_ALREADYOPEN      (START_RM_WARN + 0) // File is already open
@@ -274,6 +279,6 @@ private:
 #define RM_RECORDTOOBIG     (START_RM_ERR -13)
 #define RM_NEGATIVERECSIZE  (START_RM_ERR -14)
 #define RM_UNIX             (START_PF_ERR - 15) // Unix error
-#define RM_LASTERR          RM_UNIX
+#define RM_LASTERROR        RM_UNIX
 
 #endif

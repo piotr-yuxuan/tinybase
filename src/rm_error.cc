@@ -5,6 +5,7 @@
 //
 
 #include <cstdio>
+#include <cerrno>
 #include <iostream>
 #include "rm.h"
 

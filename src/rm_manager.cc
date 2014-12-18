@@ -138,7 +138,7 @@ RC RM_Manager::OpenFile(const char *fileName, RM_FileHandle &fileHandle){
     rc = fileHandle.Open(&pfh, hdr.getRecordSize());
     
     if (rc < 0){
-        RM_PrintError(rc);
+        PF_PrintError(rc);
         return rc;
     }
     rc = pfh.UnpinPage(0);
