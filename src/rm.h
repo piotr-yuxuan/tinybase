@@ -244,11 +244,6 @@ private:
 };
 
 //
-// Print-error function
-//
-void RM_PrintError(RC rc);
-
-//
 // Warning codes
 //
 #define RM_ALREADYOPEN      (START_RM_WARN + 0) // File is already open
@@ -257,17 +252,14 @@ void RM_PrintError(RC rc);
 #define RM_INVALIDRID       (START_RM_WARN + 3) // invalid RID
 #define RM_BADRECORDSIZE    (START_RM_WARN + 4) // record size is invalid
 #define RM_INVALIDRECORD    (START_RM_WARN + 5) // invalid record
+#define RM_LASTWARN         RM_INVALIDRECORD
+
 
 //
 // Error codes
 //
 #define RM_FSCREATEFAIL     (START_RM_ERR - 0) // couldn't create the FileScan object
 #define RM_FILENOTOPEN      (START_RM_ERR - 1) // File is not open
-
-//
-// Definition to be checked: error or warning?
-// Put here to solve reference trouble
-//
 #define RM_PAGE_LIST_END    (START_RM_ERR - 2)
 #define RM_HANDLEOPEN       (START_RM_ERR - 3)
 #define RM_FCREATEFAIL      (START_RM_ERR - 4)
@@ -281,4 +273,7 @@ void RM_PrintError(RC rc);
 #define RM_PFERROR          (START_RM_ERR - 12)
 #define RM_RECORDTOOBIG     (START_RM_ERR -13)
 #define RM_NEGATIVERECSIZE  (START_RM_ERR -14)
+#define RM_UNIX             (START_PF_ERR - 15) // Unix error
+#define RM_LASTERR          RM_UNIX
+
 #endif
