@@ -357,3 +357,8 @@ RC RM_FileHandle::IsValid() const {
 	return 0;
 }
 
+
+//Tells if header has been modified
+bool RM_FileHandle::headerModified() {
+    return this->bHdrChanged;
+}

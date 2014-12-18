@@ -157,6 +157,9 @@ public:
 	RC UpdateRec(const RM_Record &rec); // Update a record
 	RC ForcePages(PageNum pageNum = ALL_PAGES); // Forces a page (along with any contents stored in this class) from the buffer pool to disk.  Default value forces all pages.
 
+    //Opens given PF_fileHandle
+    RC Open(PF_FileHandle* pfh, int size);
+
     // Size of the record
 	int getRecordSize() const {
 		return fileHeader.getRecordSize();
@@ -185,7 +188,6 @@ private:
 	bool bFileOpen; // file open flag
 	bool bHdrChanged; // flag for file hdr
 
-	RC Open(PF_FileHandle* pfh, int size);
 	RC GetNextFreeSlot(PF_PageHandle & ph, PageNum& pageNum, SlotNum& slotNum);
 	RC GetNextFreePage(PageNum& pageNum);
 

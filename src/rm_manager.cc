@@ -127,7 +127,7 @@ RC RM_Manager::OpenFile(const char *fileName, RM_FileHandle &fileHandle){
     if (rc < 0)
     {
         PF_PrintError(rc);
-        return RM_PF;
+        return RM_PFERROR;
     }
     // header page is at 0
     
@@ -155,21 +155,19 @@ RC RM_Manager::OpenFile(const char *fileName, RM_FileHandle &fileHandle){
 RC RM_Manager::CloseFile(RM_FileHandle& fileHandle){
     RC rc;
     PF_PageHandle ph;
-    PageNum page;
-    char *pData;
+
+    //pif is the PF_FileHandle associated with fileHandle
+    PF_FileHandle pif;
+    if( (rc = fileHandle.GetPF_FileHandle(pif)) < 0){
+        return rc;
+    }
     
     // If header was modified, put the first page into buffer again,
     // and update its contents, marking the page as dirty
     if( fileHandle.headerModified() == true){
         
-        //pif is the PF_FileHandle associated with fileHandle
-        PF_FileHandle* pif;
-        if( (rc = fileHandle.GetPF_FileHandle(pif)) < 0){
-            return rc;
-        }
-        
         //ph is the PF_PageHandle for the header
-        if( (rc = pif->GetFirstPage(ph)) < 0){
+        if( (rc = pif.GetFirstPage(ph)) < 0){
             return rc;
         }
 
@@ -179,7 +177,7 @@ RC RM_Manager::CloseFile(RM_FileHandle& fileHandle){
         }
 
         //Marks header dirty and unip
-        if( ((rc = pif->MarkDirty(page)) || (rc = pif->UnpinPage(page))) < 0 ){
+        if( ((rc = pif.MarkDirty(0)) || (rc = pif.UnpinPage(0))) < 0 ){
             return rc;
         }
 
