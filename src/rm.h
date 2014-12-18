@@ -278,7 +278,7 @@ void RM_PrintError(RC rc);
 #define RM_PFERROR          (START_RM_ERR - 12)
 #define RM_RECORDTOOBIG     (START_RM_ERR -13)
 #define RM_NEGATIVERECSIZE  (START_RM_ERR -14)
-#define RM_UNIX             (START_PF_ERR - 15) // Unix error
+#define RM_UNIX             (START_RM_ERR - 15) // Unix error
 #define RM_LASTERROR        RM_UNIX
 
 #endif

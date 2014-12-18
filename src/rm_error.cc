@@ -28,7 +28,7 @@ static char *RM_ErrorMsg[] = {
   (char*)"File is not open",
   (char*)"",
   (char*)"",
-  (char*)"",
+  (char*)"RM_NORECATRID",
   (char*)"",
   (char*)"",
   (char*)"",
@@ -55,7 +55,7 @@ void RM_PrintError(RC rc)
     // Print warning
     cerr << "RM warning: " << RM_WarnMsg[rc - START_RM_WARN] << "\n";
   // Error codes are negative, so invert everything
-  else if (-rc >= -START_RM_ERR && -rc < -RM_LASTERROR)
+  else if (-rc >= -START_RM_ERR && -rc <= -RM_LASTERROR)
     // Print error
     cerr << "RM error: " << RM_ErrorMsg[-rc + START_RM_ERR] << "\n";
   else if (rc == RM_UNIX)

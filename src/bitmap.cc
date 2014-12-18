@@ -27,7 +27,7 @@ Bitmap::Bitmap(int nbBits)
 //Destructor
 Bitmap::~Bitmap()
 {
-    delete [] this->bitValues;
+    //delete [] this->bitValues; Why should we remove this line???? TODO understand^^
 }
 
 //Sets a specific bit to 1
