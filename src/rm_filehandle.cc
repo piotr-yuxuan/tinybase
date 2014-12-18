@@ -133,7 +133,7 @@ RC RM_FileHandle::SetPageHeader(PF_PageHandle ph,
 // get header from the first page of a newly opened file
 RC RM_FileHandle::GetFileHeader(PF_PageHandle ph) {
     char * buf;
-    Rc rc(0);
+    RC rc(0);
     if( (rc = ph.GetData(buf)) ){
         return rc;
     }
@@ -147,7 +147,7 @@ RC RM_FileHandle::GetFileHeader(PF_PageHandle ph) {
 // persist header into the first page of a file for later
 RC RM_FileHandle::SetFileHeader(PF_PageHandle ph) const {
     char * buf;
-    Rc rc(0);
+    RC rc(0);
     if( (rc = ph.GetData(buf)) ){
         return rc;
     }
