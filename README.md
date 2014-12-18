@@ -1,6 +1,13 @@
 tinybase
 ========
 
+**Update:**
+
+Après de nombreuses corrections pour moi ça a l'air de compiler (make s'execute sans erreur). Attention surtout pour Pierre 
+**ça ne sert à rien de copier le code de Stanford sans le modifier** certe la classe RM_FileHandle est la plus dure pas de doute là dessus mais à la limite il faut mieux aller doucement méthode par méthode et nous après on vient t'aider à terminer celles qui manquent car là c'était vraiment la grosse merde dedans (par exemple par pitié arrête de créer un bitmap pour le pageHeader il en a déjà un en attribut public qui s'appelle .freeSlots donc ça ne rîme à rien!) 
+
+Idem il faut commenter le code plus je pense (c'est pas parce que Stanford il n'ont rien mis que c'est forcément bien)
+
 * Pour cloner le dépôt ou monter à distance votre répertoire de l'école, voir [ici](Trucs techniques.md).
 * RedBase corrigé : https://github.com/junkumar/redbase
 * Livre de référence du cours : http://libgen.org/get.php?md5=00E22B5CB10BC9859A3D389EA77BDD80
