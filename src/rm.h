@@ -66,9 +66,9 @@ public:
 	//Returns the current value of a bit in the Bitmap
 	bool test(unsigned int bitNumber) const;
 	//Writes bitmap into a buffer
-	bool to_buf(char *& buf) const;
+    RC to_buf(char *& buf) const;
 	//Reads from a buffer
-    bool from_buf(const char * buf);
+    RC from_buf(const char * buf);
 	//Gives the size
 	int getSize() const {
 		return size;
@@ -92,8 +92,8 @@ public:
 	~RM_PageHeader();
 
 	//Writes and reads from/to the buffer
-	int to_buf(char *& buf) const;
-	int from_buf(const char * buf);
+    RC to_buf(char *& buf) const;
+    RC from_buf(const char * buf);
 
 	//Returns the size of the header IN BYTES
 	int size() const;
@@ -124,8 +124,8 @@ public:
 	~RM_FileHeader();
 
 	//Writes and reads from/to the buffer
-	int to_buf(char *& buf) const;
-    int from_buf(const char * buf);
+    RC to_buf(char *& buf) const;
+    RC from_buf(const char * buf);
 
 	//Getters
 	int getRecordSize() const;

@@ -23,7 +23,7 @@ RM_FileHeader::~RM_FileHeader(){
 }
 
 //Writes into a buffer
-int RM_FileHeader::to_buf(char *& buf) const{
+RC RM_FileHeader::to_buf(char *& buf) const{
     int offset(0);
     //Writes the first free page
     memcpy(buf + offset, &firstFreePage, sizeof(firstFreePage));
@@ -37,7 +37,7 @@ int RM_FileHeader::to_buf(char *& buf) const{
 }
 
 //Reads from a buffer
-int RM_FileHeader::from_buf(const char * buf) {
+RC RM_FileHeader::from_buf(const char * buf) {
     int offset(0);
     //Reads the first free page
     memcpy(&firstFreePage, buf + offset, sizeof(firstFreePage));

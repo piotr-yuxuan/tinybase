@@ -27,7 +27,7 @@ int RM_PageHeader::size() const{
 }
 
 //Writes into a buffer
-int RM_PageHeader::to_buf(char *& buf) const{
+RC RM_PageHeader::to_buf(char *& buf) const{
     int offset(0);
     //Writes the next free page
     memcpy(buf + offset, &nextFreePage, sizeof(nextFreePage));
@@ -46,7 +46,7 @@ int RM_PageHeader::to_buf(char *& buf) const{
 }
 
 //Reads from a buffer
-int RM_PageHeader::from_buf(const char * buf) {
+RC RM_PageHeader::from_buf(const char * buf) {
     int offset(0);
     //Reads the next free page
     memcpy(&nextFreePage, buf + offset, sizeof(nextFreePage));
