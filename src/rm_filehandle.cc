@@ -5,7 +5,6 @@
 //
 
 #include "rm.h"
-#include <cstring>
 
 RM_FileHandle::RM_FileHandle() :
 		pf_FileHandle(NULL), bFileOpen(false), bHdrChanged(false) {
@@ -205,7 +204,7 @@ RC RM_FileHandle::GetRec(const RID &rid, RM_Record &rec) const {
 	}
 
 	char * pData = NULL;
-	if (rc = this->GetSlotPointer(ph, s, pData)) {
+    if ( (rc = this->GetSlotPointer(ph, s, pData)) ) {
 		return rc;
 	}
     rec.Set(pData, fileHeader.getRecordSize(), rid);
@@ -306,7 +305,7 @@ RC RM_FileHandle::UpdateRec(const RM_Record &rec) {
 	char * pData = NULL;
 	rec.GetData(pData);
 
-	if (rc = this->GetSlotPointer(ph, s, pSlot)) {
+    if ( (rc = this->GetSlotPointer(ph, s, pSlot)) ) {
 		return rc;
 	}
 

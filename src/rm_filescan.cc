@@ -90,11 +90,11 @@ RC RM_FileScan::GetNextRec(RM_Record &rec){
         PF_PageHandle ph;
         PF_FileHandle pf_FileHandle;
         //Retrieves the pf_fileHandle from fileHandle
-        if(RC = fileHandle->GetPF_FileHandle(pf_FileHandle)){
+        if( (RC = fileHandle->GetPF_FileHandle(pf_FileHandle)) ){
                 return RC;
         }
         //Retrieves the page from the pf_fileHandle
-        if(RC = pf_FileHandle.GetThisPage(i, ph)){
+        if( (RC = pf_FileHandle.GetThisPage(i, ph)) ){
             return RC;
         }
         fileHandle->GetPageHeader(ph, pHeader);
@@ -102,7 +102,7 @@ RC RM_FileScan::GetNextRec(RM_Record &rec){
         Bitmap b = pHeader.freeSlots;
         //Gets the starting slot in the page
         int j=0;
-        if(currentRID.GetPage()==i && currentRID.GetSlot()>=0){
+        if( (currentRID.GetPage()==i && currentRID.GetSlot()>=0) ){
             j = currentRID.GetSlot() + 1;
         }
         //Loops through the next slots in the page

@@ -8,7 +8,6 @@
 
 #include "rm.h"
 #include <cmath>
-#include <cstring>
 #include <cassert>
 
 //Constructor

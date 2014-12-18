@@ -6,7 +6,6 @@
 #include <unistd.h>
 #include <stdio.h>
 #include <sys/types.h>
-#include <cstring>
 #include "rm.h"
 
 //

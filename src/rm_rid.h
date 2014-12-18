@@ -11,6 +11,7 @@
 // components will require the use of RID but not the rest of RM.
 
 #include "tinybase.h"
+#include <cstring>
 
 //
 // PageNum: uniquely identifies a page in a file

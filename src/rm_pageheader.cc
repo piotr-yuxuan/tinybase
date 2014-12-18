@@ -6,7 +6,6 @@
 #include <unistd.h>
 #include <sys/types.h>
 #include "rm.h"
-#include <cstring>
 
 //
 // Class RM_PageHeader declaration
