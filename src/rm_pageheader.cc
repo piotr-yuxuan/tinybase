@@ -66,7 +66,7 @@ RC RM_PageHeader::from_buf(const char * buf) {
 //Returns the number of free slots
 int RM_PageHeader::getNbFreeSlots() {
     int freeSlotsCount = 0;
-    for(int i=0; i<this->size(); i++){
+    for(int i=0; i<this->freeSlots.getSize(); i++){
         freeSlotsCount += freeSlots.test(i);
     }
     return freeSlotsCount;
