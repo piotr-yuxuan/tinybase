@@ -121,7 +121,6 @@ RC RM_Manager::DestroyFile(const char *fileName) {
 //Opens a given file and passes it to given fileHandle
 RC RM_Manager::OpenFile(const char *fileName, RM_FileHandle &fileHandle) {
 	PF_FileHandle pfh;
-	PF_Manager pfm;
 	PF_PageHandle ph;
 	char * pData;
 	RM_FileHeader hdr;
@@ -138,12 +137,11 @@ RC RM_Manager::OpenFile(const char *fileName, RM_FileHandle &fileHandle) {
 		return (rc);
 	}
 
-	//Loads the heade from the data
-	// DEBUG: rentre toujours dans ce test.
-//	rc = hdr.from_buf(pData);
-//	if (rc != 0) {
-//		return rc;
-//	}
+    //Loads the header from the data
+    rc = hdr.from_buf(pData);
+    if (rc != 0) {
+        return rc;
+    }
 
 	rc = fileHandle.Open(&pfh, hdr.getRecordSize());
 
@@ -177,10 +175,6 @@ RC RM_Manager::CloseFile(RM_FileHandle& fileHandle) {
 	if (fileHandle.headerModified() == true) {
 
 		//ph is the PF_PageHandle for the header
-		// DEBUG: la ligne suivante génère une segfault. Plus
-		// profondément dans le code, la fonction GetNextPage renvoie
-		// le code d'erreur PF_CLOSEDFILE ca le fichier n'est pas vu
-		// comme « ouvert ».
 		if ((rc = pif.GetFirstPage(ph)) < 0) {
 			return rc;
 		}
