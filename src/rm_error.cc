@@ -15,12 +15,17 @@ using namespace std;
 // Error table
 //
 static char *RM_WarnMsg[] = {
-  (char*)"File is already open",
-  (char*)"End of file",
-  (char*)"Record is not read",
-  (char*)"invalid RID",
-  (char*)"Record size is invalid",
-  (char*)"Invalid record"
+  (char*)"inviable rid",
+  (char*)"unread record",
+  (char*)"invalid record size",
+  (char*)"invalid slot number",
+  (char*)"record not found",
+  (char*)"invalid comparison operator",
+  (char*)"invalid attribute parameters",
+  (char*)"null pointer",
+  (char*)"scan open",
+  (char*)"scan closed",
+  (char*)"file closed"
 };
 
 static char *RM_ErrorMsg[] = {

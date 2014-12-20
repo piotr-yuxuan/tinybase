@@ -53,5 +53,5 @@ RC RID::isValidRID() const{
   if(page > 0 && slot >= 0)
     return 0;
   else
-    return RM_INVALIDRID;
+    return RM_INVIABLERID;
 }

@@ -251,13 +251,19 @@ void RM_PrintError(RC rc);
 //
 // Warning codes
 //
-#define RM_ALREADYOPEN      (START_RM_WARN + 0) // File is already open
-#define RM_EOF              (START_RM_WARN + 1) // End Of File
-#define RM_UNREADRECORD     (START_RM_WARN + 2) // record is not read
-#define RM_INVALIDRID       (START_RM_WARN + 3) // invalid RID
-#define RM_BADRECORDSIZE    (START_RM_WARN + 4) // record size is invalid
-#define RM_INVALIDRECORD    (START_RM_WARN + 5) // invalid record
-#define RM_LASTWARN         RM_INVALIDRECORD
+#define RM_INVIABLERID     (START_RM_WARN + 0) // inviable rid
+#define RM_UNREADRECORD    (START_RM_WARN + 1) // unread record
+#define RM_INVALIDRECSIZE  (START_RM_WARN + 2) // invalid record size
+#define RM_INVALIDSLOTNUM  (START_RM_WARN + 3) // invalid slot number
+#define RM_RECORDNOTFOUND  (START_RM_WARN + 4) // record not found
+#define RM_INVALIDCOMPOP   (START_RM_WARN + 5) // invalid comparison operator
+#define RM_INVALIDATTR     (START_RM_WARN + 6) // invalid attribute parameters
+#define RM_NULLPOINTER     (START_RM_WARN + 7) // pointer is null
+#define RM_SCANOPEN        (START_RM_WARN + 8) // scan is open
+#define RM_CLOSEDSCAN      (START_RM_WARN + 9) // scan is closed
+#define RM_CLOSEDFILE      (START_RM_WARN + 10)// file handle is closed
+#define RM_LASTWARN        RM_CLOSEDFILE
+#define RM_EOF             PF_EOF              // work-around for rm_test
 
 
 //

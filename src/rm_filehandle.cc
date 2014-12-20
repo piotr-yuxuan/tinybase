@@ -6,18 +6,24 @@
 
 #include "rm.h"
 
+
+//Constructor for RM_FileHandle
 RM_FileHandle::RM_FileHandle() :
 		pf_FileHandle(NULL), bFileOpen(false), bHdrChanged(false) {
 }
 
+//Opens the RM_FileHandle with a given PF_FileHandle pointer
 RC RM_FileHandle::Open(PF_FileHandle* pfh, int size) {
 	if (bFileOpen || pf_FileHandle != NULL) {
 		return RM_HANDLEOPEN;
 	}
 
-	if (pfh == NULL || size <= 0) {
-		return RM_FCREATEFAIL;
+    if (pfh == NULL) {
+        return RM_NULLPOINTER;
 	}
+    if (size <= 0){
+        return RM_INVALIDRECSIZE;
+    }
 
 	bFileOpen = true;
 	pf_FileHandle = new PF_FileHandle;
@@ -40,27 +46,51 @@ RC RM_FileHandle::GetPF_FileHandle(PF_FileHandle &lvalue) const {
     return 0;
 }
 
+
+//Given a page number and a slot number, passes next free page into ph
+//and next free slot position into pageNum & slotNum
 RC RM_FileHandle::GetNextFreeSlot(PF_PageHandle & ph, PageNum& pageNum,
 		SlotNum& slotNum) {
-	RM_PageHeader pageHeader(this->GetNumSlots());
 	RC rc;
-	if ((rc = this->GetNextFreePage(pageNum))
-			|| (rc = pf_FileHandle->GetThisPage(pageNum, ph)) || (rc =
-					pf_FileHandle->UnpinPage(pageNum))
-			|| (rc = this->GetPageHeader(ph, pageHeader))) {
+
+    //Passes the number of next free page into pageNum
+    if ( (rc = this->GetNextFreePage(pageNum)) ) {
+         return rc;
+    }
+
+    //Ph becomes PF_PageHandle for the next free page
+    if( (rc = pf_FileHandle->GetThisPage(pageNum, ph)) ) {
+        return rc;
+    }
+
+    //Unpins next free page
+    if( (rc = pf_FileHandle->UnpinPage(pageNum)) ) {
+        return rc;
+    }
+
+    //Retrieves the header of the next freepage into a RM_PageHeader object
+    RM_PageHeader pageHeader(this->GetNumSlots());
+    if( (rc = this->GetPageHeader(ph, pageHeader)) ) {
 		return rc;
 	}
 
+    //Goes through the bitmap of the pageHeader to find the next free slot
 	for (int i = 0; i < this->GetNumSlots(); i++) {
         if (pageHeader.freeSlots.test(i)) {
 			slotNum = i;
 			return 0;
 		}
 	}
-	// This page is full
+    /*
+     *Something should have been returned at this point since we went through all the slot
+     *Of the next FREE page (so there must be an empty slot).
+     *Anyway we return -1 just in case to signal an unexpected error.
+    */
 	return -1; // unexpected error
 }
 
+
+//Passes the number of the next free page to pageNum
 RC RM_FileHandle::GetNextFreePage(PageNum& pageNum) {
 	RC rc;
 	PF_PageHandle ph;
@@ -112,6 +142,7 @@ RC RM_FileHandle::GetNextFreePage(PageNum& pageNum) {
 	return 0;
 }
 
+//Given ph, loads header page in private pageHeader attribute
 RC RM_FileHandle::GetPageHeader(PF_PageHandle ph,
 		RM_PageHeader& pageHeader) const {
 	char * buf;
@@ -120,6 +151,7 @@ RC RM_FileHandle::GetPageHeader(PF_PageHandle ph,
 	return rc;
 }
 
+//Writes the header page to pageHeader
 RC RM_FileHandle::SetPageHeader(PF_PageHandle ph,
 		const RM_PageHeader& pageHeader) {
 	char * buf;
@@ -158,14 +190,17 @@ RC RM_FileHandle::SetFileHeader(PF_PageHandle ph) const {
     return 0;
 }
 
-RC RM_FileHandle::GetSlotPointer(PF_PageHandle ph, SlotNum s,
-		char *& pData) const {
+//Put pData to point to the slot number s in page ph
+RC RM_FileHandle::GetSlotPointer(PF_PageHandle ph, SlotNum s, char *& pData) const {
+    //Puts ph to point to the actual data of ph
 	RC rc = ph.GetData(pData);
-	if (rc >= 0) {
-		Bitmap b(this->GetNumSlots());
-		pData = pData + (RM_PageHeader(this->GetNumSlots()).size());
-		pData = pData + s * this->getRecordSize();
-	}
+    if (rc < 0) {
+        return rc;
+    }
+    //Offset because of the page header
+    pData = pData + (RM_PageHeader(this->GetNumSlots()).size());
+    //Offset because of the s slots before the one we want
+    pData = pData + s * this->getRecordSize();
 	return rc;
 }
 
@@ -187,10 +222,12 @@ int RM_FileHandle::GetNumSlots() const {
 	}
 }
 
+//Just returns the number of pages in the file
 int RM_FileHandle::GetNumPages() const {
 	return this->fileHeader.getPagesNumber();
 }
 
+//Destructor for RM_FileHandle
 RM_FileHandle::~RM_FileHandle() {
 	if (pf_FileHandle != NULL)
 		delete pf_FileHandle;
@@ -224,6 +261,7 @@ RC RM_FileHandle::GetRec(const RID &rid, RM_Record &rec) const {
 	return 0;
 }
 
+//Inserts a record buffered into pData in the file
 RC RM_FileHandle::InsertRec(const char *pData, RID &rid) {
 	if (pData == NULL) {
 		return RM_NULLRECORD;
@@ -234,10 +272,16 @@ RC RM_FileHandle::InsertRec(const char *pData, RID &rid) {
 	SlotNum s;
 	RC rc;
 	char * pSlot;
-	if ((rc = this->GetNextFreeSlot(ph, p, s))
-			|| (rc = this->GetPageHeader(ph, pageHeader))) {
+
+    //Gets next free slot position in p & s variables
+    if ( (rc = this->GetNextFreeSlot(ph, p, s)) ) {
 		return rc;
 	}
+
+    //
+    if( (rc = this->GetPageHeader(ph, pageHeader)) ) {
+        return rc;
+    }
 
 	if ((rc = this->GetSlotPointer(ph, s, pSlot))) {
 		return rc;
@@ -257,6 +301,7 @@ RC RM_FileHandle::InsertRec(const char *pData, RID &rid) {
 	return rc;
 }
 
+//Deletes a given RID from the file
 RC RM_FileHandle::DeleteRec(const RID &rid) {
 	PageNum p;
 	SlotNum s;
@@ -291,6 +336,7 @@ RC RM_FileHandle::DeleteRec(const RID &rid) {
 	return rc;
 }
 
+//Update a given record in the file
 RC RM_FileHandle::UpdateRec(const RM_Record &rec) {
 	RID rid;
 	rec.GetRid(rid);
@@ -358,6 +404,7 @@ bool RM_FileHandle::IsValidRID(const RID rid) const {
 	return IsValidPageNum(p) && s >= 0 && s < this->GetNumSlots();
 }
 
+//Checks the fileHandle itself
 RC RM_FileHandle::IsValid() const {
 	if ((pf_FileHandle == NULL) || !bFileOpen) {
 		return RM_FNOTOPEN;

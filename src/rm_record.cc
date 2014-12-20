@@ -79,13 +79,13 @@ RC RM_Record::GetRid(RID &rid) const
 RC RM_Record::Set(char *pData, int size, RID rid){
 
   if(rid.isValidRID())
-    return RM_INVALIDRID;
+    return RM_INVIABLERID;
 
   if(size <= 0 )
-    return RM_BADRECORDSIZE;
+    return RM_INVALIDRECSIZE;
 
   if(pData == NULL)
-    return RM_INVALIDRECORD;
+    return RM_RECORDNOTFOUND;
 
   this->rid = rid;
 	if (this->pData == NULL)

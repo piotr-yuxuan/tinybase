@@ -36,7 +36,7 @@ RC RM_FileScan::OpenScan(const RM_FileHandle &fileHandle,
 {
     //If already open we return a warning
     if(this->scaning){
-       return RM_ALREADYOPEN;
+       return RM_SCANOPEN;
     }
 
     //Copies all the paramters into attributes
@@ -52,19 +52,19 @@ RC RM_FileScan::OpenScan(const RM_FileHandle &fileHandle,
     if(value!=NULL){
         //Check the type of attribute
         if(attrType!=INT && attrType!=FLOAT && attrType!=STRING){
-            return RM_FSCREATEFAIL;
+            return RM_INVALIDATTR;
         }
         //Checks the comparison operator
         if(compOp<EQ_OP || compOp>GE_OP){
-            return RM_FSCREATEFAIL;
+            return RM_INVALIDCOMPOP;
         }
-        //Checks the length
+        //Checks the attributes
         if(attrType==INT && attrLength!=4){
-            return RM_FSCREATEFAIL;
+            return RM_INVALIDATTR;
         }else if(attrType==FLOAT && attrLength!=4){
-            return RM_FSCREATEFAIL;
+            return RM_INVALIDATTR;
         }else if(attrType==STRING && (attrLength<1 || attrLength>MAXSTRINGLEN) ){
-            return RM_FSCREATEFAIL;
+            return RM_INVALIDATTR;
         }
         //Checks the offset is not larger than record size
         if(attrOffset >= fileHandle.getRecordSize() || attrOffset<0){
@@ -80,7 +80,7 @@ RC RM_FileScan::GetNextRec(RM_Record &rec){
     int RC;
     //Makes sure scan is open
     if(!this->scaning){
-        return RM_FILENOTOPEN;
+        return RM_CLOSEDSCAN;
     }
     //Assertions
     assert(this->fileHandle != NULL && this->scaning);
@@ -127,7 +127,7 @@ RC RM_FileScan::GetNextRec(RM_Record &rec){
 //Terminates a file scan
 RC RM_FileScan::CloseScan(){
     if(!scaning){
-        return RM_FILENOTOPEN;
+        return RM_CLOSEDSCAN;
     }
     if(this->fileHandle!=NULL){
         delete fileHandle;
