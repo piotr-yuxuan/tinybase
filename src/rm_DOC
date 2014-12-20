@@ -2,28 +2,71 @@ Author: Camille TIENNOT
 
 **Documentation for the Record Management (RM) component**
 
+
 Main idea:
 ----------
-The RM component is a client of the PF component and hence uses its methods and classes to open, create, update and destroy files. Each file is made of pages. 
-The first page of a file is the **header page** which stores some information about the file. The other pages are **data pages** and contain the records themself - and also some information for anagement though.
-In each data page there is a header section which stores infos such as the next page where there is empty space and a bitmap indicating which slots of the page is empty. Then come the slots. All the slots are the same size (size of a record) and the RM puts as many slots as possible in a page. A page containing free space is a page in which at least one slot is free (corresponds to a 1 value in the bitmap in the page header).
+The RM component is a client of the PF component and hence uses its methods and
+classes to open, create, update and destroy files. Each file is made of pages. 
+
+The first page of a file is the **header page** which stores some information 
+about the file. The other pages are **data pages** and contain the records 
+themself - and also some information for anagement though.
+
+In each data page there is a header section which stores infos such as the next 
+page where there is empty space and a bitmap indicating which slots (see blow
+for the definition of a slot) of the page are empty.
+
+Then come the slots. All the slots are the same size (size of a record) and the
+RM puts as many slots as possible in a page. A page containing free space is a 
+page in which at least one slot is free (corresponds to a 1 value in the bitmap 
+in the page header).
+
 
 Bitmap class
 ------------
-The aim for the Bitmap class is to represent the occupation of slots in a given page. Bitmap is used by the RM_PageHeader class as an attribute (see below). This class is fairly simple: it has a pointer to an allocated buffer called **bitValues** and each time an instruction is given to the bitmap via the appropriate methods (set, reset, test to respectively put a bit to 1, to 0 or get the value of a bit) it acts on the correponding bit in the buffer. Of not bit is given to the set or reset method then we use C++ method overloading to perform the action on all the bits of the bitmap.
-The methods **from_buf(const char *& buf)** and **to_buf(char *& buf)** allow the bitmap to be respectively read or written from/to a buffer. These two methods are called inside the from_buf and to_buf method of the RM_PageHeader class (see below).
+The aim for the Bitmap class is to represent the occupation of slots in a given 
+page. Bitmap is used by the RM_PageHeader class as an attribute (see below). 
+
+This class is fairly simple: it has a pointer to an allocated buffer called 
+**bitValues** and each time an instruction is given to the bitmap via the 
+appropriate methods (set, reset, test to respectively put a bit to 1, to 0 or 
+get the value of a bit) it acts on the correponding bit in the buffer. Of not 
+bit is given to the set or reset method then we use C++ method overloading to 
+perform the action on all the bits of the bitmap.
+
+The methods **from_buf(const char *& buf)** and **to_buf(char *& buf)** allow 
+the bitmap to be respectively read or written from/to a buffer. These two 
+methods are called inside the from_buf and to_buf method of the RM_PageHeader 
+class (see below).
+
 
 Header classes
 --------------
-We chose to two classes called RM_FileHeader and RM_PageHeader to represent respectively the header of a file (i.e its first page) and the header of a page. Each class has two methods allow translation between class object and bytes :
+We chose to two classes called RM_FileHeader and RM_PageHeader to represent 
+respectively the header of a file (i.e its first page) and the header of a page.
+Each class has two methods allow translation between class object and bytes :
 
-- the **from_buf(const char *& buf)** method allows the header object to load from a given buffer
-- the **to_buf(char *& buf)** method allows the header object to be written to a given buffer
+    - the **from_buf(const char *& buf)** method allows the header object to
+    load from a given buffer
 
-**RM_FileHeader** contains three private integer attributes: the number of the first free page, the number of pages on the file and the size of the records in the file. It also has setters and getters for these three attributes.
+    - the **to_buf(char *& buf)** method allows the header object to be written 
+    to a given buffer
 
-**RM_PageHeader** is a little more complex class. Its main attribute is public and is a **Bitmap** object called **freeSlots**. FreeSlots is widely used by other classes such as RM_FileHandle. It has also two int attributes nbSlots and nextFreePage to store respectively the number of slots in the page and the number of the next page containing at least one free slot.
-RM_PageHeader has a method size() which returns an integer giving the size in BYTES of the header in the page. Thats means to read the first slot for instance you would offset your buffer with the value returned by this size() method. If we had chosen to represent the page header with a struct the equivalent of size() would be sizeof(RM_PageHeader).
-RM_PageHeader also has a method called getNbFreeSlots() to return the number of slots that are free (and so available to store records). This methods just loops through the freeSlots bitmap to count the number of free slots in the page.
+**RM_FileHeader** contains three private integer attributes: the number of the
+first free page, the number of pages on the file and the size of the records in
+the file. It also has setters and getters for these three attributes.
 
-
+**RM_PageHeader** is a little more complex class. Its main attribute is public 
+and is a **Bitmap** object called **freeSlots**. FreeSlots is widely used by 
+other classes such as RM_FileHandle. 
+It has also two int attributes nbSlots and nextFreePage to store respectively 
+the number of slots in the page and the number of the next page containing at 
+least one free slot.
+RM_PageHeader has a method size() which returns an integer giving the size in 
+BYTES of the header in the page. Thats means to read the first slot for instance
+you would offset your buffer with the value returned by this size() method. If 
+we had chosen to represent the page header with a struct the equivalent of 
+size() would be sizeof(RM_PageHeader). RM_PageHeader also has a method called 
+getNbFreeSlots() to return the number of slots that are free (and so available
+to store records). This methods just loops through the freeSlots bitmap 
+to count the number of free slots in the page.
