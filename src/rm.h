@@ -102,8 +102,8 @@ public:
     Bitmap freeSlots;
 
     //Returns the number of free slots
-    int getNbFreeSlots();
-    int getNextFreePage();
+    int getNbFreeSlots() const;
+    int getNextFreePage() const;
 
     //Setters
     RC setNextFreePage(int i);
