@@ -110,7 +110,6 @@ public:
 
 private:
 	int nbSlots;
-	int nbFreeSlots;
     int nextFreePage;
 };
 

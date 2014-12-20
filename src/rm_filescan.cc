@@ -97,6 +97,10 @@ RC RM_FileScan::GetNextRec(RM_Record &rec){
         if( (RC = pf_FileHandle.GetThisPage(i, ph)) ){
             return RC;
         }
+        //Unpin the page (needs to be done everytime GetThisPage is called
+        if( (RC = pf_FileHandle.UnpinPage(i)) ){
+            return RC;
+        }
         fileHandle->GetPageHeader(ph, pHeader);
         //The bitmap we'll use then
         Bitmap b = pHeader.freeSlots;

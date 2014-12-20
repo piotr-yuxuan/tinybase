@@ -23,12 +23,13 @@ RM_PageHeader::~RM_PageHeader(){
 
 //Returns size of the header in bytes
 int RM_PageHeader::size() const{
-    return sizeof(nextFreePage)+sizeof(nbSlots)+sizeof(nbFreeSlots)+freeSlots.getSize();
+    return sizeof(nextFreePage)+sizeof(nbSlots)+sizeof(getNbFreeSlots())+freeSlots.getSize();
 }
 
 //Writes into a buffer
 RC RM_PageHeader::to_buf(char *& buf) const{
     int offset(0);
+    int nbFreeSlots = this->getNbFreeSlots();
     //Writes the next free page
     memcpy(buf + offset, &nextFreePage, sizeof(nextFreePage));
     offset += sizeof(nextFreePage);
@@ -54,9 +55,8 @@ RC RM_PageHeader::from_buf(const char * buf) {
     //Reads the number of slots
     memcpy(&nbSlots, buf + offset, sizeof(nbSlots));
     offset += sizeof(nbSlots);
-    //Reads the number of free slots
-    memcpy(&nbFreeSlots, buf + offset, sizeof(nbFreeSlots));
-    offset += sizeof(nbFreeSlots);
+    //Offset because of the number of free slots
+    offset += sizeof(this->getNbFreeSlots());
     //Reads the bitMap using Bitmap method
     this->freeSlots.from_buf(buf+offset);
     return 0;
