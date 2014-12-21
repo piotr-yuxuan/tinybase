@@ -72,6 +72,8 @@ RC RM_FileScan::OpenScan(const RM_FileHandle &fileHandle,
         }
     }
 
+    //Tells the scan is open
+    this->scaning = true;
     return 0;
 }
 
@@ -133,10 +135,9 @@ RC RM_FileScan::CloseScan(){
     if(!scaning){
         return RM_CLOSEDSCAN;
     }
-    if(this->fileHandle!=NULL){
-        delete fileHandle;
-    }
     currentRID = RID(1,-1);
+    //Tells the scan is closed
+    this->scaning = false;
     return 0;
 }
 

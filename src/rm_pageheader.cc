@@ -14,6 +14,7 @@
 //Constructor
 RM_PageHeader::RM_PageHeader(int nbSlots){
     freeSlots = Bitmap(nbSlots);
+    this->nbSlots = nbSlots;
 }
 
 //Destructor

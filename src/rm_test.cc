@@ -63,6 +63,7 @@ RM_Manager rmm(pfm);
 //
 RC Test1(void);
 RC Test2(void);
+RC Test3(void);
 
 void PrintError(RC rc);
 void LsFile(char *fileName);
@@ -83,11 +84,12 @@ RC GetNextRecScan(RM_FileScan &fs, RM_Record &rec);
 //
 // Array of pointers to the test functions
 //
-#define NUM_TESTS       2               // number of tests
+#define NUM_TESTS       3               // number of tests
 int (*tests[])() =                      // RC doesn't work on some compilers
 {
     Test1,
-    Test2
+    Test2,
+    Test3
 };
 
 //
@@ -495,5 +497,32 @@ RC Test2(void)
         return (rc);
 
     printf("\ntest2 done ********************\n");
+    return (0);
+}
+
+
+//
+// Test3 adds a call to fileScan to verify the records.
+//
+RC Test3(void)
+{
+    RC            rc;
+    RM_FileHandle fh;
+
+    printf("test3 starting ****************\n");
+
+    if ((rc = CreateFile(FILENAME, sizeof(TestRec))) ||
+        (rc = OpenFile(FILENAME, fh)) ||
+        (rc = AddRecs(fh, FEW_RECS)) ||
+        (rc = VerifyFile(fh, FEW_RECS)) ||
+        (rc = CloseFile(FILENAME, fh)))
+        return (rc);
+
+    LsFile(FILENAME);
+
+    if ((rc = DestroyFile(FILENAME)))
+        return (rc);
+
+    printf("\ntest3 done ********************\n");
     return (0);
 }

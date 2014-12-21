@@ -73,14 +73,17 @@ bool Bitmap::test(unsigned int bitNumber) const{
 
 //Writes into a buffer
 RC Bitmap::to_buf(char *& buf) const{
-    memcpy(buf, &bitValues, sizeof(bitValues));
+    // Provide explicit length to avoid warning -Wsizeof-pointer-memaccess
+    size_t length = this->getByteSize();
+
+    memcpy(buf, bitValues, length);
     return 0;
 }
 
 //Reads from a buffer
 RC Bitmap::from_buf(const char * buf) {
 	// Provide explicit length to avoid warning -Wsizeof-pointer-memaccess
-	size_t length = sizeof(bitValues);
+    size_t length = this->getByteSize();
 	
     memcpy(bitValues, buf, length);
     return 0;
