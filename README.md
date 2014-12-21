@@ -1,12 +1,16 @@
 tinybase
 ========
 
-**Update:**
+**Update 21/12**
 
-Après de nombreuses corrections pour moi ça a l'air de compiler (make s'execute sans erreur). Attention surtout pour Pierre 
-**ça ne sert à rien de copier le code de Stanford sans le modifier** certe la classe RM_FileHandle est la plus dure pas de doute là dessus mais à la limite il faut mieux aller doucement méthode par méthode et nous après on vient t'aider à terminer celles qui manquent car là c'était vraiment la grosse merde dedans (par exemple par pitié arrête de créer un bitmap pour le pageHeader il en a déjà un en attribut public qui s'appelle .freeSlots donc ça ne rîme à rien!) 
+Le rendu est dans deux jours, donc il va falloir commencer à faire la documentation. J'ai créé un fichier **rm_DOC** dans src dans lequelle j'ai déjà écrit un premier documentation pour les classes que j'ai faites, ce qui serait bien c'est que chacun écrive dedans les documentation pour ses classes en expliquant bien.
 
-Idem il faut commenter le code plus je pense (c'est pas parce que Stanford il n'ont rien mis que c'est forcément bien)
+Pour ce qui est des tests, après pas mal de debug **les deux tests donnés dans le fichier rm_test.cc passent sans problème**. Cela dit ça ne veut pas du tout dire que tout est parfait. Ce matin par exemple j'ai rejouté un troisième test qui prend aussi en compte le **RM_FileScan** et il y avait pas mal de problèmes que j'ai corrigés en conséquence. Donc dans l'idéal il faudrait faire des nouveaux tests et utiliser **toutes les fonctions qui sont données dans RM_test.cc** pour avoir un programme solide.
+
+Troisième et dernière chose, étant donné que pour certaines classes ça ressemble fortement au truc de Stanford, ce serait bien d'**ajouter des commentaires** et de **changer un peu la manière dont le code est structuré** (pas ce qu'il fait^^, juste un peu la forme). J'ai commencé à faire un peu ça dans le **RM_FileHandle** notamment en changeant un peu la forme des tests pour les Return Code qui étaient strcitement les mêmes que Stanford. Les commentaires aussi, ça n'est pas très malin de laisser les même commentaires, d'autant plus qu'écrire les comments soi-même permet en plus de bien comprendre comment le truc marche...
+
+**Voilà. Pour résumer, les trois objectifs d'ici la deadline : Faire la doc, ajouter des nouveaux tests et commenter/changer le code.**
+
 
 * Pour cloner le dépôt ou monter à distance votre répertoire de l'école, voir [ici](Trucs techniques.md).
 * RedBase corrigé : https://github.com/junkumar/redbase
