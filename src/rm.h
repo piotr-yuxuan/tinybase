@@ -192,8 +192,6 @@ private:
 	RC GetNextFreeSlot(PF_PageHandle & ph, PageNum& pageNum, SlotNum& slotNum);
 	RC GetNextFreePage(PageNum& pageNum);
 
-	bool IsValidPageNum(const PageNum pageNum) const;
-	bool IsValidRID(const RID rid) const;
 	RC IsValid() const;
 };
 

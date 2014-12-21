@@ -392,32 +392,7 @@ RC RM_FileHandle::UpdateRec(const RM_Record &rec) {
 // Forces a page (along with any contents stored in this class)
 // from the buffer pool to disk. Default value forces all pages.
 RC RM_FileHandle::ForcePages(PageNum pageNum) {
-	return (!this->IsValidPageNum(pageNum) && pageNum != ALL_PAGES) ?
-			RM_BAD_RID : pf_FileHandle->ForcePages(pageNum);
-}
-
-//
-// IsValidPageNum
-//
-// Desc: Internal. Return TRUE if pageNum is a valid page number
-// in the file, FALSE otherwise
-// In: pageNum - page number to test
-// Ret: TRUE or FALSE
-//
-bool RM_FileHandle::IsValidPageNum(const PageNum pageNum) const {
-    return (bFileOpen && pageNum >= 0 && pageNum < fileHeader.getPagesNumber());
-}
-
-//
-// IsValidRID
-//
-//
-bool RM_FileHandle::IsValidRID(const RID rid) const {
-	PageNum p;
-	SlotNum s;
-	rid.GetPageNum(p);
-	rid.GetSlotNum(s);
-	return IsValidPageNum(p) && s >= 0 && s < this->GetNumSlots();
+    return pf_FileHandle->ForcePages(pageNum);
 }
 
 //Checks the fileHandle itself
