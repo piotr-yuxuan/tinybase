@@ -14,9 +14,9 @@ RM_FileHandle::RM_FileHandle() :
 
 //Opens the RM_FileHandle with a given PF_FileHandle pointer
 RC RM_FileHandle::Open(PF_FileHandle* pfh, int size) {
-	if (bFileOpen || pf_FileHandle != NULL) {
-		return RM_HANDLEOPEN;
-	}
+    if (bFileOpen || pf_FileHandle != NULL) {
+        return RM_HANDLEOPEN;
+    }
 
     if (pfh == NULL) {
         return RM_NULLPOINTER;
@@ -151,7 +151,7 @@ RC RM_FileHandle::GetPageHeader(PF_PageHandle ph,
 	return rc;
 }
 
-//Writes the header page to pageHeader
+//Writes pageHeader to the page handled by ph
 RC RM_FileHandle::SetPageHeader(PF_PageHandle ph,
 		const RM_PageHeader& pageHeader) {
 	char * buf;
@@ -176,7 +176,7 @@ RC RM_FileHandle::GetFileHeader(PF_PageHandle ph) {
     return 0;
 }
 
-// persist header into the first page of a file for later
+// Writes the fileHeader attribute into ph (should be the first page of the file)
 RC RM_FileHandle::SetFileHeader(PF_PageHandle ph) const {
     char * buf;
     RC rc(0);
@@ -235,11 +235,23 @@ RM_FileHandle::~RM_FileHandle() {
 
 // Given a RID, return the record
 RC RM_FileHandle::GetRec(const RID &rid, RM_Record &rec) const {
+    //Checks file is open
+    if(!this->bFileOpen){
+        return RM_CLOSEDFILE;
+    }
 
 	PageNum p;
 	SlotNum s;
 	rid.GetPageNum(p);
 	rid.GetSlotNum(s);
+    //Tests RID
+    if(p==-1 && s==-1){
+        return RM_INVIABLERID;
+    }
+    if(s<0 || s>=this->GetNumSlots()){
+        return RM_INVALIDSLOTNUM;
+    }
+
 	RC rc = 0;
 	PF_PageHandle ph;
 	RM_PageHeader pageHeader(this->GetNumSlots());
@@ -250,7 +262,7 @@ RC RM_FileHandle::GetRec(const RID &rid, RM_Record &rec) const {
 	}
 
     if (pageHeader.freeSlots.test(s)) { // already free
-		return RM_NORECATRID;
+        return RM_RECORDNOTFOUND;
 	}
 
 	char * pData = NULL;
@@ -297,6 +309,7 @@ RC RM_FileHandle::InsertRec(const char *pData, RID &rid) {
         pageHeader.setNextFreePage(RM_PAGE_FULLY_USED);
 	}
 
+    //Writes pageHeader into page handled by ph
     rc = this->SetPageHeader(ph, pageHeader);
 	return rc;
 }
@@ -344,6 +357,9 @@ RC RM_FileHandle::UpdateRec(const RM_Record &rec) {
 	SlotNum s;
 	rid.GetPageNum(p);
 	rid.GetSlotNum(s);
+    if(p==-1 && s==-1){
+        return RM_UNREADRECORD;
+    }
 	PF_PageHandle ph;
 	char * pSlot;
 	RC rc = 0;
@@ -358,7 +374,7 @@ RC RM_FileHandle::UpdateRec(const RM_Record &rec) {
 	}
 
     if (pageHeader.freeSlots.test(s)) { // free - cannot update
-		return RM_NORECATRID;
+        return RM_RECORDNOTFOUND;
 	}
 
 	char * pData = NULL;

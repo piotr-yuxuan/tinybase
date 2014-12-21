@@ -28,11 +28,11 @@ RC RM_Manager::CreateFile(const char *fileName, int recordSize) {
 
 	//First makes sur recordSize is a strictly positive integer
 	if (recordSize <= 0) {
-		return RM_NEGATIVERECSIZE;
+        return RM_INVALIDRECSIZE;
 	}
 	//Then just in case recordSize were too big
 	if (recordSize >= PF_PAGE_SIZE - pageHeader.size()) {
-		return RM_RECORDTOOBIG;
+        return RM_INVALIDRECSIZE;
 	}
 
 	//Creates the file in PageFile
@@ -112,7 +112,7 @@ RC RM_Manager::DestroyFile(const char *fileName) {
 	//Handles destruction at the lower level ie PF
 	if ((RC = pfm.DestroyFile(fileName)) < 0) {
 		PF_PrintError(RC);
-		return RM_PFERROR;
+        return RC;
 	}
 
 	return 0;
@@ -125,11 +125,11 @@ RC RM_Manager::OpenFile(const char *fileName, RM_FileHandle &fileHandle) {
 	char * pData;
 	RM_FileHeader hdr;
 
-	RC rc = pfm.OpenFile(fileName, pfh);
-
-	if (rc < 0) {
+    RC rc(0);
+    fileHandle.GetPF_FileHandle(pfh);
+    if( (rc = pfm.OpenFile(fileName, pfh)) ) {
 		PF_PrintError(rc);
-		return RM_PFERROR;
+        return rc;
 	}
 	// header page is at 0
 
@@ -164,11 +164,14 @@ RC RM_Manager::CloseFile(RM_FileHandle& fileHandle) {
 	RC rc;
 	PF_PageHandle ph;
 
-	//pif is the PF_FileHandle associated with fileHandle
-	PF_FileHandle pif;
-	if ((rc = fileHandle.GetPF_FileHandle(pif)) < 0) {
+
+    //pif is the PF_FileHandle associated with fileHandle (reference)
+    PF_FileHandle& pif = *(fileHandle.pf_FileHandle);
+
+    /*Old version
+     *if ((rc = fileHandle.GetPF_FileHandle(pif)) < 0) {
 		return rc;
-	}
+    }*/
 
 	// If header was modified, put the first page into buffer again,
 	// and update its contents, marking the page as dirty
@@ -196,7 +199,8 @@ RC RM_Manager::CloseFile(RM_FileHandle& fileHandle) {
 	}
 
 	// Close the file
-	if ((rc = pfm.CloseFile(pif)) < 0) {
+    fileHandle.bFileOpen = false;
+    if ( (rc = pfm.CloseFile(pif)) ) {
 		return rc;
 	}
 

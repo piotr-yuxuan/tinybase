@@ -34,6 +34,21 @@ RC RM_FileScan::OpenScan(const RM_FileHandle &fileHandle,
                          void *value,
                          ClientHint pinHint)
 {
+    //Checks fileHandle is open
+    if( !fileHandle.bFileOpen ){
+        return RM_CLOSEDFILE;
+    }
+
+    //Checks value is not null
+    if( value==NULL ){
+        return RM_NULLPOINTER;
+    }
+
+    //Checks the offset is positive
+    if( attrOffset < 0 ){
+        return RM_INVALIDATTR;
+    }
+
     //If already open we return a warning
     if(this->scaning){
        return RM_SCANOPEN;
@@ -55,7 +70,7 @@ RC RM_FileScan::OpenScan(const RM_FileHandle &fileHandle,
             return RM_INVALIDATTR;
         }
         //Checks the comparison operator
-        if(compOp<EQ_OP || compOp>GE_OP){
+        if(compOp<NO_OP || compOp>GE_OP){
             return RM_INVALIDCOMPOP;
         }
         //Checks the attributes
@@ -68,7 +83,7 @@ RC RM_FileScan::OpenScan(const RM_FileHandle &fileHandle,
         }
         //Checks the offset is not larger than record size
         if(attrOffset >= fileHandle.getRecordSize() || attrOffset<0){
-            return RM_FSCREATEFAIL;
+            return RM_INVALIDATTR;
         }
     }
 
@@ -83,6 +98,10 @@ RC RM_FileScan::GetNextRec(RM_Record &rec){
     //Makes sure scan is open
     if(!this->scaning){
         return RM_CLOSEDSCAN;
+    }
+    //Makes sure file is open
+    if(!this->fileHandle->bFileOpen){
+        return RM_CLOSEDFILE;
     }
     //Assertions
     assert(this->fileHandle != NULL && this->scaning);

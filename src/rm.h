@@ -146,6 +146,8 @@ private:
 // RM_FileHandle: RM File interface
 //
 class RM_FileHandle {
+    friend class RM_Manager;
+    friend class RM_FileScan;
 public:
 	RM_FileHandle();
 	~RM_FileHandle();
