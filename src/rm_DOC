@@ -70,3 +70,38 @@ size() would be sizeof(RM_PageHeader). RM_PageHeader also has a method called
 getNbFreeSlots() to return the number of slots that are free (and so available
 to store records). This methods just loops through the freeSlots bitmap 
 to count the number of free slots in the page.
+
+
+RM_FileScan class
+-----------------
+**RM_FileScan** provides a way to perform a lookup on the record and will be
+used later when performing queries on the database.
+When its method openScan() is called the parameters are copied into attributes
+and then (once openScan has been called) the client can call the getNextRec()
+method to get the first record of the file that matches the given parameters,
+and so on.
+
+RM_FileScan has a few privates attributes to keep track of the progress in the
+scan. **scaning** is a boolean indicating wheter a scan is opened or not.
+**currentRID** is an RID object which value is changed in the getNextRec()
+method, it allows RM_FileScan to take the lookup back where it left it when
+getNextRec() is called.
+
+And then we also have a private method called **performMatching(char *pData)**
+which is basically the heart of the RM_FileScan class. Indeed performMatching()
+is the method that actually performs the comparison between each record in the
+file and the parameters passed to the openScan() method. To do so, we use a
+switch statement on the **compOp** attribute (the comOp value was copied before
+when openScan was called) and then compare the value pointed by **pData** (
+offseted with the **attrOffset** though) with the **value** atribute (value also
+given when openScan was called).
+
+
+
+
+
+
+
+
+
+
