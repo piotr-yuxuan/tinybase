@@ -3,8 +3,8 @@ Author: Camille TIENNOT
 **Documentation for the Record Management (RM) component**
 
 
-Main idea:
-----------
+Main idea
+---------
 The RM component is a client of the PF component and hence uses its methods and
 classes to open, create, update and destroy files. Each file is made of pages. 
 
@@ -97,10 +97,14 @@ offseted with the **attrOffset** though) with the **value** atribute (value also
 given when openScan was called).
 
 
-
-
-
-
+Testing the RM Component
+------------------------
+The first goal to achieve was to make our RM Component succeed with the two
+testing functions provided in the rm_test.cc file. We encountered several
+error (e.g. SIGSEGV signal). Once bug were corrected we started to implement
+more comprehensive tests. Implemented tests so far are:
+- Test3: Tests the RM_FileScan class by calling VerifyFile(fh, FEW_RECS)
+- Test4: Tests records update in the RM_FileHandle class
 
 
 
