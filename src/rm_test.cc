@@ -66,6 +66,7 @@ RC Test2(void);
 RC Test3(void);
 RC Test4(void);
 RC Test5(void);
+RC Test6(void);
 
 void PrintError(RC rc);
 void LsFile(char *fileName);
@@ -86,14 +87,15 @@ RC GetNextRecScan(RM_FileScan &fs, RM_Record &rec);
 //
 // Array of pointers to the test functions
 //
-#define NUM_TESTS       5               // number of tests
+#define NUM_TESTS       6               // number of tests
 int (*tests[])() =                      // RC doesn't work on some compilers
 {
     Test1,
     Test2,
     Test3,
     Test4,
-    Test5
+    Test5,
+    Test6
 };
 
 //
@@ -633,3 +635,48 @@ RC Test5(void)
     return (0);
 }
 
+
+
+//
+// Test6 just print the content of the file.
+//
+RC Test6(void)
+{
+    RC            rc;
+    RM_FileHandle fh;
+
+    printf("test5 starting ****************\n");
+
+    if ((rc = CreateFile(FILENAME, sizeof(TestRec))) ||
+        (rc = OpenFile(FILENAME, fh)) ||
+        (rc = AddRecs(fh, FEW_RECS)))
+        return (rc);
+
+
+    //Opens a FileScan to go through the records
+    RID       rid;
+    RM_Record rec;
+
+    RM_FileScan fs;
+    if ((rc=fs.OpenScan(fh,INT,sizeof(int),offsetof(TestRec, num),
+                        NO_OP, NULL, NO_HINT)))
+        return (rc);
+
+    if ( (rc=PrintFile(fs)) ) {
+        return rc;
+    }
+
+    if ((rc=fs.CloseScan()))
+        return (rc);
+
+    if ((rc = CloseFile(FILENAME, fh)))
+        return (rc);
+
+    LsFile(FILENAME);
+
+    if ((rc = DestroyFile(FILENAME)))
+        return (rc);
+
+    printf("\ntest5 done ********************\n");
+    return (0);
+}

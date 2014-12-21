@@ -105,6 +105,8 @@ error (e.g. SIGSEGV signal). Once bug were corrected we started to implement
 more comprehensive tests. Implemented tests so far are:
 - Test3: Tests the RM_FileScan class by calling VerifyFile(fh, FEW_RECS)
 - Test4: Tests records update in the RM_FileHandle class
+- Test5: Tests record delete in the RM_FileHandle class
+- Test6: Just prints the file using RM_FileScan class
 
 
 
