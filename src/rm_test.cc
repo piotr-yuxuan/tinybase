@@ -65,6 +65,7 @@ RC Test1(void);
 RC Test2(void);
 RC Test3(void);
 RC Test4(void);
+RC Test5(void);
 
 void PrintError(RC rc);
 void LsFile(char *fileName);
@@ -85,13 +86,14 @@ RC GetNextRecScan(RM_FileScan &fs, RM_Record &rec);
 //
 // Array of pointers to the test functions
 //
-#define NUM_TESTS       4               // number of tests
+#define NUM_TESTS       5               // number of tests
 int (*tests[])() =                      // RC doesn't work on some compilers
 {
     Test1,
     Test2,
     Test3,
-    Test4
+    Test4,
+    Test5
 };
 
 //
@@ -546,11 +548,6 @@ RC Test4(void)
 
 
     //Opens a FileScan to go through the records
-    int       n;
-    TestRec   *pRecBuf;
-    RID       rid;
-    char      stringBuf[STRLEN];
-    char      *found;
     RM_Record rec;
 
     RM_FileScan fs;
@@ -582,3 +579,57 @@ RC Test4(void)
     printf("\ntest4 done ********************\n");
     return (0);
 }
+
+
+//
+// Test5 is meant to test delete records.
+//
+RC Test5(void)
+{
+    RC            rc;
+    RM_FileHandle fh;
+
+    printf("test5 starting ****************\n");
+
+    if ((rc = CreateFile(FILENAME, sizeof(TestRec))) ||
+        (rc = OpenFile(FILENAME, fh)) ||
+        (rc = AddRecs(fh, FEW_RECS)))
+        return (rc);
+
+
+    //Opens a FileScan to go through the records
+    RID       rid;
+    RM_Record rec;
+
+    RM_FileScan fs;
+    if ((rc=fs.OpenScan(fh,INT,sizeof(int),offsetof(TestRec, num),
+                        NO_OP, NULL, NO_HINT)))
+        return (rc);
+
+    // For each record in the file
+    printf("\nTesting delete records\n");
+    for (rc = GetNextRecScan(fs, rec); rc == 0; rc = GetNextRecScan(fs, rec)) {
+        //Gets the rid for the record
+        rec.GetRid(rid);
+        //Deletes the record
+        DeleteRec(fh, rid);
+    }
+
+    if (rc != RM_EOF)
+        printf("Error while scaning the record (last return code should be RM_EOF)\n");
+
+    if ((rc=fs.CloseScan()))
+        return (rc);
+
+    if ((rc = CloseFile(FILENAME, fh)))
+        return (rc);
+
+    LsFile(FILENAME);
+
+    if ((rc = DestroyFile(FILENAME)))
+        return (rc);
+
+    printf("\ntest5 done ********************\n");
+    return (0);
+}
+
