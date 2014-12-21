@@ -64,6 +64,7 @@ RM_Manager rmm(pfm);
 RC Test1(void);
 RC Test2(void);
 RC Test3(void);
+RC Test4(void);
 
 void PrintError(RC rc);
 void LsFile(char *fileName);
@@ -84,12 +85,13 @@ RC GetNextRecScan(RM_FileScan &fs, RM_Record &rec);
 //
 // Array of pointers to the test functions
 //
-#define NUM_TESTS       3               // number of tests
+#define NUM_TESTS       4               // number of tests
 int (*tests[])() =                      // RC doesn't work on some compilers
 {
     Test1,
     Test2,
-    Test3
+    Test3,
+    Test4
 };
 
 //
@@ -524,5 +526,59 @@ RC Test3(void)
         return (rc);
 
     printf("\ntest3 done ********************\n");
+    return (0);
+}
+
+//
+// Test4 is meant to test records update.
+//
+RC Test4(void)
+{
+    RC            rc;
+    RM_FileHandle fh;
+
+    printf("test4 starting ****************\n");
+
+    if ((rc = CreateFile(FILENAME, sizeof(TestRec))) ||
+        (rc = OpenFile(FILENAME, fh)) ||
+        (rc = AddRecs(fh, FEW_RECS)))
+        return (rc);
+
+
+    //Opens a FileScan to go through the records
+    int       n;
+    TestRec   *pRecBuf;
+    RID       rid;
+    char      stringBuf[STRLEN];
+    char      *found;
+    RM_Record rec;
+
+    RM_FileScan fs;
+    if ((rc=fs.OpenScan(fh,INT,sizeof(int),offsetof(TestRec, num),
+                        NO_OP, NULL, NO_HINT)))
+        return (rc);
+
+    // For each record in the file
+    printf("\nTesting record update\n");
+    for (rc = GetNextRecScan(fs, rec); rc == 0; rc = GetNextRecScan(fs, rec)) {
+        //Updates the record
+        UpdateRec(fh, rec);
+    }
+
+    if (rc != RM_EOF)
+        printf("Error while scaning the record (last return code should be RM_EOF)\n");
+
+    if ((rc=fs.CloseScan()))
+        return (rc);
+
+    if ((rc = CloseFile(FILENAME, fh)))
+        return (rc);
+
+    LsFile(FILENAME);
+
+    if ((rc = DestroyFile(FILENAME)))
+        return (rc);
+
+    printf("\ntest4 done ********************\n");
     return (0);
 }

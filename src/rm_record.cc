@@ -42,7 +42,7 @@ RM_Record::~RM_Record()
 RC RM_Record::GetData(char *&pData) const
 {
    // If a record not read
-   if (pData == NULL)
+   if (this->pData == NULL)
       return (RM_UNREADRECORD);
 
    // Set the parameter to this RM_Record's data
