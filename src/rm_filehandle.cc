@@ -118,7 +118,7 @@ RC RM_FileHandle::GetNextFreePage(PageNum& pageNum) {
         }
         
         // Needs to be called everytime GetThisPage is called.
-        if ( (rc = pf_FileHandle->UnpinPage(fileHeader.getFirstFreePage())) } {
+        if ( (rc = pf_FileHandle->UnpinPage(fileHeader.getFirstFreePage())) ) {
         	return rc;
         }
         
@@ -181,7 +181,7 @@ RC RM_FileHandle::GetPageHeader(PF_PageHandle ph,
 	RC rc = 0;
 	
 	// Puts ph to point to the actual data of ph
-	if ( (rc = ph.GetData(buf) ) {
+    if ( (rc = ph.GetData(buf) ) ) {
 		return rc;
 	}
 	
@@ -484,7 +484,7 @@ RC RM_FileHandle::UpdateRec(const RM_Record &rec) {
 	char * pData = NULL;
 
 	// Puts ph to point to the actual data of ph
-	if ( (rc = rec.GetData(pData) ) {
+    if ( (rc = rec.GetData(pData) ) ) {
 		return rc;
 	}
 
