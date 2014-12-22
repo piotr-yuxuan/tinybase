@@ -18,9 +18,12 @@ RC RM_FileHandle::Open(PF_FileHandle* pfh, int size) {
         return RM_HANDLEOPEN;
     }
 
+	// The file handle must be not free.
     if (pfh == NULL) {
         return RM_NULLPOINTER;
 	}
+	
+	// Negative size is inconstitant.
     if (size <= 0){
         return RM_INVALIDRECSIZE;
     }
@@ -30,7 +33,9 @@ RC RM_FileHandle::Open(PF_FileHandle* pfh, int size) {
 	*pf_FileHandle = *pfh;
 	PF_PageHandle ph;
 	pf_FileHandle->GetThisPage(0, ph);
-	// Needs to be called everytime GetThisPage is called.
+	
+	// Must be called everytime GetThisPage is called. The buffer pool pins
+	// pages by default. We unpin it explicitly after setting things up.
 	pf_FileHandle->UnpinPage(0);
 
 	this->GetFileHeader(ph); // write into fileHeader
@@ -98,12 +103,27 @@ RC RM_FileHandle::GetNextFreePage(PageNum& pageNum) {
 	PageNum p;
     if (fileHeader.getFirstFreePage() != RM_PAGE_LIST_END) {
 		// this last page on the free list might actually be full
-		RC rc;
-        if ((rc = pf_FileHandle->GetThisPage(fileHeader.getFirstFreePage(), ph))
-				|| (rc = ph.GetPageNum(p)) || (rc = pf_FileHandle->MarkDirty(p))
-				// Needs to be called everytime GetThisPage is called.
-                || (rc = pf_FileHandle->UnpinPage(fileHeader.getFirstFreePage()))
-				|| (rc = this->GetPageHeader(ph, pageHeader))) {
+        if ( (rc = pf_FileHandle->GetThisPage(fileHeader.getFirstFreePage(), ph)) ) {
+        	return rc;
+        }
+        
+        // Sets p to its actual value.
+        if ( (rc = ph.GetPageNum(p)) ) {
+        	return rc;
+        }
+        
+        // Remembers this page has been altered, so save it before overwriting it.
+        if ( (rc = pf_FileHandle->MarkDirty(p)) ) {
+        	return rc;
+        }
+        
+        // Needs to be called everytime GetThisPage is called.
+        if ( (rc = pf_FileHandle->UnpinPage(fileHeader.getFirstFreePage())) } {
+        	return rc;
+        }
+        
+        // Retrieves the header.
+        if ( (rc = this->GetPageHeader(ph, pageHeader))) {
 			return rc;
 		}
 	}
@@ -112,10 +132,22 @@ RC RM_FileHandle::GetNextFreePage(PageNum& pageNum) {
             || (pageHeader.getNbFreeSlots() == 0)) {
 
 		char *pData;
-		if ((rc = pf_FileHandle->AllocatePage(ph)) || (rc = ph.GetData(pData))
-				|| (rc = ph.GetPageNum(pageNum))) {
+		
+		// Allocate a new page in the file.
+		if ( (rc = pf_FileHandle->AllocatePage(ph)) ) {
 			return (rc);
 		}
+		
+		// Puts ph to point to the actual data of ph.
+		if ( (rc = ph.GetData(pData)) ) {
+			return (rc);
+		}
+		
+		// Get the page number.
+		if ( (rc = ph.GetPageNum(pageNum))) {
+			return (rc);
+		}
+		
 		// Add page header
 		RM_PageHeader pageHeader(this->GetNumSlots());
         pageHeader.setNextFreePage(RM_PAGE_LIST_END);
@@ -132,7 +164,7 @@ RC RM_FileHandle::GetNextFreePage(PageNum& pageNum) {
 
 		// add page to the free list
         fileHeader.setFirstFreePage(pageNum);
-        fileHeader.setPagesNumber(fileHeader.getPagesNumber()+1);
+        fileHeader.setPagesNumber(fileHeader.getPagesNumber() + 1);
 
 		bHdrChanged = true;
 		return 0; // pageNum is set correctly
@@ -146,7 +178,14 @@ RC RM_FileHandle::GetNextFreePage(PageNum& pageNum) {
 RC RM_FileHandle::GetPageHeader(PF_PageHandle ph,
 		RM_PageHeader& pageHeader) const {
 	char * buf;
-	RC rc = ph.GetData(buf);
+	RC rc = 0;
+	
+	// Puts ph to point to the actual data of ph
+	if ( (rc = ph.GetData(buf) ) {
+		return rc;
+	}
+	
+	// Reads header from the buffer.
 	pageHeader.from_buf(buf);
 	return rc;
 }
@@ -156,8 +195,12 @@ RC RM_FileHandle::SetPageHeader(PF_PageHandle ph,
 		const RM_PageHeader& pageHeader) {
 	char * buf;
 	RC rc;
-	if ((rc = ph.GetData(buf)))
+	
+	//Puts ph to point to the actual data of ph
+	if ((rc = ph.GetData(buf))) {
 		return rc;
+	}
+	
 	pageHeader.to_buf(buf);
 	return 0;
 }
@@ -166,9 +209,12 @@ RC RM_FileHandle::SetPageHeader(PF_PageHandle ph,
 RC RM_FileHandle::GetFileHeader(PF_PageHandle ph) {
     char * buf;
     RC rc(0);
+    
+    //Puts ph to point to the actual data of ph
     if( (rc = ph.GetData(buf)) ){
         return rc;
     }
+    
     //Loads the fileHeader from data
     if( (rc = this->fileHeader.from_buf(buf)) ){
         return rc;
@@ -180,9 +226,11 @@ RC RM_FileHandle::GetFileHeader(PF_PageHandle ph) {
 RC RM_FileHandle::SetFileHeader(PF_PageHandle ph) const {
     char * buf;
     RC rc(0);
+    //Puts ph to point to the actual data of ph
     if( (rc = ph.GetData(buf)) ){
         return rc;
     }
+    
     //Loads the fileHeader from data
     if( (rc = this->fileHeader.to_buf(buf)) ){
         return rc;
@@ -197,6 +245,7 @@ RC RM_FileHandle::GetSlotPointer(PF_PageHandle ph, SlotNum s, char *& pData) con
     if (rc < 0) {
         return rc;
     }
+    
     //Offset because of the page header
     pData = pData + (RM_PageHeader(this->GetNumSlots()).size());
     //Offset because of the s slots before the one we want
@@ -210,7 +259,7 @@ int RM_FileHandle::GetNumSlots() const {
 	if (this->getRecordSize() == 0) {
 		return RM_NULLRECORDSIZE;
 	}
-	//Increments slotsNb until we find the max value
+	//Increments slotsNb until we find the max value. It's sure it can be found.
 	int slotsNb = 0;
 	while (1 > 0) {
 		slotsNb++;
@@ -235,15 +284,16 @@ RM_FileHandle::~RM_FileHandle() {
 
 // Given a RID, return the record
 RC RM_FileHandle::GetRec(const RID &rid, RM_Record &rec) const {
+
     //Checks file is open
     if(!this->bFileOpen){
         return RM_CLOSEDFILE;
     }
 
-	PageNum p;
-	SlotNum s;
-	rid.GetPageNum(p);
-	rid.GetSlotNum(s);
+	// Initialize p and s and give them their actual values
+	PageNum p; rid.GetPageNum(p);
+	SlotNum s; rid.GetSlotNum(s);
+
     //Tests RID
     if(p==-1 && s==-1){
         return RM_INVIABLERID;
@@ -255,20 +305,34 @@ RC RM_FileHandle::GetRec(const RID &rid, RM_Record &rec) const {
 	RC rc = 0;
 	PF_PageHandle ph;
 	RM_PageHeader pageHeader(this->GetNumSlots());
-	if ((rc = pf_FileHandle->GetThisPage(p, ph))
-			|| (rc = pf_FileHandle->UnpinPage(p))
-			|| (rc = this->GetPageHeader(ph, pageHeader))) {
+	
+	if ( (rc = pf_FileHandle->GetThisPage(p, ph)) ) {
+		return rc;
+	}
+	
+	// Must be called everytime GetThisPage is called. The buffer pool pins
+	// pages by default. We unpin explicitly after setting things up.
+	if ( (rc = pf_FileHandle->UnpinPage(p)) ) {
+		return rc;
+	}
+	
+	// Loads the header page.
+	if ( (rc = this->GetPageHeader(ph, pageHeader)) ) {
 		return rc;
 	}
 
+	// Is it free?
     if (pageHeader.freeSlots.test(s)) { // already free
         return RM_RECORDNOTFOUND;
 	}
 
 	char * pData = NULL;
+	// Gets pSlot pointing on slot number s in page ph
     if ( (rc = this->GetSlotPointer(ph, s, pData)) ) {
 		return rc;
 	}
+	
+	// Sets the return parameter.
     rec.Set(pData, fileHeader.getRecordSize(), rid);
 	return 0;
 }
@@ -290,21 +354,27 @@ RC RM_FileHandle::InsertRec(const char *pData, RID &rid) {
 		return rc;
 	}
 
-    //
+    // Loads the header page
     if( (rc = this->GetPageHeader(ph, pageHeader)) ) {
         return rc;
     }
 
+	// Gets pSlot pointing on slot number s in page ph
 	if ((rc = this->GetSlotPointer(ph, s, pSlot))) {
 		return rc;
 	}
 
 	rid = RID(p, s);
+	
+	// Copy a record from pData to pSlot.
 	memcpy(pSlot, pData, this->getRecordSize());
-    pageHeader.freeSlots.reset(s); // slot s is no longer free
+	
+	// slot s is no longer free
+    pageHeader.freeSlots.reset(s);
 
+	// If this page has been filled
     if (pageHeader.getNbFreeSlots() == 0) {
-		// remove from free list
+		// remove it from free list
         fileHeader.setFirstFreePage(pageHeader.getNextFreePage());
         pageHeader.setNextFreePage(RM_PAGE_FULLY_USED);
 	}
@@ -316,27 +386,42 @@ RC RM_FileHandle::InsertRec(const char *pData, RID &rid) {
 
 //Deletes a given RID from the file
 RC RM_FileHandle::DeleteRec(const RID &rid) {
-	PageNum p;
-	SlotNum s;
-    //Gives p and s their actual values
-    rid.GetPageNum(p);
-	rid.GetSlotNum(s);
+	// Initialize p and s and give them their actual values
+	PageNum p; rid.GetPageNum(p);
+	SlotNum s; rid.GetSlotNum(s);
+	
 	RC rc = 0;
+	
 	PF_PageHandle ph;
 	RM_PageHeader pageHeader(this->GetNumSlots());
 
-	if ((rc = pf_FileHandle->GetThisPage(p, ph))
-			|| (rc = pf_FileHandle->MarkDirty(p))
-			|| (rc = pf_FileHandle->UnpinPage(p))
-			|| (rc = this->GetPageHeader(ph, pageHeader))) {
+	// ph becomes page handler of the next free page
+	if ( (rc = pf_FileHandle->GetThisPage(p, ph)) ) {
 		return rc;
 	}
-
+	
+	// Remembers this page has been altered, so save it before overwriting it.
+	if ( (rc = pf_FileHandle->MarkDirty(p)) ) {
+		return rc;
+	}
+	
+	// Must be called everytime GetThisPage is called. The buffer pool pins
+	// pages by default. We unpin explicitly after setting things up.
+	if ( (rc = pf_FileHandle->UnpinPage(p)) ) {
+		return rc;
+	}
+	
+	// Loads the header page.
+	if ( (rc = this->GetPageHeader(ph, pageHeader)) ) {
+		return rc;
+	}
+	
     if (pageHeader.freeSlots.test(s)) { // already free
 		return RM_NORECATRID;
 	}
 
     pageHeader.freeSlots.set(s); // s is now free
+    
     if (pageHeader.getNbFreeSlots() == 0) {
 		// this page used to be full and used to not be on the free list
 		// add it to the free list now.
@@ -344,6 +429,7 @@ RC RM_FileHandle::DeleteRec(const RID &rid) {
         fileHeader.setFirstFreePage(p);
 	}
 
+	// Update the header page.
 	rc = this->SetPageHeader(ph, pageHeader);
 
 	return rc;
@@ -351,39 +437,63 @@ RC RM_FileHandle::DeleteRec(const RID &rid) {
 
 //Update a given record in the file
 RC RM_FileHandle::UpdateRec(const RM_Record &rec) {
-	RID rid;
-	rec.GetRid(rid);
-	PageNum p;
-	SlotNum s;
-	rid.GetPageNum(p);
-	rid.GetSlotNum(s);
-    if(p==-1 && s==-1){
+	
+	// Declares and gets the if of the given record.
+	RID rid; rec.GetRid(rid);
+	
+	// Initializes p and s and give them their actual values
+	PageNum p; rid.GetPageNum(p);
+	SlotNum s; rid.GetSlotNum(s);
+    
+    if (p == -1 && s == -1) {
         return RM_UNREADRECORD;
     }
+    
 	PF_PageHandle ph;
 	char * pSlot;
 	RC rc = 0;
 
 	RM_PageHeader pageHeader(this->GetNumSlots());
 
-	if ((rc = pf_FileHandle->GetThisPage(p, ph))
-			|| (rc = pf_FileHandle->MarkDirty(p))
-			|| (rc = pf_FileHandle->UnpinPage(p))
-			|| (rc = this->GetPageHeader(ph, pageHeader))) {
+	// ph becomes page handler of the next free page.
+	if ( (rc = pf_FileHandle->GetThisPage(p, ph)) ) {
+		return rc;
+	}
+	
+	// Remembers this page has been altered, so save it before overwriting it.
+	if ( (rc = pf_FileHandle->MarkDirty(p)) ) {
 		return rc;
 	}
 
+	// Must be called everytime GetThisPage is called. The buffer pool pins
+	// pages by default. We unpin explicitly after setting things up.
+	if ( (rc = pf_FileHandle->UnpinPage(p)) ) {
+		return rc;
+	}
+	
+	// Loads the header page.
+	if ( (rc = this->GetPageHeader(ph, pageHeader)) ) {
+		return rc;
+	}
+
+	// Is it free?
     if (pageHeader.freeSlots.test(s)) { // free - cannot update
         return RM_RECORDNOTFOUND;
 	}
 
 	char * pData = NULL;
-	rec.GetData(pData);
 
+	// Puts ph to point to the actual data of ph
+	if ( (rc = rec.GetData(pData) ) {
+		return rc;
+	}
+
+	// Gets pSlot pointing on slot number s in page ph
     if ( (rc = this->GetSlotPointer(ph, s, pSlot)) ) {
 		return rc;
 	}
 
+	// Performs the copy, updates the record.
 	memcpy(pSlot, pData, this->getRecordSize());
 
 	return rc;
