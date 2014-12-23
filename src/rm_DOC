@@ -90,6 +90,24 @@ to store records). This methods just loops through the freeSlots bitmap
 to count the number of free slots in the page.
 
 
+RM_FileHandle class
+-------------------
+**RM_FileHandle** manipulates records: Insert, delete, update, etc. To use this
+class you must first call its Open() method and pass it a pointer to the
+associated PF_FileHandle object. RM_FileHandle keeps two flags to know if it is
+open and if the header of the open file has been mofified since opening (this
+last flag is usefull for the RM_Manager to know if it has then to write the
+header on disk again).
+
+The **GetNumSlots()** may be a little bit tricky. It creates a nbSlot integer
+with initial value of 0. Then, it starts incrementing it until the size of a
+page with nbSlots slots is greater than PF_PAGE_SIZE. To calculate the size of a
+page with nbSlots slots we need to instanciate a RM_PageHeader with nbSlots as
+parameter and the formula: pageSize = pageHeader.size() + slotsNb * recordSize
+Since this size increases with nbSlots, we will eventualy find the maximum
+number of slots for the page.
+
+
 RM_Manager class
 ----------------
 **RM_Manager** is the top-level class in our RM. It has four methods called
