@@ -22,6 +22,23 @@ page in which at least one slot is free (corresponds to a 1 value in the bitmap
 in the page header).
 
 
+RID class
+---------
+The RID class represents a record identifier. A rid has only two private
+attributes: its page number and its slot number. It has also two methods that
+allow to retrieve this numbers from it: GetPageNum(PageNum &pageNum) and
+GetSlotNum(SlotNum &slotNum). We have also implemented two other methods
+GetPage() and GetSlot() two retrieve them without having to pass an integer as
+parameter of the method.
+
+RID has two constructors, the first one initialize the RID with default page and
+slot numbers: -1 (NULL_PAGE and NULL_SLOT constants).
+
+The isValidRID() method just return true if page and slot numbers are greater
+than 0 and false otherwise. The RID class is widely used in the other RM classes
+and will also be used by other components of Tinybase.
+
+
 Bitmap class
 ------------
 The aim for the Bitmap class is to represent the occupation of slots in a given 
