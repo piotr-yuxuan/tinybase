@@ -29,21 +29,10 @@ static char *RM_WarnMsg[] = {
 };
 
 static char *RM_ErrorMsg[] = {
-  (char*)"Couldn't create the FileScan object",
-  (char*)"File is not open",
-  (char*)"",
-  (char*)"",
-  (char*)"RM_FCREATEFAIL",
-  (char*)"",
-  (char*)"",
-  (char*)"",
-  (char*)"",
-  (char*)"",
-  (char*)"",
-  (char*)"",
-  (char*)"",
-  (char*)"",
-  (char*)""
+  (char*)"FileHandle is already open",
+  (char*)"Invalid number of slots",
+  (char*)"PageFile Error",
+  (char*)"Unix error"
 };
 
 //
