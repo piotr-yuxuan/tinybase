@@ -73,6 +73,20 @@ to store records). This methods just loops through the freeSlots bitmap
 to count the number of free slots in the page.
 
 
+RM_Manager class
+----------------
+**RM_Manager** is the top-level class in our RM. It has four methods called
+CreateFile(), DestroyFile(), OpenFile() and CloseFile(). Their names are very
+explicit. In the implementation of these methods RM_Manager calls the methods of
+its PF_Manager atrribute **pfm**, which it a reference to the PF_Manager object
+passed in the constructor of RM_Manager.
+
+On important thing RM_Manager does in its methods is calling methods of other
+classes such as RM_PageHeader, RM_FileHeader to bufferize them i.e. to write
+them into a buffer. And RM_Manager got the buffer address in the first place
+with its PF_Manager attribute.
+
+
 RM_FileScan class
 -----------------
 **RM_FileScan** provides a way to perform a lookup on the record and will be
@@ -111,8 +125,3 @@ variable called pif. Pif was actually a copy of the pf_FileHandle attribute in
 RM_FileHandle, and as a consequence when we would close pif, the pf_FileHandle
 wasn't actually closed in the RM_FileHandle. So we had to change the code and
 make pif a reference to the pf_FileHandle attribute. That works perfectly now!
-
-
-
-
-

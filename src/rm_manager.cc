@@ -96,12 +96,6 @@ RC RM_Manager::CreateFile(const char *fileName, int recordSize) {
 		return RM_PFERROR;
 	}
 
-	/**RC monFichier = PF_Manager::CreateFile(fileName);
-	 RM_FileHeader* monHeader = new RM_FileHeader();
-	 RM_FileHandle* monGestionnaire = new RM_FileHandle();
-	 monGestionnaire->RM_FileHandle::SetFileHeader(monHeader);
-	 monHeader. */
-
 	return 0;
 }
 
