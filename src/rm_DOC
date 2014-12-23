@@ -8,7 +8,7 @@ classes to open, create, update and destroy files. Each file is made of pages.
 
 The first page of a file is the **header page** which stores some information 
 about the file. The other pages are **data pages** and contain the records 
-themself - and also some information for anagement though.
+themselves - and also some information for management though.
 
 In each data page there is a header section which stores infos such as the next 
 page where there is empty space and a bitmap indicating which slots (see below
@@ -47,7 +47,7 @@ page. Bitmap is used by the RM_PageHeader class as an attribute (see below).
 This class is fairly simple: it has a pointer to an allocated buffer called 
 **bitValues** and each time an instruction is given to the bitmap via the 
 appropriate methods (set, reset, test to respectively put a bit to 1, to 0 or 
-get the value of a bit) it acts on the correponding bit in the buffer. Of not 
+get the value of a bit) it acts on the corresponding bit in the buffer. Of not
 bit is given to the set or reset method then we use C++ method overloading to 
 perform the action on all the bits of the bitmap.
 
@@ -60,7 +60,7 @@ class (see below).
 Header classes
 --------------
 We chose to create two classes called **RM_FileHeader** and **RM_PageHeader**
-to represent respectively the header of a file (i.e its first page) and the
+to represent respectively the header of a file (i.e. its first page) and the
 header of a page. Each class has two methods allow translation between
 class object and bytes :
 
@@ -81,7 +81,7 @@ It has also two int attributes nbSlots and nextFreePage to store respectively
 the number of slots in the page and the number of the next page containing at 
 least one free slot.
 RM_PageHeader has a method size() which returns an integer giving the size in 
-BYTES of the header in the page. Thats means to read the first slot for instance
+BYTES of the header in the page. That means to read the first slot for instance
 you would offset your buffer with the value returned by this size() method. If 
 we had chosen to represent the page header with a struct the equivalent of 
 size() would be sizeof(RM_PageHeader). RM_PageHeader also has a method called 
@@ -114,7 +114,7 @@ method to get the first record of the file that matches the given parameters,
 and so on.
 
 RM_FileScan has a few privates attributes to keep track of the progress in the
-scan. **scaning** is a boolean indicating wheter a scan is opened or not.
+scan. **scaning** is a boolean indicating whether a scan is opened or not.
 **currentRID** is an RID object which value is changed in the getNextRec()
 method, it allows RM_FileScan to take the lookup back where it left it when
 getNextRec() is called.
