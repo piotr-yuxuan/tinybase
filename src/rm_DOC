@@ -1,5 +1,3 @@
-Author: Camille TIENNOT
-
 **Documentation for the Record Management (RM) component**
 
 
@@ -13,8 +11,10 @@ about the file. The other pages are **data pages** and contain the records
 themself - and also some information for anagement though.
 
 In each data page there is a header section which stores infos such as the next 
-page where there is empty space and a bitmap indicating which slots (see blow
-for the definition of a slot) of the page are empty.
+page where there is empty space and a bitmap indicating which slots (see below
+for the definition of a slot) of the page are empty. An integer with the number
+of the next free page is also put in the header (allows to fin an empty slot in
+the file quickly to insert a new record in it)
 
 Then come the slots. All the slots are the same size (size of a record) and the
 RM puts as many slots as possible in a page. A page containing free space is a 
@@ -42,9 +42,10 @@ class (see below).
 
 Header classes
 --------------
-We chose to two classes called RM_FileHeader and RM_PageHeader to represent 
-respectively the header of a file (i.e its first page) and the header of a page.
-Each class has two methods allow translation between class object and bytes :
+We chose to create two classes called **RM_FileHeader** and **RM_PageHeader**
+to represent respectively the header of a file (i.e its first page) and the
+header of a page. Each class has two methods allow translation between
+class object and bytes :
 
     - the **from_buf(const char *& buf)** method allows the header object to
     load from a given buffer
@@ -53,7 +54,7 @@ Each class has two methods allow translation between class object and bytes :
     to a given buffer
 
 **RM_FileHeader** contains three private integer attributes: the number of the
-first free page, the number of pages on the file and the size of the records in
+first free page, the number of pages in the file and the size of the records in
 the file. It also has setters and getters for these three attributes.
 
 **RM_PageHeader** is a little more complex class. Its main attribute is public 
@@ -99,14 +100,18 @@ given when openScan was called).
 
 Testing the RM Component
 ------------------------
-The first goal to achieve was to make our RM Component succeed with the two
-testing functions provided in the rm_test.cc file. We encountered several
-error (e.g. SIGSEGV signal). Once bug were corrected we started to implement
-more comprehensive tests. Implemented tests so far are:
-- Test3: Tests the RM_FileScan class by calling VerifyFile(fh, FEW_RECS)
-- Test4: Tests records update in the RM_FileHandle class
-- Test5: Tests record delete in the RM_FileHandle class
-- Test6: Just prints the file using RM_FileScan class
+When testing our RM component we encountered several errors. Most of them were
+easy to correct but a few errors (such as seqfault) were very hard even with the
+help of a debugger. We also had to normalize our error/warning codes so they are
+the same in every class of the RM.
+Most of the problems we had while debugging our code were related to memory
+allocation, pointers and references.
+For instance in the RM_Manager class, in the CloseFile() method we had a
+variable called pif. Pif was actually a copy of the pf_FileHandle attribute in
+RM_FileHandle, and as a consequence when we would close pif, the pf_FileHandle
+wasn't actually closed in the RM_FileHandle. So we had to change the code and
+make pif a reference to the pf_FileHandle attribute. That works perfectly now!
+
 
 
 
