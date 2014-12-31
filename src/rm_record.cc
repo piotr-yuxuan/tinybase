@@ -1,11 +1,10 @@
 //
 // File:        rm_record.cc
 // Description: RM_Record class implementation
-// Author:      Yixin Huang (yixin.huang@telecom-paristech.fr)
+// Author:      Hyunjung Park (hyunjung@stanford.edu)
 //
 
-
-#include "rm.h"
+#include "rm_internal.h"
 
 // 
 // RM_Record
@@ -14,7 +13,8 @@
 //
 RM_Record::RM_Record()
 {
-   this->pData = NULL;
+   pData = NULL;
+   recordSize = 0;
 }
 
 //
@@ -24,10 +24,8 @@ RM_Record::RM_Record()
 //
 RM_Record::~RM_Record()
 {
-   if(pData != NULL) {
-        delete[] (pData);
-	pData = NULL;
-    }
+   if (pData)
+      delete [] pData;
 }
 
 //
@@ -36,60 +34,39 @@ RM_Record::~RM_Record()
 // Desc: Return data
 //       The record object must refer to read record
 //       (by RM_FileHandle::GetRec() or RM_FileScan::GetNextRec())
-// Out:  pData - set to this record's data
+// Out:  _pData - set to this record's data
 // Ret:  RM_UNREADRECORD
 //
-RC RM_Record::GetData(char *&pData) const
+RC RM_Record::GetData(char *&_pData) const
 {
-   // If a record not read
-   if (this->pData == NULL)
+   // A record should have been read
+   if (pData == NULL)
       return (RM_UNREADRECORD);
 
    // Set the parameter to this RM_Record's data
-   pData = this->pData;
+   _pData = pData;
 
    // Return ok
-   return OK_RC;
+   return (0);
 }
 
 //
-// GetRid
+// GetData
 // 
 // Desc: Return RID
-// Out:  rid - set to this record's record identifier
+// Out:  _rid - set to this record's record identifier
 // Ret:  RM_UNREADRECORD
 //
-RC RM_Record::GetRid(RID &rid) const
+RC RM_Record::GetRid(RID &_rid) const
 {
-   // If a record not read
+   // A record should have been read
    if (pData == NULL)
       return (RM_UNREADRECORD);
 
    // Set the parameter to this RM_Record's record identifier
-   rid = this->rid;
+   _rid = rid;
 
    // Return ok
-   return OK_RC;
+   return (0);
 }
 
-//
-//Desc:Set the contents of this record object with specified data and RID.
-//     the RID must be a valid RID.
-//
-RC RM_Record::Set(char *pData, int size, RID rid){
-
-  if(rid.isValidRID())
-    return RM_INVIABLERID;
-
-  if(size <= 0 )
-    return RM_INVALIDRECSIZE;
-
-  if(pData == NULL)
-    return RM_RECORDNOTFOUND;
-
-  this->rid = rid;
-	if (this->pData == NULL)
-		this->pData = new char[size];
-  memcpy(this->pData, pData, size);
-	return 0;
-}
