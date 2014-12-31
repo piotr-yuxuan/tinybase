@@ -67,7 +67,7 @@ RC RM_Manager::CreateFile(const char *fileName, int recordSize) {
 	}
 
 	RM_FileHeader fileHeader;
-	fileHeader.setFirstFreePage(RM_PAGE_LIST_END);
+    fileHeader.setFirstFreePage(RM_PAGES_END);
 	fileHeader.setPagesNumber(1); // hdr page
 	fileHeader.setRecordSize(recordSize);
 

@@ -116,6 +116,10 @@ private:
 //
 // RM_FileHeader: a class to represent the header of a file (not to be mistaken with the header of a page)
 //
+//Two const to tell when the page is fully used and when the list of pages ends
+#define RM_PAGE_FULL  -1
+#define RM_PAGES_END  -2
+
 class RM_FileHeader {
 public:
 	//Constructor takes the number of slots as a parameter
@@ -268,22 +272,10 @@ void RM_PrintError(RC rc);
 //
 // Error codes
 //
-#define RM_FSCREATEFAIL     (START_RM_ERR - 0) // couldn't create the FileScan object
-#define RM_FILENOTOPEN      (START_RM_ERR - 1) // File is not open
-#define RM_PAGE_LIST_END    (START_RM_ERR - 2)
-#define RM_HANDLEOPEN       (START_RM_ERR - 3)
-#define RM_FCREATEFAIL      (START_RM_ERR - 4)
-#define RM_NORECATRID       (START_RM_ERR - 5)
-#define RM_NULLRECORD       (START_RM_ERR - 6)
-#define RM_PAGE_FULLY_USED  (START_RM_ERR - 7)
-#define RM_BAD_RID          (START_RM_ERR - 8)
-#define RM_FNOTOPEN         (START_RM_ERR - 9)
-#define RM_RECSIZEMISMATCH  (START_RM_ERR - 10)
-#define RM_NULLRECORDSIZE   (START_RM_ERR - 11)
-#define RM_PFERROR          (START_RM_ERR - 12)
-#define RM_RECORDTOOBIG     (START_RM_ERR -13)
-#define RM_NEGATIVERECSIZE  (START_RM_ERR -14)
-#define RM_UNIX             (START_RM_ERR - 15) // Unix error
+#define RM_HANDLEOPEN       (START_RM_ERR - 1) // FileHandle is already open
+#define RM_RECSIZEMISMATCH  (START_RM_ERR - 2) // Invalid number of slots
+#define RM_PFERROR          (START_RM_ERR - 3) // PageFile Error
+#define RM_UNIX             (START_RM_ERR - 4) // Unix error
 #define RM_LASTERROR        RM_UNIX
 
 #endif
