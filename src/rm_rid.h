@@ -27,21 +27,26 @@ typedef int SlotNum;
 //
 class RID {
 public:
-    RID();                                         // Default constructor
-    RID(PageNum pageNum, SlotNum slotNum);
-    ~RID();                                        // Destructor
-    RID& operator=(const RID &rid);                // Overloaded =
-    bool operator==(const RID &rid) const ;        // Overloaded ==
+	RID();                                         // Default constructor
+	RID(PageNum pageNum, SlotNum slotNum);
+	~RID();                                        // Destructor
+	RID& operator=(const RID &rid);                // Overloaded =
+	// Why not `!=`?
+	bool operator==(const RID &rid) const;         // Overloaded ==
+	bool operator<=(const RID &rid) const;         // Overloaded <=
+	bool operator<(const RID &rid) const;          // Overloaded <
+	bool operator>(const RID &rid) const;          // Overloaded >
+	bool operator>=(const RID &rid) const;         // Overloaded >=
 
-    RC GetPageNum(PageNum &pageNum) const;         // Return page number
-    RC GetSlotNum(SlotNum &slotNum) const;         // Return slot number
+	RC GetPageNum(PageNum &pageNum) const;         // Return page number
+	RC GetSlotNum(SlotNum &slotNum) const;         // Return slot number
 
 private:
-    // Copy constructor
-    RID(const RID &rid);
+	// Copy constructor
+	RID(const RID &rid);
 
-    PageNum pageNum;
-    SlotNum slotNum;
+	PageNum pageNum;
+	SlotNum slotNum;
 };
 
 #endif

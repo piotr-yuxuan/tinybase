@@ -26,77 +26,77 @@
 // RM_Record: RM Record interface
 //
 class RM_Record {
-    friend class RM_FileHandle;
-    friend class RM_FileScan;
+	friend class RM_FileHandle;
+	friend class RM_FileScan;
 public:
-    RM_Record ();
-    ~RM_Record();
+	RM_Record();
+	~RM_Record();
 
-    // Return the data corresponding to the record.  Sets *pData to the
-    // record contents.
-    RC GetData(char *&pData) const;
+	// Return the data corresponding to the record.  Sets *pData to the
+	// record contents.
+	RC GetData(char *&pData) const;
 
-    // Return the RID associated with the record
-    RC GetRid (RID &rid) const;
+	// Return the RID associated with the record
+	RC GetRid(RID &rid) const;
 
 private:
-    // Copy constructor
-    RM_Record  (const RM_Record &record);
-    // Overloaded =
-    RM_Record& operator=(const RM_Record &record);
+	// Copy constructor
+	RM_Record(const RM_Record &record);
+	// Overloaded =
+	RM_Record& operator=(const RM_Record &record);
 
-    char *pData;
-    int  recordSize;
-    RID  rid;
+	char *pData;
+	int recordSize;
+	RID rid;
 };
 
 //
 // RM_FileHdr: Header structure for files
 //
 struct RM_FileHdr {
-    PageNum firstFree;     // first free page in the linked list
-    int recordSize;        // fixed record size
-    int numRecordsPerPage; // # of records in each page
-    int pageHeaderSize;    // page header size
-    int numRecords;        // # of pages in the file
+	PageNum firstFree;     // first free page in the linked list
+	int recordSize;        // fixed record size
+	int numRecordsPerPage; // # of records in each page
+	int pageHeaderSize;    // page header size
+	int numRecords;        // # of pages in the file
 };
 
 //
 // RM_FileHandle: RM File interface
 //
 class RM_FileHandle {
-    friend class RM_Manager;
-    friend class RM_FileScan;
+	friend class RM_Manager;
+	friend class RM_FileScan;
 public:
-    RM_FileHandle ();
-    ~RM_FileHandle();
+	RM_FileHandle();
+	~RM_FileHandle();
 
-    // Given a RID, return the record
-    RC GetRec     (const RID &rid, RM_Record &rec) const;
+	// Given a RID, return the record
+	RC GetRec(const RID &rid, RM_Record &rec) const;
 
-    RC InsertRec  (const char *pData, RID &rid);       // Insert a new record
+	RC InsertRec(const char *pData, RID &rid);       // Insert a new record
 
-    RC DeleteRec  (const RID &rid);                    // Delete a record
-    RC UpdateRec  (const RM_Record &rec);              // Update a record
+	RC DeleteRec(const RID &rid);                    // Delete a record
+	RC UpdateRec(const RM_Record &rec);              // Update a record
 
-    // Forces a page (along with any contents stored in this class)
-    // from the buffer pool to disk.  Default value forces all pages.
-    RC ForcePages (PageNum pageNum = ALL_PAGES);
+	// Forces a page (along with any contents stored in this class)
+	// from the buffer pool to disk.  Default value forces all pages.
+	RC ForcePages(PageNum pageNum = ALL_PAGES);
 
 private:
-    // Copy constructor
-    RM_FileHandle  (const RM_FileHandle &fileHandle);
-    // Overloaded =
-    RM_FileHandle& operator=(const RM_FileHandle &fileHandle);
+	// Copy constructor
+	RM_FileHandle(const RM_FileHandle &fileHandle);
+	// Overloaded =
+	RM_FileHandle& operator=(const RM_FileHandle &fileHandle);
 
-    // Bitmap Manipulation
-    int GetBitmap  (char *map, int idx) const;
-    void SetBitmap (char *map, int idx) const;
-    void ClrBitmap (char *map, int idx) const;
+	// Bitmap Manipulation
+	int GetBitmap(char *map, int idx) const;
+	void SetBitmap(char *map, int idx) const;
+	void ClrBitmap(char *map, int idx) const;
 
-    PF_FileHandle pfFileHandle;
-    RM_FileHdr fileHdr;                                   // file header
-    int bHdrChanged;                                      // dirty flag for file hdr
+	PF_FileHandle pfFileHandle;
+	RM_FileHdr fileHdr;                                   // file header
+	int bHdrChanged;                                  // dirty flag for file hdr
 };
 
 //
@@ -104,38 +104,34 @@ private:
 //
 class RM_FileScan {
 public:
-    RM_FileScan  ();
-    ~RM_FileScan ();
+	RM_FileScan();
+	~RM_FileScan();
 
-    RC OpenScan  (const RM_FileHandle &fileHandle,
-                  AttrType   attrType,
-                  int        attrLength,
-                  int        attrOffset,
-                  CompOp     compOp,
-                  void       *value,
-                  ClientHint pinHint = NO_HINT); // Initialize a file scan
-    RC GetNextRec(RM_Record &rec);               // Get next matching record
-    RC CloseScan ();                             // Close the scan
+	RC OpenScan(const RM_FileHandle &fileHandle, AttrType attrType,
+			int attrLength, int attrOffset, CompOp compOp, void *value,
+			ClientHint pinHint = NO_HINT); // Initialize a file scan
+	RC GetNextRec(RM_Record &rec);               // Get next matching record
+	RC CloseScan();                             // Close the scan
 
 private:
-    // Copy constructor
-    RM_FileScan   (const RM_FileScan &fileScan);
-    // Overloaded =
-    RM_FileScan&  operator=(const RM_FileScan &fileScan);
+	// Copy constructor
+	RM_FileScan(const RM_FileScan &fileScan);
+	// Overloaded =
+	RM_FileScan& operator=(const RM_FileScan &fileScan);
 
-    void FindNextRecInCurPage(char *pData);
+	void FindNextRecInCurPage(char *pData);
 
-    int bScanOpen;
-    PageNum curPageNum;
-    SlotNum curSlotNum;
+	int bScanOpen;
+	PageNum curPageNum;
+	SlotNum curSlotNum;
 
-    RM_FileHandle *pFileHandle;
-    AttrType attrType;
-    int attrLength;
-    int attrOffset;
-    CompOp compOp;
-    void *value;
-    ClientHint pinHint;
+	RM_FileHandle *pFileHandle;
+	AttrType attrType;
+	int attrLength;
+	int attrOffset;
+	CompOp compOp;
+	void *value;
+	ClientHint pinHint;
 };
 
 //
@@ -143,22 +139,22 @@ private:
 //
 class RM_Manager {
 public:
-    RM_Manager    (PF_Manager &pfm);
-    ~RM_Manager   ();
+	RM_Manager(PF_Manager &pfm);
+	~RM_Manager();
 
-    RC CreateFile (const char *fileName, int recordSize);
-    RC DestroyFile(const char *fileName);
-    RC OpenFile   (const char *fileName, RM_FileHandle &fileHandle);
+	RC CreateFile(const char *fileName, int recordSize);
+	RC DestroyFile(const char *fileName);
+	RC OpenFile(const char *fileName, RM_FileHandle &fileHandle);
 
-    RC CloseFile  (RM_FileHandle &fileHandle);
+	RC CloseFile(RM_FileHandle &fileHandle);
 
 private:
-    // Copy constructor
-    RM_Manager     (const RM_Manager &manager);
-    // Overloaded =
-    RM_Manager&    operator=(const RM_Manager &manager);
+	// Copy constructor
+	RM_Manager(const RM_Manager &manager);
+	// Overloaded =
+	RM_Manager& operator=(const RM_Manager &manager);
 
-    PF_Manager *pPfm;
+	PF_Manager *pPfm;
 };
 
 //

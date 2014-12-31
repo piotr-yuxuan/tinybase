@@ -11,10 +11,9 @@
 //
 // Desc: Default Constructor
 //
-RM_Record::RM_Record()
-{
-   pData = NULL;
-   recordSize = 0;
+RM_Record::RM_Record() {
+	pData = NULL;
+	recordSize = 0;
 }
 
 //
@@ -22,10 +21,9 @@ RM_Record::RM_Record()
 // 
 // Desc: Destructor
 //
-RM_Record::~RM_Record()
-{
-   if (pData)
-      delete [] pData;
+RM_Record::~RM_Record() {
+	if (pData)
+		delete[] pData;
 }
 
 //
@@ -37,17 +35,16 @@ RM_Record::~RM_Record()
 // Out:  _pData - set to this record's data
 // Ret:  RM_UNREADRECORD
 //
-RC RM_Record::GetData(char *&_pData) const
-{
-   // A record should have been read
-   if (pData == NULL)
-      return (RM_UNREADRECORD);
+RC RM_Record::GetData(char *&_pData) const {
+	// A record should have been read
+	if (pData == NULL)
+		return (RM_UNREADRECORD);
 
-   // Set the parameter to this RM_Record's data
-   _pData = pData;
+	// Set the parameter to this RM_Record's data
+	_pData = pData;
 
-   // Return ok
-   return (0);
+	// Return ok
+	return (0);
 }
 
 //
@@ -57,16 +54,15 @@ RC RM_Record::GetData(char *&_pData) const
 // Out:  _rid - set to this record's record identifier
 // Ret:  RM_UNREADRECORD
 //
-RC RM_Record::GetRid(RID &_rid) const
-{
-   // A record should have been read
-   if (pData == NULL)
-      return (RM_UNREADRECORD);
+RC RM_Record::GetRid(RID &_rid) const {
+	// A record should have been read
+	if (pData == NULL)
+		return (RM_UNREADRECORD);
 
-   // Set the parameter to this RM_Record's record identifier
-   _rid = rid;
+	// Set the parameter to this RM_Record's record identifier
+	_rid = rid;
 
-   // Return ok
-   return (0);
+	// Return ok
+	return (0);
 }
 

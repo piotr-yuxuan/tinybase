@@ -11,12 +11,11 @@
 //
 // Desc: Default constructor 
 //
-RM_FileHandle::RM_FileHandle()
-{
-   // Initialize member variables
-   bHdrChanged = FALSE;
-   memset(&fileHdr, 0, sizeof(fileHdr));
-   fileHdr.firstFree = RM_PAGE_LIST_END;
+RM_FileHandle::RM_FileHandle() {
+	// Initialize member variables
+	bHdrChanged = FALSE;
+	memset(&fileHdr, 0, sizeof(fileHdr));
+	fileHdr.firstFree = RM_PAGE_LIST_END;
 }
 
 //
@@ -24,9 +23,8 @@ RM_FileHandle::RM_FileHandle()
 //
 // Desc: Destructor
 //
-RM_FileHandle::~RM_FileHandle()
-{
-   // Don't need to do anything
+RM_FileHandle::~RM_FileHandle() {
+	// Don't need to do anything
 }
 
 //
@@ -37,71 +35,69 @@ RM_FileHandle::~RM_FileHandle()
 // Out:  rec - 
 // Ret:  RM return code
 //
-RC RM_FileHandle::GetRec(const RID &rid, RM_Record &rec) const
-{
-   RC rc;
-   PageNum pageNum;
-   SlotNum slotNum;
-   PF_PageHandle pageHandle;
-   char *pData;
+RC RM_FileHandle::GetRec(const RID &rid, RM_Record &rec) const {
+	RC rc;
+	PageNum pageNum;
+	SlotNum slotNum;
+	PF_PageHandle pageHandle;
+	char *pData;
 
-   // Extract page number from rid
-   if (rc = rid.GetPageNum(pageNum))
-      // Test: inviable rid
-      goto err_return;
+	// Extract page number from rid
+	if (rc = rid.GetPageNum(pageNum))
+		// Test: inviable rid
+		goto err_return;
 
-   // Extract slot number from rid
-   if (rc = rid.GetSlotNum(slotNum))
-      // Should not happen
-      goto err_return;
+	// Extract slot number from rid
+	if (rc = rid.GetSlotNum(slotNum))
+		// Should not happen
+		goto err_return;
 
-   // Sanity Check: slotNum bound check
-   // Note that PF_FileHandle.GetThisPage() will take care of pageNum
-   if (slotNum >= fileHdr.numRecordsPerPage || slotNum < 0)
-      // Test: rid with invalid slotNum
-      return (RM_INVALIDSLOTNUM);
-   
-   // Get the page where rid points
-   if (rc = pfFileHandle.GetThisPage(pageNum, pageHandle))
-      // Test: rid with invalid pageNum
-      goto err_return;
+	// Sanity Check: slotNum bound check
+	// Note that PF_FileHandle.GetThisPage() will take care of pageNum
+	if (slotNum >= fileHdr.numRecordsPerPage || slotNum < 0)
+		// Test: rid with invalid slotNum
+		return (RM_INVALIDSLOTNUM);
 
-   // Get the data
-   if (rc = pageHandle.GetData(pData))
-      // Should not happen
-      goto err_unpin;
+	// Get the page where rid points
+	if (rc = pfFileHandle.GetThisPage(pageNum, pageHandle))
+		// Test: rid with invalid pageNum
+		goto err_return;
 
-   // Sanity Check: a record corresponding to rid should exist
-   if (!GetBitmap(pData + sizeof(RM_PageHdr), slotNum)) {
-      // Test: non-existing rid
-      pfFileHandle.UnpinPage(pageNum);
-      return (RM_RECORDNOTFOUND);
-   }
+	// Get the data
+	if (rc = pageHandle.GetData(pData))
+		// Should not happen
+		goto err_unpin;
 
-   // Copy the record to RM_Record
-   rec.rid = rid;
-   if (rec.pData)
-      delete [] rec.pData;
-   rec.recordSize = fileHdr.recordSize;
-   rec.pData = new char[rec.recordSize];
-   memcpy(rec.pData,
-          pData + fileHdr.pageHeaderSize + slotNum * fileHdr.recordSize, 
-          fileHdr.recordSize);
+	// Sanity Check: a record corresponding to rid should exist
+	if (!GetBitmap(pData + sizeof(RM_PageHdr), slotNum)) {
+		// Test: non-existing rid
+		pfFileHandle.UnpinPage(pageNum);
+		return (RM_RECORDNOTFOUND);
+	}
 
-   // Unpin the page
-   if (rc = pfFileHandle.UnpinPage(pageNum))
-      // Should not happen
-      goto err_return;
+	// Copy the record to RM_Record
+	rec.rid = rid;
+	if (rec.pData)
+		delete[] rec.pData;
+	rec.recordSize = fileHdr.recordSize;
+	rec.pData = new char[rec.recordSize];
+	memcpy(rec.pData,
+			pData + fileHdr.pageHeaderSize + slotNum * fileHdr.recordSize,
+			fileHdr.recordSize);
 
-   // Return ok
-   return (0);
+	// Unpin the page
+	if (rc = pfFileHandle.UnpinPage(pageNum))
+		// Should not happen
+		goto err_return;
 
-   // Recover from inconsistent state due to unexpected error
-err_unpin:
-   pfFileHandle.UnpinPage(pageNum);
-err_return:
-   // Return error
-   return (rc);
+	// Return ok
+	return (0);
+
+	// Recover from inconsistent state due to unexpected error
+	err_unpin: pfFileHandle.UnpinPage(pageNum);
+	err_return:
+	// Return error
+	return (rc);
 }
 
 //
@@ -112,119 +108,117 @@ err_return:
 // Out:  rid - 
 // Ret:  RM return code
 //
-RC RM_FileHandle::InsertRec(const char *pRecordData, RID &rid)
-{
-   RC rc;
-   PageNum pageNum;
-   SlotNum slotNum;
-   PF_PageHandle pageHandle;
-   char *pData;
-   RID *pRid;
+RC RM_FileHandle::InsertRec(const char *pRecordData, RID &rid) {
+	RC rc;
+	PageNum pageNum;
+	SlotNum slotNum;
+	PF_PageHandle pageHandle;
+	char *pData;
+	RID *pRid;
 
-   // Sanity Check: pRecordData must not be NULL
-   if (pRecordData == NULL)
-      return (RM_NULLPOINTER);
- 
-   // Allocate a new page if free page list is empty
-   if (fileHdr.firstFree == RM_PAGE_LIST_END) {
-      // Call PF_FileHandle::AllocatePage()
-      if (rc = pfFileHandle.AllocatePage(pageHandle))
-         // Unopened file handle
-         goto err_return;
+	// Sanity Check: pRecordData must not be NULL
+	if (pRecordData == NULL)
+		return (RM_NULLPOINTER);
 
-      // Get page number
-      if (rc = pageHandle.GetPageNum(pageNum))
-         // Should not happen
-         goto err_unpin;
+	// Allocate a new page if free page list is empty
+	if (fileHdr.firstFree == RM_PAGE_LIST_END) {
+		// Call PF_FileHandle::AllocatePage()
+		if (rc = pfFileHandle.AllocatePage(pageHandle))
+			// Unopened file handle
+			goto err_return;
 
-      // Get data pointer
-      if (rc = pageHandle.GetData(pData))
-         // Should not happen
-         goto err_unpin;
+		// Get page number
+		if (rc = pageHandle.GetPageNum(pageNum))
+			// Should not happen
+			goto err_unpin;
 
-      // Set page header
-      // Note that allocated page was already zeroed out
-      // (We don't have to initialize the bitmap)
-      ((RM_PageHdr *)pData)->nextFree = RM_PAGE_LIST_END;
+		// Get data pointer
+		if (rc = pageHandle.GetData(pData))
+			// Should not happen
+			goto err_unpin;
 
-      // Mark the page dirty since we changed the next pointer
-      if (rc = pfFileHandle.MarkDirty(pageNum))
-         // Should not happen
-         goto err_unpin;
+		// Set page header
+		// Note that allocated page was already zeroed out
+		// (We don't have to initialize the bitmap)
+		((RM_PageHdr *) pData)->nextFree = RM_PAGE_LIST_END;
 
-      // Unpin the page
-      if (rc = pfFileHandle.UnpinPage(pageNum))
-         // Should not happen
-         goto err_return;
+		// Mark the page dirty since we changed the next pointer
+		if (rc = pfFileHandle.MarkDirty(pageNum))
+			// Should not happen
+			goto err_unpin;
 
-      // Place into the free page list
-      fileHdr.firstFree = pageNum;
-      bHdrChanged = TRUE;
-   }
-   // Pick the first page on the list
-   else {
-      pageNum = fileHdr.firstFree;
-   }
+		// Unpin the page
+		if (rc = pfFileHandle.UnpinPage(pageNum))
+			// Should not happen
+			goto err_return;
 
-   // Pin the page where new record will be inserted
-   if (rc = pfFileHandle.GetThisPage(pageNum, pageHandle))
-      goto err_return;
+		// Place into the free page list
+		fileHdr.firstFree = pageNum;
+		bHdrChanged = TRUE;
+	}
+	// Pick the first page on the list
+	else {
+		pageNum = fileHdr.firstFree;
+	}
 
-   // Get data pointer
-   if (rc = pageHandle.GetData(pData))
-      goto err_unpin;
+	// Pin the page where new record will be inserted
+	if (rc = pfFileHandle.GetThisPage(pageNum, pageHandle))
+		goto err_return;
 
-   // Find an empty slot
-   for (slotNum = 0; slotNum < fileHdr.numRecordsPerPage; slotNum++)
-      if (!GetBitmap(pData + sizeof(RM_PageHdr), slotNum))
-         break;
+	// Get data pointer
+	if (rc = pageHandle.GetData(pData))
+		goto err_unpin;
 
-   // There should be a free slot
-   assert(slotNum < fileHdr.numRecordsPerPage);
-   
-   // Assign rid
-   pRid = new RID(pageNum, slotNum);
-   rid = *pRid;
-   delete pRid;
+	// Find an empty slot
+	for (slotNum = 0; slotNum < fileHdr.numRecordsPerPage; slotNum++)
+		if (!GetBitmap(pData + sizeof(RM_PageHdr), slotNum))
+			break;
 
-   // Copy the given record data to the buffer pool
-   memcpy(pData + fileHdr.pageHeaderSize + slotNum * fileHdr.recordSize, 
-          pRecordData, fileHdr.recordSize);
+	// There should be a free slot
+	assert(slotNum < fileHdr.numRecordsPerPage);
 
-   // Set bit
-   SetBitmap(pData + sizeof(RM_PageHdr), slotNum);
+	// Assign rid
+	pRid = new RID(pageNum, slotNum);
+	rid = *pRid;
+	delete pRid;
 
-   // Find an empty slot
-   for (slotNum = 0; slotNum < fileHdr.numRecordsPerPage; slotNum++)
-      if (!GetBitmap(pData + sizeof(RM_PageHdr), slotNum))
-         break;
+	// Copy the given record data to the buffer pool
+	memcpy(pData + fileHdr.pageHeaderSize + slotNum * fileHdr.recordSize,
+			pRecordData, fileHdr.recordSize);
 
-   // Remove the page from the free page list if necessary
-   if (slotNum == fileHdr.numRecordsPerPage) {
-      fileHdr.firstFree = ((RM_PageHdr *)pData)->nextFree;
-      bHdrChanged = TRUE;
-      ((RM_PageHdr *)pData)->nextFree = RM_PAGE_FULL;
-   }
+	// Set bit
+	SetBitmap(pData + sizeof(RM_PageHdr), slotNum);
 
-   // Mark the header page as dirty because we changed bitmap at least
-   if (rc = pfFileHandle.MarkDirty(pageNum))
-      // Should not happen
-      goto err_unpin;
+	// Find an empty slot
+	for (slotNum = 0; slotNum < fileHdr.numRecordsPerPage; slotNum++)
+		if (!GetBitmap(pData + sizeof(RM_PageHdr), slotNum))
+			break;
 
-   // Unpin the page
-   if (rc = pfFileHandle.UnpinPage(pageNum))
-      // Should not happen
-      goto err_return;
+	// Remove the page from the free page list if necessary
+	if (slotNum == fileHdr.numRecordsPerPage) {
+		fileHdr.firstFree = ((RM_PageHdr *) pData)->nextFree;
+		bHdrChanged = TRUE;
+		((RM_PageHdr *) pData)->nextFree = RM_PAGE_FULL;
+	}
 
-   // Return ok
-   return (0);
+	// Mark the header page as dirty because we changed bitmap at least
+	if (rc = pfFileHandle.MarkDirty(pageNum))
+		// Should not happen
+		goto err_unpin;
 
-   // Recover from inconsistent state due to unexpected error
-err_unpin:
-   pfFileHandle.UnpinPage(pageNum);
-err_return:
-   // Return error
-   return (rc);
+	// Unpin the page
+	if (rc = pfFileHandle.UnpinPage(pageNum))
+		// Should not happen
+		goto err_return;
+
+	// Return ok
+	return (0);
+
+	// Recover from inconsistent state due to unexpected error
+	err_unpin: pfFileHandle.UnpinPage(pageNum);
+	err_return:
+	// Return error
+	return (rc);
 }
 
 //
@@ -234,106 +228,104 @@ err_return:
 // In:   rid - 
 // Ret:  RM return code
 //
-RC RM_FileHandle::DeleteRec(const RID &rid)
-{
-   RC rc;
-   PageNum pageNum;
-   SlotNum slotNum;
-   PF_PageHandle pageHandle;
-   char *pData;
+RC RM_FileHandle::DeleteRec(const RID &rid) {
+	RC rc;
+	PageNum pageNum;
+	SlotNum slotNum;
+	PF_PageHandle pageHandle;
+	char *pData;
 
-   // Extract page number from rid
-   if (rc = rid.GetPageNum(pageNum))
-      // Test: inviable rid
-      goto err_return;
+	// Extract page number from rid
+	if (rc = rid.GetPageNum(pageNum))
+		// Test: inviable rid
+		goto err_return;
 
-   // Extract slot number from rid
-   if (rc = rid.GetSlotNum(slotNum))
-      // Should not happen
-      goto err_return;
+	// Extract slot number from rid
+	if (rc = rid.GetSlotNum(slotNum))
+		// Should not happen
+		goto err_return;
 
-   // Sanity Check: slotNum bound check
-   // Note that PF_FileHandle.GetThisPage() will take care of pageNum
-   if (slotNum >= fileHdr.numRecordsPerPage || slotNum < 0)
-      // Test: rid with invalid slotNum
-      return (RM_INVALIDSLOTNUM);
-   
-   // Get the page where rid points
-   if (rc = pfFileHandle.GetThisPage(pageNum, pageHandle))
-      // Test: rid with invalid pageNum
-      goto err_return;
+	// Sanity Check: slotNum bound check
+	// Note that PF_FileHandle.GetThisPage() will take care of pageNum
+	if (slotNum >= fileHdr.numRecordsPerPage || slotNum < 0)
+		// Test: rid with invalid slotNum
+		return (RM_INVALIDSLOTNUM);
 
-   // Get the data
-   if (rc = pageHandle.GetData(pData))
-      // Should not happen
-      goto err_unpin;
+	// Get the page where rid points
+	if (rc = pfFileHandle.GetThisPage(pageNum, pageHandle))
+		// Test: rid with invalid pageNum
+		goto err_return;
 
-   // Sanity Check: a record corresponding to rid should exist
-   if (!GetBitmap(pData + sizeof(RM_PageHdr), slotNum)) {
-      // Test: non-existing rid
-      pfFileHandle.UnpinPage(pageNum);
-      return (RM_RECORDNOTFOUND);
-   }
+	// Get the data
+	if (rc = pageHandle.GetData(pData))
+		// Should not happen
+		goto err_unpin;
 
-   // Clear bit
-   ClrBitmap(pData + sizeof(RM_PageHdr), slotNum);
-   
-   // Not necessary
-   memset(pData + fileHdr.pageHeaderSize + slotNum * fileHdr.recordSize, 
-          '\0', fileHdr.recordSize);
+	// Sanity Check: a record corresponding to rid should exist
+	if (!GetBitmap(pData + sizeof(RM_PageHdr), slotNum)) {
+		// Test: non-existing rid
+		pfFileHandle.UnpinPage(pageNum);
+		return (RM_RECORDNOTFOUND);
+	}
 
-   // Find an empty slot
-   for (slotNum = 0; slotNum < fileHdr.numRecordsPerPage; slotNum++)
-      if (GetBitmap(pData + sizeof(RM_PageHdr), slotNum))
-         break;
+	// Clear bit
+	ClrBitmap(pData + sizeof(RM_PageHdr), slotNum);
 
-   // Dispose the page if empty (the deleted record was the last one)
-   // This will help the total number of occupied pages to be remained
-   // as small as possible
-   if (slotNum == fileHdr.numRecordsPerPage) {
-      fileHdr.firstFree = ((RM_PageHdr *)pData)->nextFree;
-      bHdrChanged = TRUE;
-      
-      // Mark the header page as dirty
-      if (rc = pfFileHandle.MarkDirty(pageNum))
-         // Should not happen
-         goto err_return;
-      
-      // Unpin the page
-      if (rc = pfFileHandle.UnpinPage(pageNum))
-         // Should not happen
-         goto err_return;
+	// Not necessary
+	memset(pData + fileHdr.pageHeaderSize + slotNum * fileHdr.recordSize, '\0',
+			fileHdr.recordSize);
 
-      // Call PF_FileHandle.DisposePage()
-      return pfFileHandle.DisposePage(pageNum);
-   }
+	// Find an empty slot
+	for (slotNum = 0; slotNum < fileHdr.numRecordsPerPage; slotNum++)
+		if (GetBitmap(pData + sizeof(RM_PageHdr), slotNum))
+			break;
 
-   // Insert the page into the free page list if necessary
-   if (((RM_PageHdr *)pData)->nextFree == RM_PAGE_FULL) {
-      ((RM_PageHdr *)pData)->nextFree = fileHdr.firstFree;
-      fileHdr.firstFree = pageNum;
-      bHdrChanged = TRUE;
-   }
+	// Dispose the page if empty (the deleted record was the last one)
+	// This will help the total number of occupied pages to be remained
+	// as small as possible
+	if (slotNum == fileHdr.numRecordsPerPage) {
+		fileHdr.firstFree = ((RM_PageHdr *) pData)->nextFree;
+		bHdrChanged = TRUE;
 
-   // Mark the header page as dirty because we changed bitmap at least
-   if (rc = pfFileHandle.MarkDirty(pageNum))
-      // Should not happen
-      goto err_unpin;
+		// Mark the header page as dirty
+		if (rc = pfFileHandle.MarkDirty(pageNum))
+			// Should not happen
+			goto err_return;
 
-   // Unpin the page
-   if (rc = pfFileHandle.UnpinPage(pageNum))
-      // Should not happen
-      goto err_return;
- 
-   // Return ok
-   return (0);
+		// Unpin the page
+		if (rc = pfFileHandle.UnpinPage(pageNum))
+			// Should not happen
+			goto err_return;
 
-   // Recover from inconsistent state due to unexpected error
-err_unpin:
-   pfFileHandle.UnpinPage(pageNum);
-err_return:
-   // Return error
-   return (rc);
+		// Call PF_FileHandle.DisposePage()
+		return pfFileHandle.DisposePage(pageNum);
+	}
+
+	// Insert the page into the free page list if necessary
+	if (((RM_PageHdr *) pData)->nextFree == RM_PAGE_FULL) {
+		((RM_PageHdr *) pData)->nextFree = fileHdr.firstFree;
+		fileHdr.firstFree = pageNum;
+		bHdrChanged = TRUE;
+	}
+
+	// Mark the header page as dirty because we changed bitmap at least
+	if (rc = pfFileHandle.MarkDirty(pageNum))
+		// Should not happen
+		goto err_unpin;
+
+	// Unpin the page
+	if (rc = pfFileHandle.UnpinPage(pageNum))
+		// Should not happen
+		goto err_return;
+
+	// Return ok
+	return (0);
+
+	// Recover from inconsistent state due to unexpected error
+	err_unpin: pfFileHandle.UnpinPage(pageNum);
+	err_return:
+	// Return error
+	return (rc);
 }
 
 //
@@ -343,89 +335,86 @@ err_return:
 // In:   rec -
 // Ret:  RM return code
 //
-RC RM_FileHandle::UpdateRec(const RM_Record &rec)
-{
-   RC rc;
-   RID rid;
-   PageNum pageNum;
-   SlotNum slotNum;
-   PF_PageHandle pageHandle;
-   char *pData;
-   char *pRecordData;
+RC RM_FileHandle::UpdateRec(const RM_Record &rec) {
+	RC rc;
+	RID rid;
+	PageNum pageNum;
+	SlotNum slotNum;
+	PF_PageHandle pageHandle;
+	char *pData;
+	char *pRecordData;
 
-   // Get rid
-   if (rc = rec.GetRid(rid))
-      // Test: unread record
-      goto err_return;
+	// Get rid
+	if (rc = rec.GetRid(rid))
+		// Test: unread record
+		goto err_return;
 
-   // Get record data
-   if (rc = rec.GetData(pRecordData))
-      // Should not happen
-      goto err_return;
+	// Get record data
+	if (rc = rec.GetData(pRecordData))
+		// Should not happen
+		goto err_return;
 
-   // Extract page number from rid
-   if (rc = rid.GetPageNum(pageNum))
-      // Should not happen
-      goto err_return;
+	// Extract page number from rid
+	if (rc = rid.GetPageNum(pageNum))
+		// Should not happen
+		goto err_return;
 
-   // Extract slot number from rid
-   if (rc = rid.GetSlotNum(slotNum))
-      // Should not happen
-      goto err_return;
+	// Extract slot number from rid
+	if (rc = rid.GetSlotNum(slotNum))
+		// Should not happen
+		goto err_return;
 
-   // Sanity Check: slotNum bound check
-   // Note that PF_FileHandle.GetThisPage() will take care of pageNum
-   if (slotNum >= fileHdr.numRecordsPerPage || slotNum < 0)
-      // Test: apply R1's record to R2
-      return (RM_INVALIDSLOTNUM);
+	// Sanity Check: slotNum bound check
+	// Note that PF_FileHandle.GetThisPage() will take care of pageNum
+	if (slotNum >= fileHdr.numRecordsPerPage || slotNum < 0)
+		// Test: apply R1's record to R2
+		return (RM_INVALIDSLOTNUM);
 
-   // Sanity Check: recordSize of updating record and file handle
-   //               must match
-   if (rec.recordSize != fileHdr.recordSize)
-      // Test: apply R1's record to R2
-      return (RM_INVALIDRECSIZE);
+	// Sanity Check: recordSize of updating record and file handle
+	//               must match
+	if (rec.recordSize != fileHdr.recordSize)
+		// Test: apply R1's record to R2
+		return (RM_INVALIDRECSIZE);
 
-   // Get the page where rid points
-   if (rc = pfFileHandle.GetThisPage(pageNum, pageHandle))
-      // Test: rid with invalid pageNum
-      goto err_return;
+	// Get the page where rid points
+	if (rc = pfFileHandle.GetThisPage(pageNum, pageHandle))
+		// Test: rid with invalid pageNum
+		goto err_return;
 
-   // Get the data
-   if (rc = pageHandle.GetData(pData))
-      // Should not happen
-      goto err_unpin;
+	// Get the data
+	if (rc = pageHandle.GetData(pData))
+		// Should not happen
+		goto err_unpin;
 
-   // Sanity Check: a record corresponding to rid should exist
-   if (!GetBitmap(pData + sizeof(RM_PageHdr), slotNum)) {
-      // Test: non-existing rid
-      pfFileHandle.UnpinPage(pageNum);
-      return (RM_RECORDNOTFOUND);
-   }
+	// Sanity Check: a record corresponding to rid should exist
+	if (!GetBitmap(pData + sizeof(RM_PageHdr), slotNum)) {
+		// Test: non-existing rid
+		pfFileHandle.UnpinPage(pageNum);
+		return (RM_RECORDNOTFOUND);
+	}
 
-   // Update
-   memcpy(pData + fileHdr.pageHeaderSize + slotNum * fileHdr.recordSize, 
-          pRecordData,
-          fileHdr.recordSize);
+	// Update
+	memcpy(pData + fileHdr.pageHeaderSize + slotNum * fileHdr.recordSize,
+			pRecordData, fileHdr.recordSize);
 
-   // Mark the header page as dirty
-   if (rc = pfFileHandle.MarkDirty(pageNum))
-      // Should not happen
-      goto err_unpin;
+	// Mark the header page as dirty
+	if (rc = pfFileHandle.MarkDirty(pageNum))
+		// Should not happen
+		goto err_unpin;
 
-   // Unpin the page
-   if (rc = pfFileHandle.UnpinPage(pageNum))
-      // Should not happen
-      goto err_return;
- 
-   // Return ok
-   return (0);
+	// Unpin the page
+	if (rc = pfFileHandle.UnpinPage(pageNum))
+		// Should not happen
+		goto err_return;
 
-   // Recover from inconsistent state due to unexpected error
-err_unpin:
-   pfFileHandle.UnpinPage(pageNum);
-err_return:
-   // Return error
-   return (rc);
+	// Return ok
+	return (0);
+
+	// Recover from inconsistent state due to unexpected error
+	err_unpin: pfFileHandle.UnpinPage(pageNum);
+	err_return:
+	// Return error
+	return (rc);
 }
 
 //
@@ -436,60 +425,58 @@ err_return:
 // In:   pageNum - 
 // Ret:  RM return code
 //
-RC RM_FileHandle::ForcePages(PageNum pageNum)
-{
-   RC rc;
-   
-   // Write back the file header if any changes made to the header 
-   // while the file is open
-   if (bHdrChanged) {
-      PF_PageHandle pageHandle;
-      char* pData;
+RC RM_FileHandle::ForcePages(PageNum pageNum) {
+	RC rc;
 
-      // Get the header page
-      if (rc = pfFileHandle.GetFirstPage(pageHandle))
-         // Test: unopened(closed) fileHandle, invalid file
-         goto err_return;
+	// Write back the file header if any changes made to the header 
+	// while the file is open
+	if (bHdrChanged) {
+		PF_PageHandle pageHandle;
+		char* pData;
 
-      // Get a pointer where header information will be written
-      if (rc = pageHandle.GetData(pData))
-         // Should not happen
-         goto err_unpin;
+		// Get the header page
+		if (rc = pfFileHandle.GetFirstPage(pageHandle))
+			// Test: unopened(closed) fileHandle, invalid file
+			goto err_return;
 
-      // Write the file header (to the buffer pool)
-      memcpy(pData, &fileHdr, sizeof(fileHdr));
+		// Get a pointer where header information will be written
+		if (rc = pageHandle.GetData(pData))
+			// Should not happen
+			goto err_unpin;
 
-      // Mark the header page as dirty
-      if (rc = pfFileHandle.MarkDirty(RM_HEADER_PAGE_NUM))
-         // Should not happen
-         goto err_unpin;
+		// Write the file header (to the buffer pool)
+		memcpy(pData, &fileHdr, sizeof(fileHdr));
 
-      // Unpin the header page
-      if (rc = pfFileHandle.UnpinPage(RM_HEADER_PAGE_NUM))
-         // Should not happen
-         goto err_return;
+		// Mark the header page as dirty
+		if (rc = pfFileHandle.MarkDirty(RM_HEADER_PAGE_NUM))
+			// Should not happen
+			goto err_unpin;
 
-      if (rc = pfFileHandle.ForcePages(RM_HEADER_PAGE_NUM))
-         // Should not happen
-         goto err_return;
+		// Unpin the header page
+		if (rc = pfFileHandle.UnpinPage(RM_HEADER_PAGE_NUM))
+			// Should not happen
+			goto err_return;
 
-      // Set file header to be not changed
-      bHdrChanged = FALSE;
-   }
+		if (rc = pfFileHandle.ForcePages(RM_HEADER_PAGE_NUM))
+			// Should not happen
+			goto err_return;
 
-   // Call PF_FileHandle::ForcePages()
-   if (rc = pfFileHandle.ForcePages(pageNum))
-      goto err_return;
+		// Set file header to be not changed
+		bHdrChanged = FALSE;
+	}
 
-   // Return ok
-   return (0);
+	// Call PF_FileHandle::ForcePages()
+	if (rc = pfFileHandle.ForcePages(pageNum))
+		goto err_return;
 
-   // Recover from inconsistent state due to unexpected error
-err_unpin:
-   pfFileHandle.UnpinPage(RM_HEADER_PAGE_NUM);
-err_return:
-   // Return error
-   return (rc);
+	// Return ok
+	return (0);
+
+	// Recover from inconsistent state due to unexpected error
+	err_unpin: pfFileHandle.UnpinPage(RM_HEADER_PAGE_NUM);
+	err_return:
+	// Return error
+	return (rc);
 }
 
 //
@@ -500,9 +487,8 @@ err_return:
 //       idx - bit index
 // Ret:  TRUE or FALSE
 //
-int RM_FileHandle::GetBitmap(char *map, int idx) const
-{
-   return (map[idx / 8] & (1 << (idx % 8))) != 0;
+int RM_FileHandle::GetBitmap(char *map, int idx) const {
+	return (map[idx / 8] & (1 << (idx % 8))) != 0;
 }
 
 //
@@ -512,9 +498,8 @@ int RM_FileHandle::GetBitmap(char *map, int idx) const
 // In:   map - address of bitmap
 //       idx - bit index
 //
-void RM_FileHandle::SetBitmap(char *map, int idx) const
-{
-   map[idx / 8] |= (1 << (idx % 8));
+void RM_FileHandle::SetBitmap(char *map, int idx) const {
+	map[idx / 8] |= (1 << (idx % 8));
 }
 
 //
@@ -524,8 +509,7 @@ void RM_FileHandle::SetBitmap(char *map, int idx) const
 // In:   map - address of bitmap
 //       idx - bit index
 //
-void RM_FileHandle::ClrBitmap(char *map, int idx) const
-{
-   map[idx / 8] &= ~(1 << (idx % 8));
+void RM_FileHandle::ClrBitmap(char *map, int idx) const {
+	map[idx / 8] &= ~(1 << (idx % 8));
 }
 

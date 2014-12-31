@@ -24,7 +24,7 @@ const int RM_HEADER_PAGE_NUM = 0;
 // RM_PageHdr: Header structure for pages
 //
 struct RM_PageHdr {
-   PageNum nextFree;
+	PageNum nextFree;
 };
 
 #endif
