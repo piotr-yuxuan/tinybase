@@ -1,6 +1,6 @@
 build/
 lib/
-pvt/
+*pvt*
 
 # OS files
 *.DS_Store
