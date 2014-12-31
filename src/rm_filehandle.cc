@@ -101,7 +101,7 @@ RC RM_FileHandle::GetNextFreePage(PageNum& pageNum) {
 	PF_PageHandle ph;
 	RM_PageHeader pageHeader(this->GetNumSlots());
 	PageNum p;
-    if (fileHeader.getFirstFreePage() != RM_PAGE_LIST_END) {
+    if (fileHeader.getFirstFreePage() != RM_PAGES_END) {
 		// this last page on the free list might actually be full
         if ( (rc = pf_FileHandle->GetThisPage(fileHeader.getFirstFreePage(), ph)) ) {
         	return rc;
@@ -128,7 +128,7 @@ RC RM_FileHandle::GetNextFreePage(PageNum& pageNum) {
 		}
 	}
     if (fileHeader.getPagesNumber() == 0
-            || fileHeader.getFirstFreePage() == RM_PAGE_LIST_END
+            || fileHeader.getFirstFreePage() == RM_PAGES_END
             || (pageHeader.getNbFreeSlots() == 0)) {
 
 		char *pData;
@@ -150,7 +150,7 @@ RC RM_FileHandle::GetNextFreePage(PageNum& pageNum) {
 		
 		// Add page header
 		RM_PageHeader pageHeader(this->GetNumSlots());
-        pageHeader.setNextFreePage(RM_PAGE_LIST_END);
+        pageHeader.setNextFreePage(RM_PAGES_END);
         pageHeader.freeSlots.set(); // Initially all slots are free
 
 		pageHeader.to_buf(pData);
@@ -257,7 +257,7 @@ RC RM_FileHandle::GetSlotPointer(PF_PageHandle ph, SlotNum s, char *& pData) con
 int RM_FileHandle::GetNumSlots() const {
 	//Makes sure RecordSize is > 0
 	if (this->getRecordSize() == 0) {
-		return RM_NULLRECORDSIZE;
+        return RM_INVALIDRECSIZE;
 	}
 	//Increments slotsNb until we find the max value. It's sure it can be found.
 	int slotsNb = 0;
@@ -340,7 +340,7 @@ RC RM_FileHandle::GetRec(const RID &rid, RM_Record &rec) const {
 //Inserts a record buffered into pData in the file
 RC RM_FileHandle::InsertRec(const char *pData, RID &rid) {
 	if (pData == NULL) {
-		return RM_NULLRECORD;
+        return RM_NULLPOINTER;
 	}
 	PF_PageHandle ph;
 	RM_PageHeader pageHeader(this->GetNumSlots());
@@ -376,7 +376,7 @@ RC RM_FileHandle::InsertRec(const char *pData, RID &rid) {
     if (pageHeader.getNbFreeSlots() == 0) {
 		// remove it from free list
         fileHeader.setFirstFreePage(pageHeader.getNextFreePage());
-        pageHeader.setNextFreePage(RM_PAGE_FULLY_USED);
+        pageHeader.setNextFreePage(RM_PAGE_FULL);
 	}
 
     //Writes pageHeader into page handled by ph
@@ -417,7 +417,7 @@ RC RM_FileHandle::DeleteRec(const RID &rid) {
 	}
 	
     if (pageHeader.freeSlots.test(s)) { // already free
-		return RM_NORECATRID;
+        return RM_RECORDNOTFOUND;
 	}
 
     pageHeader.freeSlots.set(s); // s is now free
@@ -508,7 +508,7 @@ RC RM_FileHandle::ForcePages(PageNum pageNum) {
 //Checks the fileHandle itself
 RC RM_FileHandle::IsValid() const {
 	if ((pf_FileHandle == NULL) || !bFileOpen) {
-		return RM_FNOTOPEN;
+        return RM_CLOSEDFILE;
 	}
 
 	if (GetNumSlots() <= 0) {
