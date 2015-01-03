@@ -2,6 +2,7 @@
 #include <unistd.h>
 #include <iostream>
 #include "ix.h"
+#include "ix_internal.h"
 
 using namespace std;
 
@@ -43,26 +44,59 @@ IX_IndexHandle::IX_IndexHandle(int NodeType, IX_IndexHandle &Parent) {
  * Terminator
  */
 IX_IndexHandle::~IX_IndexHandle() {
+	// Je ne sais pas trop quoi mettre dedans.
 }
 
 RC IX_IndexHandle::InsertEntry(void *pData, const RID &rid) {
-	RC rc = 0;
+}
 
-	if (NodeType < 1) {
-		// Get the leaf-level child pointer whithin the entry should be inserted in.
-	} else {
-		// So it's a leaf-level child
+RC IX_IndexHandle::insert(IX_IndexHandle *nodepointer, Entry entry,
+		IX_IndexHandle *newchildentry) {
 
-		if (NumAcceptable(NumElements + 1)) {
-			; // Performs effective insertion
-			NumElements++; // Updates NumElements
-			Balance();
+	if (*nodepointer->NodeType < 1) {
+		int i = 0;
+		// Let's choose subtree.
+		while (i <= 2 * Order && !(((Entry) Labels[i]).value < entry.value)) {
+			i++;
+		}
+
+		insert(&((IX_IndexHandle) Pointers[i]), entry, newchildentry);
+
+		if (newchildentry == NULL) {
+			return 0;
 		} else {
-			; // Create new child;
-			Parent.Balance(); // Balance the result
+			if (this->NumElements < 2 * Order) {
+				*newchildentry->Parent = this;
+				Pointers[NumElements] = (void *) newchildentry;
+				NumElements++;
+				return 0;
+			} else {
+				IX_IndexHandle node = split();
+				// Euh, faut peut-être l'enregistrer quelque part avant de retourner.
+				newchildentry = &node;
+
+				node.Parent = (this->NodeType == -1) ? NULL : this;
+				return 0;
+			}
+		}
+	} else {
+		if (*nodepointer->NumElements < 2 * Order) {
+			Pointers[NumElements] = (void *) newchildentry;
+			NumElements++;
+			return 0;
+		} else {
+			IX_IndexHandle node = split();
+			node.Parent = this->Parent;
+			newchildentry = &node;
 		}
 	}
-	return rc;
+
+	return 0;
+}
+
+IX_IndexHandle IX_IndexHandle::split() {
+	// coupe en deux;
+	return this;
 }
 
 RC IX_IndexHandle::DeleteEntry(void *pData, const RID &rid) {

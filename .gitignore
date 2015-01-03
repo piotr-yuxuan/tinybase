@@ -13,6 +13,9 @@ lib/
 *.includes
 *.cproject
 *.project
+.classpath
+.project
+.settings
 .settings/
 
 # Compiled Object files

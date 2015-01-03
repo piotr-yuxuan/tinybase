@@ -13,6 +13,11 @@
 #include "rm_rid.h"  // Please don't change these lines
 #include "pf.h"
 
+struct Entry {
+	void* value;
+	RID* rid;
+};
+
 //
 // IX_IndexHandle: IX Index File interface
 //
@@ -69,6 +74,10 @@ private:
 	bool NumAcceptable(int num) {
 		return NodeType > -1 ? true : (Order <= num && num <= 2 * Order);
 	}
+
+	RC insert(IX_IndexHandle *nodepointer, Entry entry,
+			IX_IndexHandle *newchildentry);
+	IX_IndexHandle split();
 };
 
 //
