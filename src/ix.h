@@ -45,13 +45,24 @@ protected:
 private:
 	int NumElements; // enclosed elements
 	/*
-	 * -1 means it's the root so it can't have parents and order rule doesn't apply.
-	 * 0 means it's a middle node.
-	 * 1 means it's a leaf node.
+	 * → -1 means it's the root so it can't have parents and order rule
+	 * doesn't apply.
+	 * → 0 means it's a middle node.
+	 * → 1 means it's a leaf node.
 	 */
 	int NodeType;
 	/*
 	 * List within child pointers are stored in.
+	 *
+	 * Beware this object handles two cases by containing pointers to other
+	 * IX_IndexHandle objects when the current node is a non-leaf one or value
+	 * pointers else.
+	 *
+	 * TODO This list will later be a full-fledged doubly-linked list. It means
+	 * that its internal nodes attributes *next and *previous may be correctly
+	 * set. This is very powerful to fetch entries of this index in a row.
+	 * Beware the *next pointer of the last item points to the next node on the
+	 * right, not the next value.
 	 */
 	LinkList<void> Pointers;
 	/*
@@ -62,11 +73,22 @@ private:
 	/*
 	 * Pointer to its parent. It's not public so you don't have to define
 	 * it for the root (actually you even can't).
+	 *
+	 * Actually it's still unsure we eventually need parents but we can
+	 * maintain our beloved parents to implement range selection in a fancy
+	 * way. Traditionnal range selection would start from the root then dig
+	 * until it can any longer. That fancy way would be to start from the
+	 * beginning of the linked list to the left boundary. The way *next pointer
+	 * is set allow us to go through the current node then ascend the tree from
+	 * node to parent until we find a correct pointer. This 'up and down'
+	 * way strategy seems to be optimised for tight range.
 	 */
 	IX_IndexHandle &Parent;
 
 	/*
 	 * Balance the tree.
+	 *
+	 * TODO Are we really in need for this?
 	 */
 	void Balance();
 
