@@ -44,7 +44,7 @@ IX_IndexHandle::IX_IndexHandle(int NodeType, IX_IndexHandle &Parent) {
  * Terminator
  */
 IX_IndexHandle::~IX_IndexHandle() {
-	// Je ne sais pas trop quoi mettre dedans.
+    delete [] Labels;
 }
 
 /*

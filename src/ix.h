@@ -102,8 +102,8 @@ private:
 
 	static RC insertion(IX_IndexHandle *nodepointer, Entry entry,
 			IX_IndexHandle *newchildentry);
-	static RC deletion(IX_IndexHandle *nodepointer, Entry entry,
-			IX_IndexHandle *newchildentry)
+    static RC deletion(IX_IndexHandle *nodepointer, Entry entry,
+            IX_IndexHandle *newchildentry);
 	IX_IndexHandle split();
 };
 
@@ -125,6 +125,11 @@ public:
 
 	// Close index scan
 	RC CloseScan();
+private:
+    int bScanOpen;
+    IX_IndexHandle *pIndexHandle;
+    CompOp compOp;
+    void *value;
 };
 
 //
