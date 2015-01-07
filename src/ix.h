@@ -13,6 +13,11 @@
 #include "rm_rid.h"  // Please don't change these lines
 #include "pf.h"
 
+/*
+ * Structure used to store basic elements the tree is built upon: a value
+ * (used by labels) and the rid (to locate data).
+ * I'm unsure we should use pointers as it may slow process down.
+ */
 struct Entry {
 	void* value;
 	RID* rid;
@@ -84,13 +89,6 @@ private:
 	 * way strategy seems to be optimised for tight range.
 	 */
 	IX_IndexHandle &Parent;
-
-	/*
-	 * Balance the tree.
-	 *
-	 * TODO Are we really in need for this?
-	 */
-	void Balance();
 
 	// Tests whether fan-out + 1 is acceptable
 	bool NumAcceptable(int num) {

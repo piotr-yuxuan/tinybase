@@ -47,7 +47,16 @@ IX_IndexHandle::~IX_IndexHandle() {
 	// Je ne sais pas trop quoi mettre dedans.
 }
 
+/*
+ * TODO This syntax must be controlled. We get a parameter with & and we also
+ * send the address &newchildentry as a pointer.
+ */
 RC IX_IndexHandle::InsertEntry(void *pData, const RID &rid) {
+	void *value;
+	Entry entry = { value, rid };
+	// Whatever it points to, this initial value will be never read.
+	IX_IndexHandle newchildentry = NULL;
+	insert(this, entry, &newchildentry);
 }
 
 /*
@@ -78,6 +87,7 @@ RC IX_IndexHandle::insert(IX_IndexHandle *nodepointer, Entry entry,
 		// Recursive insert. Split arises from here.
 		insert(&((IX_IndexHandle) Pointers[i]), entry, newchildentry);
 
+		// Do we need to split?
 		if (newchildentry == NULL) {
 			// No split we're safe.
 			return 0;
@@ -85,9 +95,9 @@ RC IX_IndexHandle::insert(IX_IndexHandle *nodepointer, Entry entry,
 		// We need to handle the split. newchildentry contains 'free' entries
 		// we need to relocate.
 		{
-			if (this->NumElements < 2 * Order) {
+			if (*nodepointer->NumElements < 2 * Order) {
 				// We can host new child entry.
-				*newchildentry->Parent = this;
+				*newchildentry->Parent = nodepointer;
 				Pointers[NumElements] = (void *) newchildentry;
 				NumElements++;
 				return 0;
@@ -100,7 +110,8 @@ RC IX_IndexHandle::insert(IX_IndexHandle *nodepointer, Entry entry,
 				// Ici on retourne un pointeur vers une variable temporaire, non ?
 				newchildentry = &node;
 
-				node.Parent = (this->NodeType == -1) ? NULL : this;
+				node.Parent =
+						(*nodepointer->NodeType == -1) ? NULL : nodepointer;
 				return 0;
 			}
 		}
@@ -119,7 +130,7 @@ RC IX_IndexHandle::insert(IX_IndexHandle *nodepointer, Entry entry,
 		// The current leaf is full, let's burst forth!
 		{
 			IX_IndexHandle node = split();
-			node.Parent = this->Parent;
+			node.Parent = *nodepointer->Parent;
 			newchildentry = &node;
 		}
 	}
@@ -141,11 +152,6 @@ IX_IndexHandle IX_IndexHandle::split() {
 
 RC IX_IndexHandle::DeleteEntry(void *pData, const RID &rid) {
 	RC rc = 0;
-
-// Tests whether fan-out - 1 is acceptable
-
-// Balance tree after it has been altered.
-	Balance();
 	return rc;
 }
 
