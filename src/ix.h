@@ -16,16 +16,21 @@
 /*
  * Structure used to store basic elements the tree is built upon: a value
  * (used by labels) and the rid (to locate data).
- * I'm unsure we should use pointers as it may slow process down.
+ * TODO To handle correctly *next and *previous.
  */
 struct Entry {
 	void* value;
-	RID* rid;
+	RID rid;
+	Entry* next;
+	Entry* previous;
 };
 
-//
-// IX_IndexHandle: IX Index File interface
-//
+/*
+ * IX_IndexHandle: IX Index File interface
+ *
+ * Beware we hereby define order in the following way: a node child number must
+ * be strictly greater than $order$ and lesser or equal to $order$.
+ */
 class IX_IndexHandle {
 public:
 	static int Order = 5;
@@ -79,24 +84,26 @@ private:
 	 * Pointer to its parent. It's not public so you don't have to define
 	 * it for the root (actually you even can't).
 	 *
-	 * Actually it's still unsure we eventually need parents but we can
-	 * maintain our beloved parents to implement range selection in a fancy
-	 * way. Traditionnal range selection would start from the root then dig
-	 * until it can any longer. That fancy way would be to start from the
-	 * beginning of the linked list to the left boundary. The way *next pointer
-	 * is set allow us to go through the current node then ascend the tree from
-	 * node to parent until we find a correct pointer. This 'up and down'
-	 * way strategy seems to be optimised for tight range.
+	 * We use this field in deletion algorithm and we could also use it to
+	 * implement range selection in a fancy way. Traditionnal range selection
+	 * would start from the root then dig until it can any longer. That fancy
+	 * way would be to start from the beginning of the linked list to the left
+	 * boundary. The way *next pointer is set allow us to go through the
+	 * current node then ascend the tree from node to parent until we find a
+	 * correct pointer. This 'up and down' way strategy seems to be optimised
+	 * for tight range.
 	 */
-	IX_IndexHandle &Parent;
+	IX_IndexHandle *Parent;
 
 	// Tests whether fan-out + 1 is acceptable
 	bool NumAcceptable(int num) {
 		return NodeType > -1 ? true : (Order <= num && num <= 2 * Order);
 	}
 
-	RC insert(IX_IndexHandle *nodepointer, Entry entry,
+	static RC insertion(IX_IndexHandle *nodepointer, Entry entry,
 			IX_IndexHandle *newchildentry);
+	static RC deletion(IX_IndexHandle *nodepointer, Entry entry,
+			IX_IndexHandle *newchildentry)
 	IX_IndexHandle split();
 };
 
