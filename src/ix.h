@@ -32,6 +32,7 @@ struct Entry {
  * be strictly greater than $order$ and lesser or equal to $order$.
  */
 class IX_IndexHandle {
+    friend class IX_IndexScan;
 public:
 	static int Order = 5;
 	IX_IndexHandle();
@@ -128,6 +129,8 @@ public:
 private:
     int bScanOpen;
     IX_IndexHandle *pIndexHandle;
+    IX_IndexHandle *currentNode; //Current node we are scaning
+    int currentPos; //Current position in the node
     CompOp compOp;
     void *value;
 };
