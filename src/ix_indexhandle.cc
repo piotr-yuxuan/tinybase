@@ -22,41 +22,24 @@ using namespace std;
  */
 
 /*
- * Standard constructor. It's for root only because it doesn't define parent.
+ * Standard constructor
  */
 IX_IndexHandle::IX_IndexHandle() {
-	NumElements = 0;
-	this->NodeType = -1; // the root
-	Pointers = LinkList<void>();
-	Labels = new void*[2 * Order];
-	Parent = NULL;
-}
-
-IX_IndexHandle::IX_IndexHandle(int NodeType, IX_IndexHandle &Parent) {
-	NumElements = 0;
-	this->NodeType = NodeType;
-	Pointers = LinkList<void>();
-	Labels = new void*[2 * Order];
-	this->Parent = Parent;
+    this->bFileOpen = false;
 }
 
 /*
- * Terminator
+ * Destructor
  */
 IX_IndexHandle::~IX_IndexHandle() {
-    delete [] Labels;
+    //Nothing to do for now
 }
 
 /*
- * TODO This syntax must be controlled. We get a parameter with & and we also
- * send the address &newchildentry as a pointer.
+ * Inserts a new entry using the insertions methods
  */
 RC IX_IndexHandle::InsertEntry(void *pData, const RID &rid) {
-	void *value;
-	Entry entry = { value, rid };
-	// Whatever it points to, this initial value will be never read.
-	IX_IndexHandle newchildentry = NULL;
-	insertion(this, entry, &newchildentry);
+
 }
 
 RC IX_IndexHandle::DeleteEntry(void *pData, const RID &rid) {

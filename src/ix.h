@@ -61,13 +61,14 @@ private:
     PF_FileHandle *filehandle;
 
     //Private insertion methods
-    RC InsertEntryToNode(const PageNum, void *, const RID &,char *&, PageNum &);
-    RC InsertEntryToLeafNode(const PageNum, void *, const RID &,char *&, PageNum &, int = TRUE);
-    RC InsertEntryToLeafNodeNoSplit(const PageNum, void *, const RID &,char *&, PageNum &);
-    RC InsertEntryToLeafNodeSplit(const PageNum, void *, const RID &,char *&, PageNum &);
-    RC InsertEntryToIntlNode(const PageNum, const PageNum,char *&, PageNum &);
-    RC InsertEntryToIntlNodeNoSplit(const PageNum nodeNum,const PageNum childNodeNum,char *&splitKey,PageNum &splitNodeNum);
+    RC InsertEntryToNode(const PageNum nodeNum, void *pData, const RID &rid, char *&, PageNum &);
+    RC InsertEntryToLeafNode(const PageNum nodeNum, void *pData, const RID &rid, char *&, PageNum &, int = TRUE);
+    RC InsertEntryToLeafNodeNoSplit(const PageNum nodeNum, void *pData, const RID &rid, char *&, PageNum &);
+    RC InsertEntryToLeafNodeSplit(const PageNum nodeNum, void *pData, const RID &rid, char *&, PageNum &);
+    RC InsertEntryToIntlNode(const PageNum nodeNum, const PageNum childNodeNum, char *&splitKey, PageNum &splitNodeNum);
+    RC InsertEntryToIntlNodeNoSplit(const PageNum nodeNum, const PageNum childNodeNum, char *&splitKey,PageNum &splitNodeNum);
     RC InsertEntryToIntlNodeSplit(const PageNum nodeNum, const PageNum childNodeNum, char *&splitKey,PageNum &splitNodeNum);
+};
 
 //
 // IX_IndexScan: condition-based scan of index entries
@@ -83,15 +84,16 @@ public:
 
 	// Get the next matching entry return IX_EOF if no more matching
 	// entries.
-	RC GetNextEntry(RID &rid);
+    RC GetNextEntry(RID &rid);
 
 	// Close index scan
 	RC CloseScan();
 private:
     int bScanOpen;
     IX_IndexHandle *pIndexHandle;
-    IX_IndexHandle *currentNode; //Current node we are scaning
-    int currentPos; //Current position in the node
+    PageNum currentNode; //Current node we are scaning
+    int nodePos; //Current position in the node
+    int bucketPos; //Current position in the bucket
     CompOp compOp;
     void *value;
 };
