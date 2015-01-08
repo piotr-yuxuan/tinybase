@@ -80,7 +80,7 @@ RC IX_IndexHandle::InsertEntryToNode(const PageNum nodeNum, void *pData, const R
         //Case not leaf: looks for the right children
         for(int i=0; i<nodeHeader.nbKey; i++){
             //If we find a key greater than value we have to take the pointer on its left
-            if(IsKeyGreater(pData, pageHandle, i)){
+            if(IsKeyGreater(pData, pageHandle, i)>=0){
                 PageNum nb;
                 if( (rc = getPageNumber(pageHandle, i, nb)) ) return rc;
                 //Reccursive call to insertEntreToNode
@@ -90,15 +90,57 @@ RC IX_IndexHandle::InsertEntryToNode(const PageNum nodeNum, void *pData, const R
     }
 }
 
+//Inserts a new entry to a leaf node
+RC IX_IndexHandle::InsertEntryToLeafNode(const PageNum nodeNum, void *pData, const RID &rid) {
+    RC rc = 0;
+    //Retrieves the header of the leaf
+    IX_NodeHeader leafHeader;
+    PF_PageHandle pageHandle;
+    char* pData2;
+    if( (rc = filehandle->GetThisPage(nodeNum, pageHandle)) ) return rc;
+    if( (rc = pageHandle.GetData(pData2)) ) return rc;
+    memcpy(&leafHeader, pData2, sizeof(IX_NodeHeader));
+    //First we check if the key already exists
+    for(int i=0; i<leafHeader.nbKey; i++){
+        if(IsKeyGreater(pData, pageHandle, i)==0){
+            //TODO
+            /*Ici il faudra récupérer l'adresse du bucket associé à i
+             *et y insérer la valeur
+            */
+        }
+    }
+    //We are here means the key doesn't exist already in the leaf
+    if(leafHeader.nbKey<leafHeader.maxKeyNb){
+        //Calls the method to handle the easy case
+        return InsertEntryToLeafNodeNoSplit(nodeNum, pData, rid);
+    }else{
+        //Calls the method to handle the split case
+        return InsertEntryToLeafNodeSplit(nodeNum, pData, rid);
+    }
+}
 
 //Compares the given value (pData) to number i key on the node (pageHandle)
-bool IX_IndexHandle::IsKeyGreater(void *pData, PF_PageHandle pageHandle, int i){
+int IX_IndexHandle::IsKeyGreater(void *pData, PF_PageHandle pageHandle, int i){
     //TODO
+    /*
+     *C'est méthode la il faudra l'implémenter ça ne devrait pas être très compliqué
+     *On nous donne pData qui est la data de la donnée à insérer et on a un pageHandle
+     *pour le noeud en cours, ainsi que i qui dit quelle clé du noeud en cour son regarde
+     *Et la méthode doit comparer la clé i du noeud à la valeur donnée par pData et nous
+     *retourner un entier positif si la clé i est plus grande, négatif si plus petite
+     *et nul si les deux clés sont égales
+    */
 }
 
 //Gives the PageNumber (i.e. the pointer) for number i key on the node (pageHandle)
 RC IX_IndexHandle::getPageNumber(PF_PageHandle pageHandle, int i, PageNum &pageNumber){
     //TODO
+    /*
+     *Cette méthode est dans la même veine que la précédente. On nous donne
+     *le pageHandle du noeud, l'entier i qui désigne la clé à laquelle on
+     *s'intéresse dans le noeud, et une variable pageNumber dans laquelle la
+     *fonction doit mettre la valeur du numéro de la page associé à la clé i
+    */
 }
 
 

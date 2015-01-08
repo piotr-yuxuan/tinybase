@@ -73,7 +73,7 @@ private:
     RC InsertEntryToIntlNodeSplit(const PageNum nodeNum, const PageNum childNodeNum, char *&splitKey,PageNum &splitNodeNum);
 
     //Returns true if key number i greater than pData value
-    bool IsKeyGreater(void *pData, PF_PageHandle pageHandle, int i);
+    int IsKeyGreater(void *pData, PF_PageHandle pageHandle, int i);
     //Allows to get the pageNumber for a node entry
     RC getPageNumber(PF_PageHandle pageHandle, int i, PageNum &pageNumber);
 
