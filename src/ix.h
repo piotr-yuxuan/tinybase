@@ -24,7 +24,7 @@ typedef struct IX_NodeHeader {
     int level; // -1 root, 0 middle node, 1 leaf node
     int maxKeyNb;  //Max key number in the node (means max pointer number is maxKeyNb+1)
     int nbKey;//Number of key in the node (means there are nbKey+1 pointers)
-    PageNum pageMere;
+    PageNum parentPage;
     PageNum prevPage;
     PageNum nextPage;
 
@@ -59,6 +59,7 @@ public:
 private:
     bool bFileOpen;
     PF_FileHandle *filehandle;
+    IX_FileHeader fileHeader; //Header for the file of the index
 
     //Private insertion methods
     RC InsertEntryToNode(const PageNum nodeNum, void *pData, const RID &rid, char *&, PageNum &);
