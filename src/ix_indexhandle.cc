@@ -24,7 +24,6 @@ using namespace std;
 //Constructor
 IX_IndexHandle::IX_IndexHandle() {
     this->bFileOpen = false;
-    this->fileHeader.rootNb = -1;
 }
 
 //Destructor
@@ -63,8 +62,25 @@ RC IX_IndexHandle::InsertEntry(void *pData, const RID &rid) {
     return InsertEntryToNode(this->fileHeader.rootNb, pData, rid);
 }
 
-
-
+//Inserts a new entry to a specified node
+RC IX_IndexHandle::InsertEntryToNode(const PageNum nodeNum, void *pData, const RID &rid) {
+    //Retrieves the IX_NodeHeader of the node
+    PF_PageHandle pageHandle;
+    IX_NodeHeader nodeHeader;
+    if( (rc = filehandle->GetThisPage(nodeNum, pageHandle)) ) return rc;
+    char* pData2;
+    if( (rc = pageHandle.GetData(pData2)) ) return rc;
+    memcpy(&nodeHeader, pData2, sizeof(IX_NodeHeader)); //"Loads" the nodeHeader from memory
+    //Acts according to the type of node
+    if(nodeHeader.level==1){
+        //Case leaf
+        return InsertEntryToLeafNode(nodeNum, pData, rid);
+    }else
+        //Case not leaf: look sfor the right children
+        for(int i=0; i<nodeHeader.nbKey; i++){
+        }
+    }
+}
 
 
 

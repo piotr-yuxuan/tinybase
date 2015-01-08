@@ -17,6 +17,7 @@
 typedef struct IX_FileHeader {
     PageNum rootNb;
     AttrType attrType;
+    int keySize;
 } IX_FileHeader;
 
 // Structure for a node header
@@ -62,10 +63,10 @@ private:
     IX_FileHeader fileHeader; //Header for the file of the index
 
     //Private insertion methods
-    RC InsertEntryToNode(const PageNum nodeNum, void *pData, const RID &rid, char *&, PageNum &);
-    RC InsertEntryToLeafNode(const PageNum nodeNum, void *pData, const RID &rid, char *&, PageNum &, int = TRUE);
-    RC InsertEntryToLeafNodeNoSplit(const PageNum nodeNum, void *pData, const RID &rid, char *&, PageNum &);
-    RC InsertEntryToLeafNodeSplit(const PageNum nodeNum, void *pData, const RID &rid, char *&, PageNum &);
+    RC InsertEntryToNode(const PageNum nodeNum, void *pData, const RID &rid);
+    RC InsertEntryToLeafNode(const PageNum nodeNum, void *pData, const RID &rid);
+    RC InsertEntryToLeafNodeNoSplit(const PageNum nodeNum, void *pData, const RID &rid);
+    RC InsertEntryToLeafNodeSplit(const PageNum nodeNum, void *pData, const RID &rid);
     RC InsertEntryToIntlNode(const PageNum nodeNum, const PageNum childNodeNum, char *&splitKey, PageNum &splitNodeNum);
     RC InsertEntryToIntlNodeNoSplit(const PageNum nodeNum, const PageNum childNodeNum, char *&splitKey,PageNum &splitNodeNum);
     RC InsertEntryToIntlNodeSplit(const PageNum nodeNum, const PageNum childNodeNum, char *&splitKey,PageNum &splitNodeNum);
@@ -120,6 +121,9 @@ public:
 
 	// Close an Index
 	RC CloseIndex(IX_IndexHandle &indexHandle);
+
+private:
+    PF_Manager& pfManager;
 };
 
 //
