@@ -45,6 +45,7 @@ class IX_IndexHandle {
     friend class IX_IndexScan;
 public:
 	static int Order = 5;
+    static int SizePointer = sizeof(pageNum);
 	IX_IndexHandle();
 	~IX_IndexHandle();
 
@@ -70,6 +71,12 @@ private:
     RC InsertEntryToIntlNode(const PageNum nodeNum, const PageNum childNodeNum, char *&splitKey, PageNum &splitNodeNum);
     RC InsertEntryToIntlNodeNoSplit(const PageNum nodeNum, const PageNum childNodeNum, char *&splitKey,PageNum &splitNodeNum);
     RC InsertEntryToIntlNodeSplit(const PageNum nodeNum, const PageNum childNodeNum, char *&splitKey,PageNum &splitNodeNum);
+
+    //Returns true if key number i greater than pData value
+    bool IsKeyGreater(void *pData, PF_PageHandle pageHandle, int i);
+    //Allows to get the pageNumber for a node entry
+    RC getPageNumber(PF_PageHandle pageHandle, int i, PageNum &pageNumber);
+
 };
 
 //

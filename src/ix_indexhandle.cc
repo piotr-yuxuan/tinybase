@@ -64,6 +64,7 @@ RC IX_IndexHandle::InsertEntry(void *pData, const RID &rid) {
 
 //Inserts a new entry to a specified node
 RC IX_IndexHandle::InsertEntryToNode(const PageNum nodeNum, void *pData, const RID &rid) {
+    RC rc = 0;
     //Retrieves the IX_NodeHeader of the node
     PF_PageHandle pageHandle;
     IX_NodeHeader nodeHeader;
@@ -75,11 +76,29 @@ RC IX_IndexHandle::InsertEntryToNode(const PageNum nodeNum, void *pData, const R
     if(nodeHeader.level==1){
         //Case leaf
         return InsertEntryToLeafNode(nodeNum, pData, rid);
-    }else
-        //Case not leaf: look sfor the right children
+    }else{
+        //Case not leaf: looks for the right children
         for(int i=0; i<nodeHeader.nbKey; i++){
+            //If we find a key greater than value we have to take the pointer on its left
+            if(IsKeyGreater(pData, pageHandle, i)){
+                PageNum nb;
+                if( (rc = getPageNumber(pageHandle, i, nb)) ) return rc;
+                //Reccursive call to insertEntreToNode
+                InsertEntryToNode(nb, pData, rid);
+            }
         }
     }
+}
+
+
+//Compares the given value (pData) to number i key on the node (pageHandle)
+bool IX_IndexHandle::IsKeyGreater(void *pData, PF_PageHandle pageHandle, int i){
+    //TODO
+}
+
+//Gives the PageNumber (i.e. the pointer) for number i key on the node (pageHandle)
+RC IX_IndexHandle::getPageNumber(PF_PageHandle pageHandle, int i, PageNum &pageNumber){
+    //TODO
 }
 
 
