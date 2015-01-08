@@ -13,25 +13,34 @@
 #include "rm_rid.h"  // Please don't change these lines
 #include "pf.h"
 
-/*
- * Structure used to store basic elements the tree is built upon: a value
- * (used by labels) and the rid (to locate data).
- * TODO To handle correctly *next and *previous.
- */
-struct Entry {
-	void* value;
-	RID rid;
-	Entry* next;
-	Entry* previous;
-};
+// Structure for the file header
+typedef struct IX_FileHeader {
+    PageNum rootNb;
+    AttrType attrType;
+} IX_FileHeader;
 
-/*
- * IX_IndexHandle: IX Index File interface
- *
- * Beware we hereby define order in the following way: a node child number must
- * be strictly greater than $order$ and lesser or equal to $order$.
- */
+// Structure for a node header
+typedef struct IX_NodeHeader {
+    int level; // -1 root, 0 middle node, 1 leaf node
+    int maxKeyNb;  //Max key number in the node (means max pointer number is maxKeyNb+1)
+    int nbKey;//Number of key in the node (means there are nbKey+1 pointers)
+    PageNum pageMere;
+    PageNum prevPage;
+    PageNum nextPage;
+
+} IX_NodeHeader;
+
+// Structure for a bucket header
+typedef struct IX_BucketHeader {
+    int nbRid; //Number of RID stored in the bucket
+    int nbRidMax; //Max number of RID storable
+} IX_BucketHeader;
+
+//
+// IX_IndexHandle: IX Index File interface
+//
 class IX_IndexHandle {
+    friend class IX_Manager;
     friend class IX_IndexScan;
 public:
 	static int Order = 5;
@@ -46,67 +55,19 @@ public:
 
 	// Force index files to disk
 	RC ForcePages();
-protected:
-	/*
-	 * It's protected so you can't see it from the outside but we can use
-	 * it constructor for internal nodes.
-	 * Node type sets the eponymous field defines below.
-	 */
-	IX_IndexHandle(int NodeType, IX_IndexHandle &Parent);
+
 private:
-	int NumElements; // enclosed elements
-	/*
-	 * → -1 means it's the root so it can't have parents and order rule
-	 * doesn't apply.
-	 * → 0 means it's a middle node.
-	 * → 1 means it's a leaf node.
-	 */
-	int NodeType;
-	/*
-	 * List within child pointers are stored in.
-	 *
-	 * Beware this object handles two cases by containing pointers to other
-	 * IX_IndexHandle objects when the current node is a non-leaf one or value
-	 * pointers else.
-	 *
-	 * TODO This list will later be a full-fledged doubly-linked list. It means
-	 * that its internal nodes attributes *next and *previous may be correctly
-	 * set. This is very powerful to fetch entries of this index in a row.
-	 * Beware the *next pointer of the last item points to the next node on the
-	 * right, not the next value.
-	 */
-	LinkList<void> Pointers;
-	/*
-	 * List within labels are stored in.
-	 */
-	void *Labels[];
+    bool bFileOpen;
+    PF_FileHandle *filehandle;
 
-	/*
-	 * Pointer to its parent. It's not public so you don't have to define
-	 * it for the root (actually you even can't).
-	 *
-	 * We use this field in deletion algorithm and we could also use it to
-	 * implement range selection in a fancy way. Traditionnal range selection
-	 * would start from the root then dig until it can any longer. That fancy
-	 * way would be to start from the beginning of the linked list to the left
-	 * boundary. The way *next pointer is set allow us to go through the
-	 * current node then ascend the tree from node to parent until we find a
-	 * correct pointer. This 'up and down' way strategy seems to be optimised
-	 * for tight range.
-	 */
-	IX_IndexHandle *Parent;
-
-	// Tests whether fan-out + 1 is acceptable
-	bool NumAcceptable(int num) {
-		return NodeType > -1 ? true : (Order <= num && num <= 2 * Order);
-	}
-
-	static RC insertion(IX_IndexHandle *nodepointer, Entry entry,
-			IX_IndexHandle *newchildentry);
-    static RC deletion(IX_IndexHandle *nodepointer, Entry entry,
-            IX_IndexHandle *newchildentry);
-	IX_IndexHandle split();
-};
+    //Private insertion methods
+    RC InsertEntryToNode(const PageNum, void *, const RID &,char *&, PageNum &);
+    RC InsertEntryToLeafNode(const PageNum, void *, const RID &,char *&, PageNum &, int = TRUE);
+    RC InsertEntryToLeafNodeNoSplit(const PageNum, void *, const RID &,char *&, PageNum &);
+    RC InsertEntryToLeafNodeSplit(const PageNum, void *, const RID &,char *&, PageNum &);
+    RC InsertEntryToIntlNode(const PageNum, const PageNum,char *&, PageNum &);
+    RC InsertEntryToIntlNodeNoSplit(const PageNum nodeNum,const PageNum childNodeNum,char *&splitKey,PageNum &splitNodeNum);
+    RC InsertEntryToIntlNodeSplit(const PageNum nodeNum, const PageNum childNodeNum, char *&splitKey,PageNum &splitNodeNum);
 
 //
 // IX_IndexScan: condition-based scan of index entries
