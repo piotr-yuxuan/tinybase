@@ -81,6 +81,8 @@ private:
     RC setKey(PF_PageHandle &pageHandle, int i, void *pData);
     RC getPointer(PF_PageHandle &pageHandle, int i, PageNum pageNum);
     RC setPointer(PF_PageHandle &pageHandle, int i, PageNum pageNum);
+    //Sets the previous node of a particular node
+    RC setPreviousNode(PageNum nodeNum, PageNum previousNode);
 };
 
 //

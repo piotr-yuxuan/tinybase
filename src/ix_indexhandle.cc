@@ -226,6 +226,7 @@ RC IX_IndexHandle::InsertEntryToLeafNodeSplit(const PageNum nodeNum, void *pData
     leaf1Header.nbKey = nbKey1; //We don't need to "erase" the data from leaf1, nbKey update is enough
     leaf2Header.nbKey = nbKey2;
     leaf2Header.nextPage = leaf1Header.nextPage;
+    if( (rc = setPreviousNode(leaf2Header.nextPage, leaf2PageNum)) ) return rc;
     leaf2Header.prevPage = nodeNum;
     leaf2Header.parentPage = leaf2Parent;
     leaf1Header.nextPage = leaf2PageNum;
@@ -255,7 +256,7 @@ RC IX_IndexHandle::InsertEntryToIntlNode(
 
     //Gets the pageHandle and IX_NodeHeader for the internal node
     PF_PageHandle pageHandle;
-    if( (rc = filehandle->GetThisPage(nodeNum)) ) return rc;
+    if( (rc = filehandle->GetThisPage(nodeNum, pageHandle)) ) return rc;
     IX_NodeHeader nodeHeader;
     char * pData2;
     if( (rc = pageHandle.GetData(pData2)) ) return rc;
@@ -276,7 +277,7 @@ RC IX_IndexHandle::InsertEntryToIntlNodeNoSplit(
 
     //Gets the pageHandle and IX_NodeHeader for the internal node
     PF_PageHandle pageHandle;
-    if( (rc = filehandle->GetThisPage(nodeNum)) ) return rc;
+    if( (rc = filehandle->GetThisPage(nodeNum, pageHandle)) ) return rc;
     IX_NodeHeader nodeHeader;
     char * pData2;
     if( (rc = pageHandle.GetData(pData2)) ) return rc;
@@ -314,6 +315,114 @@ RC IX_IndexHandle::InsertEntryToIntlNodeNoSplit(
     memcpy(pData2, &nodeHeader, sizeof(IX_NodeHeader));
     if( (rc = filehandle->MarkDirty(nodeNum))
             || (rc = filehandle->UnpinPage(nodeNum))
+            || (rc = filehandle->ForcePages()) ) return rc;
+
+    //splitNodeNumber is the same node since there is no split
+    splitNodeNum = nodeNum;
+
+    return 0;
+}
+
+//Insert a new entry to an internal node with split
+RC IX_IndexHandle::InsertEntryToIntlNodeSplit(
+        const PageNum nodeNum, const PageNum childNodeNum, char *&splitKey, PageNum &splitNodeNum){
+    RC rc = 0;
+
+    //Variables for the internal node (node1) and the new node (node2)
+    PF_PageHandle phNode1, phNode2;
+    char * pDataNode1, pDataNode2;
+    IX_NodeHeader node1Header, node2Header;
+    int node2PageNumber, node2Parent;
+
+    //Gets the pageHandle and IX_NodeHeader for the internal node
+    if( (rc = filehandle->GetThisPage(nodeNum, phNode1)) ) return rc;
+    if( (rc = phNode1.GetData(pDataNode1)) ) return rc;
+    memcpy(&node1Header, pDataNode1, sizeof(IX_NodeHeader));
+
+    //Allocates page for our new node
+    if( (rc = filehandle->AllocatePage(phNode2)) ) return rc;
+    if( (rc = phNode2.GetData(pDataNode2)) ) return rc;
+    if( (rc = phNode2.GetPageNum(node2PageNumber)) ) return rc;
+    node2Header.level = 0; //Internal node
+    node2Header.maxKeyNb = IX_IndexHandle.Order*2;
+    node2Header.nbKey = 0;
+
+    //Median key
+    int median = node1Header.nbKey/2; //nbKey should be the same as maxNbKey
+
+    //Goes through keys after median and add them to node2
+    /*
+     *The total number of key we have is node1Header.nbKey
+     *key number median will be in upper node
+     *the median keys before go in node1
+     *the node1Header.nbKey-median keys after go to node2
+    */
+    char* pData3; PageNum pointer;
+    int i1=node1Header.nbKey-1, i2=node1Header.nbKey-median-1;
+    bool splitKeyWritten = false;
+    //We fill node2 with the right stuff
+    while(i2>=0){
+        if( !splitKeyWritten && IsKeyGreater(splitKey, phNode1, i1) <= 0){
+            //Puts the split value in node2
+            if( (rc = setKey(phNode2, i2, splitKey)) ) return rc;
+            if( (rc = setPointer(phNode2, i2, childNodeNum)) ) return rc;
+            i2--; splitKeyWritten=true;
+        }else{
+            //Puts i1 keys and pointer at i2 in node2
+            if( (rc = getKey(phNode1, i1, pData3)) ) return rc;
+            if( (rc = setKey(phNode2, i2, pData3)) ) return rc;
+            if( (rc = getPointer(phNode1, i1, pointer)))
+            if( (rc = setPointer(phNode2, i2, pointer)) ) return rc;
+            i1--; i2--;
+        }
+    }
+    //We add the median key above
+    if( !splitKeyWritten && IsKeyGreater(splitKey, phNode1, i1) <= 0){
+        //In this case the median pushed is the split key
+        if( (rc = InsertEntryToIntlNode(node1Header.parentPage, node2PageNumber, splitKey, node2Parent)) ) return rc;
+        splitKeyWritten=true;
+    }else{
+        //In this case the median pushed is next node1 key
+        if( (rc = getKey(phNode1, i1, pData3)) ) return rc;
+        if( (rc = InsertEntryToIntlNode(node1Header.parentPage, node2PageNumber, pData3, node2Parent)) ) return rc;
+        i1--;
+    }
+    //Now only if splitKey has not been written so far we offset all the keys in node1 until we write it
+    while(!splitKeyWritten){
+        if( i1<0 || IsKeyGreater(splitKey, phNode1, i1) <= 0){
+            //Puts the split value in node1 at i1+1
+            if( (rc = setKey(phNode1, i1+1, splitKey)) ) return rc;
+            if( (rc = setPointer(phNode1, i1+1, childNodeNum)) ) return rc;
+            splitKeyWritten=true;
+        }else{
+            //Moves i1 to i1+1
+            if( (rc = getKey(phNode1, i1, pData3)) ) return rc;
+            if( (rc = setKey(phNode1, i1+1, pData3)) ) return rc;
+            if( (rc = getPointer(phNode1, i1, pointer)))
+            if( (rc = setPointer(phNode1, i1+1, pointer)) ) return rc;
+            i1--;
+        }
+    }
+    free(pData3);
+
+    //Updates headers
+    node2Header.nextPage = node1Header.nextPage;
+    if( (rc = setPreviousNode(node2Header.nextPage, node2PageNumber)) ) return rc;
+    node2Header.prevPage = nodeNum;
+    node2Header.parentPage = node2Parent;
+    node1Header.nextPage = node2PageNumber;
+    node2Header.nbKey = node1Header.nbKey-median;
+    node1Header.nbKey = median;
+
+    //Writes headers back to memory
+    memcpy(pDataNode1, &node1Header, sizeof(IX_NodeHeader));
+    memcpy(pDataNode2, &node2Header, sizeof(IX_NodeHeader));
+
+    //Marks dirty, unpins and forces...
+    if( (rc = filehandle->MarkDirty(nodeNum))
+            || (rc = filehandle->MarkDirty(node2PageNumber))
+            || (rc = filehandle->UnpinPage(nodeNum))
+            || (rc = filehandle->UnpinPage(node2PageNumber))
             || (rc = filehandle->ForcePages()) ) return rc;
 
     return 0;
@@ -367,4 +476,22 @@ RC IX_IndexHandle::setPointer(PF_PageHandle &pageHandle, int i, PageNum pageNum)
     //TODO
 }
 
-
+//Sets the previous node in the header of a particular node
+RC IX_IndexHandle::setPreviousNode(PageNum nodeNum, PageNum previousNode){
+    //If the page doesn't exist just returns
+    if(nodeNum<0) return 0;
+    //Else loads, change prevPage and writes back
+    RC rc = 0;
+    PF_PageHandle pageHandle;
+    IX_NodeHeader nodeHeader;
+    char* pData;
+    if( (rc = filehandle->GetThisPage(nodeNum, pageHandle))
+            || (rc = pageHandle.GetData(pData)) ) return rc;
+    memcpy(&nodeHeader, pData, sizeof(IX_NodeHeader));
+    nodeHeader.prevPage = previousNode;
+    memcpy(pData, &nodeHeader, sizeof(IX_NodeHeader));
+    if( (rc = filehandle->MarkDirty(nodeNum))
+            || (rc = filehandle->UnpinPage(nodeNum))
+            || (rc = filehandle->ForcePages()) ) return rc;
+    return 0;
+}
