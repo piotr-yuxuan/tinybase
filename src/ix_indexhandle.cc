@@ -188,6 +188,66 @@ RC IX_IndexHandle::InsertEntryToLeafNodeNoSplit(const PageNum nodeNum, void *pDa
     return 0;
 }
 
+//Insert a new entry to a leaf node with split
+RC IX_IndexHandle::InsertEntryToLeafNodeSplit(const PageNum nodeNum, void *pData, const RID &rid){
+    //Variables we'll use for leaf1 (the old one) and leaf2 (the new one)
+    RC rc = 0;
+    PF_PageHandle phLeaf1, phLeaf2;
+    IX_NodeHeader leaf1Header, leaf2Header;
+    PageNum leaf2PageNum, leaf2Parent;
+    char* pDataLeaf1, pDataLeaf2;
+
+    //Retrieves leaf1 and its header
+    if( (rc = filehandle->GetThisPage(nodeNum, phLeaf1)) ) return rc;
+    if( (rc = phLeaf1.GetData(pDataLeaf1)) ) return rc;
+    memcpy(&leaf1Header, pDataLeaf1, sizeof(IX_NodeHeader));
+
+    //Allocates new page for the new leaf
+    if( (rc = filehandle->AllocatePage(phLeaf2)) ) return rc;
+    if( (rc = phLeaf2.GetData(pDataLeaf2)) ) return rc;
+    if( (rc = phLeaf2.GetPageNum(leaf2PageNum)) ) return rc;
+    leaf2Header.level = 1;
+    leaf2Header.maxKeyNb = IX_IndexHandle.Order*2;
+    leaf2Header.nbKey = 0;
+
+    //Now we need to put the half the keys in the first leaf and the other half in the second one...
+    //We know that the number of keys in the first leaf is exactly leaf1Header.maxKeyNb
+    int nbKey1 = leaf1Header.maxKeyNb/2;
+    int nbKey2 = leaf1Header.maxKeyNb - nbKey1;
+    //Copies the key from leaf 1 to leaf 2
+    memcpy(pDataLeaf2+sizeof(IX_NodeHeader), pDataLeaf1+sizeof(IX_NodeHeader)+nbKey1*(fileHeader.keySize+SizePointer), nbKey1*(fileHeader.keySize+SizePointer));
+
+    //We call InsertEntryToIntlNode() because the new leaf need to be pointed from above
+    char * splitKey; //The split key is the first one of leaf2
+    splitKey = pDataLeaf2 + sizeof(IX_NodeHeader);
+    if( (rc = InsertEntryToIntlNode(leaf1Header.parentPage, leaf2PageNum, splitKey, leaf2Parent)) ) return rc;
+
+    //Updates the headers
+    leaf1Header.nbKey = nbKey1; //We don't need to "erase" the data from leaf1, nbKey update is enough
+    leaf2Header.nbKey = nbKey2;
+    leaf2Header.nextPage = leaf1Header.nextPage;
+    leaf2Header.prevPage = nodeNum;
+    leaf2Header.parentPage = leaf2Parent;
+    leaf1Header.nextPage = leaf2PageNum;
+    //And writes them back to memory
+    memcpy(pDataLeaf1, &leaf1Header, sizeof(IX_NodeHeader));
+    memcpy(pDataLeaf2, &leaf2Header, sizeof(IX_NodeHeader));
+    //Marks dirty, unpins
+    if( (rc = filehandle->MarkDirty(nodeNum))
+            || (rc = filehandle->MarkDirty(leaf2PageNum))
+            || (rc = filehandle->UnpinPage(nodeNum))
+            || (rc = filehandle->UnpinPage(leaf2PageNum)) ) return rc;
+
+    //Finally we insert the new value using InsertEntryToLeafNodeNoSplit()
+    if(IsKeyGreater(pData, phLeaf2, 0)<0){
+        //If our new key is lower then the first one of leaf2 we insert in leaf 1
+        return InsertEntryToLeafNodeNoSplit(nodeNum, pData, rid);
+    }else{
+        //If it is higher we insert in the new leaf (leaf 2)
+        return InsertEntryToLeafNodeNoSplit(leaf2PageNum, pData, rid);
+    }
+}
+
 //Compares the given value (pData) to number i key on the node (pageHandle)
 int IX_IndexHandle::IsKeyGreater(void *pData, PF_PageHandle pageHandle, int i){
     //TODO
