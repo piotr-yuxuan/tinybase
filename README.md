@@ -15,4 +15,4 @@ Header Pointer-1 Key0 Pointer0 Key1 Pointer1 ... KeyN PointerN
 Header Key0 Pointer0 Key1 Pointer1 ... KeyN PointerN
 
 * **In Bucket:**
-Header Key0 RID0 RID1...RIDN
+Header RID0 RID1...RIDN
