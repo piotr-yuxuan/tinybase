@@ -82,7 +82,7 @@ RC IX_IndexHandle::InsertEntryToNode(const PageNum nodeNum, void *pData, const R
             //If we find a key greater than value we have to take the pointer on its left
             if(IsKeyGreater(pData, pageHandle, i)>=0){
                 PageNum nb;
-                if( (rc = getPageNumber(pageHandle, i, nb)) ) return rc;
+                if( (rc = getPointer(pageHandle, i, nb)) ) return rc;
                 //Unpin node since we don't need it anymore
                 if( (rc = filehandle->UnpinPage(nodeNum)) ) return rc;
                 //Reccursive call to insertEntreToNode
@@ -105,10 +105,30 @@ RC IX_IndexHandle::InsertEntryToLeafNode(const PageNum nodeNum, void *pData, con
     //First we check if the key already exists
     for(int i=0; i<leafHeader.nbKey; i++){
         if(IsKeyGreater(pData, pageHandle, i)==0){
-            //TODO
-            /*Ici il faudra récupérer l'adresse du bucket associé à i
-             *et y insérer la valeur
-            */
+            //Retrieves the bucket
+            PageNum bucket;
+            if( (rc = getPointer(pageHandle, i, bucket)) ) return rc;
+            PF_PageHandle phBucket;
+            if( (rc = filehandle->GetThisPage(bucket, phBucket)) ) return rc;
+            char* pDataBucket;
+            if( (rc = phBucket.GetData(pDataBucket)) ) return rc;
+            //Loads bucket header from memory
+            IX_BucketHeader bucketHeader;
+            memcpy(&bucketHeader, pDataBucket, sizeof(IX_BucketHeader));
+            if(bucketHeader.nbRid>=bucketHeader.nbRidMax){
+                return IX_BUCKETFULL;
+            }
+            //Inserts the RID
+            memcpy(pDataBucket+sizeof(IX_BucketHeader)+bucketHeader.nbRid*sizeof(RID), &rid, sizeof(RID));
+            //Increments nb of rids and copies back header to memory
+            bucketHeader.nbRid++;
+            memcpy(pDataBucket, &bucketHeader, sizeof(IX_BucketHeader));
+            //Marks dirty, etc.
+            if( (rc = filehandle->MarkDirty(bucket))
+                    || (rc = filehandle->UnpinPage(bucket))
+                    || (rc = filehandle->ForcePages()) ) return rc;
+            //Data is inserted it's done
+            return 0;
         }
     }
     //We are here means the key doesn't exist already in the leaf
@@ -164,7 +184,7 @@ RC IX_IndexHandle::InsertEntryToLeafNodeNoSplit(const PageNum nodeNum, void *pDa
     //Now we have to create a header for the bucket
     IX_BucketHeader bucketHeader;
     bucketHeader.nbRid = 1; //The RID we are inserting
-    bucketHeader.nbRidMax = (PF_PAGE_SIZE-sizeof(bucketHeader))/sizeof(RID); //TODO not sure if sizeof(RID) is ok
+    bucketHeader.nbRidMax = (PF_PAGE_SIZE-sizeof(bucketHeader))/sizeof(RID);
 
     //Copy bucket header to memory
     char* pData4;
@@ -429,55 +449,109 @@ RC IX_IndexHandle::InsertEntryToIntlNodeSplit(
 }
 
 //Compares the given value (pData) to number i key on the node (pageHandle)
-int IX_IndexHandle::IsKeyGreater(void *pData, PF_PageHandle pageHandle, int i){
-    //TODO
-    /*
-     *C'est méthode la il faudra l'implémenter ça ne devrait pas être très compliqué
-     *On nous donne pData qui est la data de la donnée à insérer et on a un pageHandle
-     *pour le noeud en cours, ainsi que i qui dit quelle clé du noeud en cour son regarde
-     *Et la méthode doit comparer la clé i du noeud à la valeur donnée par pData et nous
-     *retourner un entier positif si la clé i est plus grande, négatif si plus petite
-     *et nul si les deux clés sont égales
-    */
-}
-
-//Gives the PageNumber (i.e. the pointer) for number i key on the node (pageHandle)
-RC IX_IndexHandle::getPageNumber(PF_PageHandle pageHandle, int i, PageNum &pageNumber){
-    //TODO
-    /*
-     *Cette méthode est dans la même veine que la précédente. On nous donne
-     *le pageHandle du noeud, l'entier i qui désigne la clé à laquelle on
-     *s'intéresse dans le noeud, et une variable pageNumber dans laquelle la
-     *fonction doit mettre la valeur du numéro de la page associé à la clé i
-    */
+int IX_IndexHandle::IsKeyGreater(void *pData, PF_PageHandle pageHandle, int i) {
+    RC rc = 0;
+    char* pData2;
+    if( (rc = getKey(pageHandle, i, pData2)) ) return rc;
+    //Case integer or float
+    if(fileHeader.attrType==INT || fileHeader.attrType==FLOAT){
+        int value1, value2; //value1 = value given, value2 = value of the ith key
+        memcpy(value1, pData, fileHeader.keySize);
+        memcpy(value2, pData2, fileHeader.keySize);
+        free(pData2);
+        if(value2>value1) return 1;
+        if(value1>value2) return -1;
+        if(value1==value2) return 0;
+        return -1; //Shoudn't be needed
+    }
+    //Case string
+    if(fileHeader.attrType==FLOAT){
+        char *string1, *string2;
+        string1 = (char*) pData1;
+        string2 = (char*) pData2;
+        return strncmp(string2,string1,fileHeader.keySize);
+    }
+    return IX_TYPEERROR;
 }
 
 //Gets the value of the i key of the node to pData
 RC IX_IndexHandle::getKey(PF_PageHandle &pageHandle, int i, void *pData){
-    //TODO
-    //Attention à bien prendre en compte le fait que ce soit un noeud feuille
-    //(dans ce cas header-key0-pointer-key1-pointer...-keyN-pointer)
-    //Ou un noeud interne
-    //(dans ce cas header-POINTER-key0-pointer-key1-pointer...-keyN-pointer)
+    //Of course we assume the node is loaded into pageHandle already
+    RC rc = 0;
+    if( (rc = pageHandle.GetData(pData)) ) return rc;
+    IX_NodeHeader nodeHeader;
+    memcpy(&nodeHeader, pData, sizeof(IX_NodeHeader));
+    //Case root or internal node
+    if(nodeHeader.level<1){
+        pData += sizeof(IX_NodeHeader); //Offset due to header
+        pData += SizePointer; //Offset due to pointer -1
+        pData += i*(SizePointer+fileHeader.keySize); //Offset due to key before
+        return 0;
+    }
+    //Case leaf node
+    if(nodeHeader.level==1){
+        pData += sizeof(IX_NodeHeader); //Offset due to header
+        pData += i*(SizePointer+fileHeader.keySize); //Offset due to key before
+        return 0;
+    }
+    //We should never get there so we return -1
+    return -1;
 }
 
 //Sets the value of the i key of the node to pData
 RC IX_IndexHandle::setKey(PF_PageHandle &pageHandle, int i, void *pData){
-    //TODO
+    //The trick is we just use getKey to get the adress of the i key
+    RC rc = 0;
+    char* pData2;
+    if( (rc = getKey(pageHandle, i, pData2)) ) return rc;
+    memcpy(pData2, pData, fileHeader.keySize);
+    return 0;
 }
 
 //Gets the pointer number i to pageNum in the node of pageHandle
-RC IX_IndexHandle::getPointer(PF_PageHandle &pageHandle, int i, PageNum &pageNum){
-    //TODO
+RC IX_IndexHandle::getPointer(PF_PageHandle &pageHandle, int i, PageNum &pageNum) {
+    //Of course we assume the node is loaded into pageHandle already
+    RC rc = 0; char* pData;
+    if( (rc = pageHandle.GetData(pData)) ) return rc;
+    IX_NodeHeader nodeHeader;
+    memcpy(&nodeHeader, pData, sizeof(IX_NodeHeader));
+    //Case root or internal node
+    if(nodeHeader.level<1){
+        pData += sizeof(IX_NodeHeader); //Offset due to header
+        pData += SizePointer; //Offset due to pointer -1
+        pData += i*(SizePointer+fileHeader.keySize); //Offset due to key before
+        pData += fileHeader.keySize; //The i key
+        //Please note that if i=-1 it still works and pData is at the adresse of the -1 pointer
+        //Now we copy it into pageNum
+        memcpy(&pageNum, pData, fileHeader.keySize);
+        return 0;
+    }
+    //Case leaf node
+    if(nodeHeader.level==1){
+        pData += sizeof(IX_NodeHeader); //Offset due to header
+        pData += i*(SizePointer+fileHeader.keySize); //Offset due to key before
+        pData += fileHeader.keySize; //The i key
+        //Now we copy it into pageNum
+        memcpy(&pageNum, pData, fileHeader.keySize);
+        return 0;
+    }
+    //We should never get there so we return -1
+    return -1;
 }
 
 //Sets the pointer number i to pageNum in the node of pageHandle
-RC IX_IndexHandle::setPointer(PF_PageHandle &pageHandle, int i, PageNum pageNum){
-    //TODO
+RC IX_IndexHandle::setPointer(PF_PageHandle &pageHandle, int i, PageNum pageNum) {
+    //The trick is we just use getPointer to get the adress of the i pointer
+    //Of course it also works if i=-1 for root and internal nodes
+    RC rc = 0;
+    char* pData2;
+    if( (rc = getPointer(pageHandle, i, pData2)) ) return rc;
+    memcpy(pData2, pData, SizePointer);
+    return 0;
 }
 
 //Sets the previous node in the header of a particular node
-RC IX_IndexHandle::setPreviousNode(PageNum nodeNum, PageNum previousNode){
+RC IX_IndexHandle::setPreviousNode(PageNum nodeNum, PageNum previousNode) {
     //If the page doesn't exist just returns
     if(nodeNum<0) return 0;
     //Else loads, change prevPage and writes back

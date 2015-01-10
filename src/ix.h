@@ -74,12 +74,10 @@ private:
 
     //Returns true if key number i greater than pData value
     int IsKeyGreater(void *pData, PF_PageHandle pageHandle, int i);
-    //Allows to get the pageNumber for a node entry
-    RC getPageNumber(PF_PageHandle pageHandle, int i, PageNum &pageNumber);
-    //For the keys in a given node
+    //For the keys in a given node (don't work for Bucket)
     RC getKey(PF_PageHandle &pageHandle, int i, void *pData);
     RC setKey(PF_PageHandle &pageHandle, int i, void *pData);
-    RC getPointer(PF_PageHandle &pageHandle, int i, PageNum pageNum);
+    RC getPointer(PF_PageHandle &pageHandle, int i, PageNum &pageNum);
     RC setPointer(PF_PageHandle &pageHandle, int i, PageNum pageNum);
     //Sets the previous node of a particular node
     RC setPreviousNode(PageNum nodeNum, PageNum previousNode);
