@@ -248,6 +248,27 @@ RC IX_IndexHandle::InsertEntryToLeafNodeSplit(const PageNum nodeNum, void *pData
     }
 }
 
+//Insert a new entry in an internal node
+RC IX_IndexHandle::InsertEntryToIntlNode(
+        const PageNum nodeNum, const PageNum childNodeNum, char *&splitKey, PageNum &splitNodeNum){
+    RC rc = 0;
+
+    //Gets the pageHandle and IX_NodeHeader for the internal node
+    PF_PageHandle pageHandle;
+    if( (rc = filehandle->GetThisPage(nodeNum)) ) return rc;
+    IX_NodeHeader nodeHeader;
+    char * pData2;
+    if( (rc = pageHandle.GetData(pData2)) ) return rc;
+    memcpy(&nodeHeader, pData2, sizeof(IX_NodeHeader));
+
+    //Determines which method to use (full or not)
+    if(nodeHeader.nbKey<nodeHeader.maxKeyNb){
+        return InsertEntryToIntlNodeNoSplit(nodeNum, childNodeNum, splitKey, splitNodeNum);
+    }else{
+        return InsertEntryToIntlNodeSplit(nodeNum, childNodeNum, splitKey, splitNodeNum);
+    }
+}
+
 //Compares the given value (pData) to number i key on the node (pageHandle)
 int IX_IndexHandle::IsKeyGreater(void *pData, PF_PageHandle pageHandle, int i){
     //TODO
