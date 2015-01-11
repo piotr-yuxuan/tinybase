@@ -2,7 +2,6 @@
 #include <unistd.h>
 #include <iostream>
 #include "ix.h"
-#include "ix_internal.h"
 
 using namespace std;
 
@@ -19,7 +18,7 @@ IX_IndexScan::~IX_IndexScan() {
 
 //Opens the scan
 RC IX_IndexScan::OpenScan(const IX_IndexHandle &indexHandle, CompOp compOp,
-		void *value, ClientHint pinHint = NO_HINT) {
+        void *value, ClientHint pinHint = NO_HINT) {
 
     // Sanity Check: 'this' should not be open yet
     if (bScanOpen)

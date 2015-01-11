@@ -2,7 +2,6 @@
 #include <unistd.h>
 #include <iostream>
 #include "ix.h"
-#include "ix_internal.h"
 
 using namespace std;
 

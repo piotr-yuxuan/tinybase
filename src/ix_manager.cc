@@ -2,7 +2,6 @@
 #include <unistd.h>
 #include <iostream>
 #include "ix.h"
-#include "ix_internal.h"
 
 IX_Manager::IX_Manager(PF_Manager &pfm) {
     this->pfManager = pfm;
