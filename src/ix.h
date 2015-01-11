@@ -13,28 +13,39 @@
 #include "rm_rid.h"  // Please don't change these lines
 #include "pf.h"
 
-/*
- * Structure used to store basic elements the tree is built upon: a value
- * (used by labels) and the rid (to locate data).
- * TODO To handle correctly *next and *previous.
- */
-struct Entry {
-	void* value;
-	RID rid;
-	Entry* next;
-	Entry* previous;
-};
+// Structure for the file header
+typedef struct IX_FileHeader {
+    PageNum rootNb;
+    AttrType attrType;
+    int keySize;
+} IX_FileHeader;
 
-/*
- * IX_IndexHandle: IX Index File interface
- *
- * Beware we hereby define order in the following way: a node child number must
- * be strictly greater than $order$ and lesser or equal to $order$.
- */
+// Structure for a node header
+typedef struct IX_NodeHeader {
+    int level; // -1 root, 0 middle node, 1 leaf node
+    int maxKeyNb;  //Max key number in the node (means max pointer number is maxKeyNb+1)
+    int nbKey;//Number of key in the node (means there are nbKey+1 pointers)
+    PageNum parentPage;
+    PageNum prevPage;
+    PageNum nextPage;
+
+} IX_NodeHeader;
+
+// Structure for a bucket header
+typedef struct IX_BucketHeader {
+    int nbRid; //Number of RID stored in the bucket
+    int nbRidMax; //Max number of RID storable
+} IX_BucketHeader;
+
+//
+// IX_IndexHandle: IX Index File interface
+//
 class IX_IndexHandle {
+    friend class IX_Manager;
     friend class IX_IndexScan;
 public:
 	static int Order = 5;
+    static int SizePointer = sizeof(pageNum);
 	IX_IndexHandle();
 	~IX_IndexHandle();
 
@@ -46,66 +57,30 @@ public:
 
 	// Force index files to disk
 	RC ForcePages();
-protected:
-	/*
-	 * It's protected so you can't see it from the outside but we can use
-	 * it constructor for internal nodes.
-	 * Node type sets the eponymous field defines below.
-	 */
-	IX_IndexHandle(int NodeType, IX_IndexHandle &Parent);
+
 private:
-	int NumElements; // enclosed elements
-	/*
-	 * → -1 means it's the root so it can't have parents and order rule
-	 * doesn't apply.
-	 * → 0 means it's a middle node.
-	 * → 1 means it's a leaf node.
-	 */
-	int NodeType;
-	/*
-	 * List within child pointers are stored in.
-	 *
-	 * Beware this object handles two cases by containing pointers to other
-	 * IX_IndexHandle objects when the current node is a non-leaf one or value
-	 * pointers else.
-	 *
-	 * TODO This list will later be a full-fledged doubly-linked list. It means
-	 * that its internal nodes attributes *next and *previous may be correctly
-	 * set. This is very powerful to fetch entries of this index in a row.
-	 * Beware the *next pointer of the last item points to the next node on the
-	 * right, not the next value.
-	 */
-	LinkList<void> Pointers;
-	/*
-	 * List within labels are stored in.
-	 */
-	void *Labels[];
+    bool bFileOpen;
+    PF_FileHandle *filehandle;
+    IX_FileHeader fileHeader; //Header for the file of the index
 
-	/*
-	 * Pointer to its parent. It's not public so you don't have to define
-	 * it for the root (actually you even can't).
-	 *
-	 * We use this field in deletion algorithm and we could also use it to
-	 * implement range selection in a fancy way. Traditionnal range selection
-	 * would start from the root then dig until it can any longer. That fancy
-	 * way would be to start from the beginning of the linked list to the left
-	 * boundary. The way *next pointer is set allow us to go through the
-	 * current node then ascend the tree from node to parent until we find a
-	 * correct pointer. This 'up and down' way strategy seems to be optimised
-	 * for tight range.
-	 */
-	IX_IndexHandle *Parent;
+    //Private insertion methods
+    RC InsertEntryToNode(const PageNum nodeNum, void *pData, const RID &rid);
+    RC InsertEntryToLeafNode(const PageNum nodeNum, void *pData, const RID &rid);
+    RC InsertEntryToLeafNodeNoSplit(const PageNum nodeNum, void *pData, const RID &rid);
+    RC InsertEntryToLeafNodeSplit(const PageNum nodeNum, void *pData, const RID &rid);
+    RC InsertEntryToIntlNode(const PageNum nodeNum, const PageNum childNodeNum, char *&splitKey, PageNum &splitNodeNum);
+    RC InsertEntryToIntlNodeNoSplit(const PageNum nodeNum, const PageNum childNodeNum, char *&splitKey,PageNum &splitNodeNum);
+    RC InsertEntryToIntlNodeSplit(const PageNum nodeNum, const PageNum childNodeNum, char *&splitKey,PageNum &splitNodeNum);
 
-	// Tests whether fan-out + 1 is acceptable
-	bool NumAcceptable(int num) {
-		return NodeType > -1 ? true : (Order <= num && num <= 2 * Order);
-	}
-
-	static RC insertion(IX_IndexHandle *nodepointer, Entry entry,
-			IX_IndexHandle *newchildentry);
-    static RC deletion(IX_IndexHandle *nodepointer, Entry entry,
-            IX_IndexHandle *newchildentry);
-	IX_IndexHandle split();
+    //Returns true if key number i greater than pData value
+    int IsKeyGreater(void *pData, PF_PageHandle pageHandle, int i);
+    //For the keys in a given node (don't work for Bucket)
+    RC getKey(PF_PageHandle &pageHandle, int i, void *pData);
+    RC setKey(PF_PageHandle &pageHandle, int i, void *pData);
+    RC getPointer(PF_PageHandle &pageHandle, int i, PageNum &pageNum);
+    RC setPointer(PF_PageHandle &pageHandle, int i, PageNum pageNum);
+    //Sets the previous node of a particular node
+    RC setPreviousNode(PageNum nodeNum, PageNum previousNode);
 };
 
 //
@@ -122,17 +97,21 @@ public:
 
 	// Get the next matching entry return IX_EOF if no more matching
 	// entries.
-	RC GetNextEntry(RID &rid);
+    RC GetNextEntry(RID &rid);
 
 	// Close index scan
 	RC CloseScan();
 private:
     int bScanOpen;
-    IX_IndexHandle *pIndexHandle;
-    IX_IndexHandle *currentNode; //Current node we are scaning
-    int currentPos; //Current position in the node
+    IX_IndexHandle *indexHandle;
+    PageNum currentLeaf; //Current leaf for the scan
+    int currentKey; //Current key in the leaf
+    PageNum currentBucket; //Current bucket we are scaning
+    int currentBucketPos; //Current position in the bucket
     CompOp compOp;
     void *value;
+    //Method to go to the first leaf, first bucket
+    RC goToFirstBucket(RID &rid);
 };
 
 //
@@ -156,18 +135,31 @@ public:
 
 	// Close an Index
 	RC CloseIndex(IX_IndexHandle &indexHandle);
+
+private:
+    PF_Manager& pfManager;
 };
+
 
 //
 // Print-error function
 //
-void IX_PrintError(RC rc) {
-	switch (rc) {
-	case 0:
-		break;
-	default:
-		break;
-	}
-}
+void IX_PrintError(RC rc);
+
+#define IX_INVIABLERID     (START_IX_WARN + 0) // inviable rid
+#define IX_UNREADRECORD    (START_IX_WARN + 1) // unread record
+#define IX_INVALIDRECSIZE  (START_IX_WARN + 2) // invalid record size
+#define IX_EMPTYNODE       (START_IX_WARN + 3) // node is empty
+#define IX_FULLBUCKET      (START_IX_WARN + 4) // the bucket is full
+#define IX_INVALIDCOMPOP   (START_IX_WARN + 5) // invalid comparison operator
+#define IX_INVALIDATTR     (START_IX_WARN + 6) // invalid attribute parameters
+#define IX_NULLPOINTER     (START_IX_WARN + 7) // pointer is null
+#define IX_SCANOPEN        (START_IX_WARN + 8) // scan is open
+#define IX_CLOSEDSCAN      (START_IX_WARN + 9) // scan is closed
+#define IX_CLOSEDFILE      (START_IX_WARN + 10)// file handle is closed
+#define IX_FILEOPEN        (START_IX_WARN + 11)// file handle is open
+#define IX_LASTWARN        IX_FILEOPEN
+
+#define IX_EOF             PF_EOF              // work-around for ix_test
 
 #endif
