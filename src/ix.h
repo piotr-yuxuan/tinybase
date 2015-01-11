@@ -103,12 +103,15 @@ public:
 	RC CloseScan();
 private:
     int bScanOpen;
-    IX_IndexHandle *pIndexHandle;
-    PageNum currentNode; //Current node we are scaning
-    int nodePos; //Current position in the node
-    int bucketPos; //Current position in the bucket
+    IX_IndexHandle *indexHandle;
+    PageNum currentLeaf; //Current leaf for the scan
+    int currentKey; //Current key in the leaf
+    PageNum currentBucket; //Current bucket we are scaning
+    int currentBucketPos; //Current position in the bucket
     CompOp compOp;
     void *value;
+    //Method to go to the first leaf, first bucket
+    RC goToFirstBucket(RID &rid);
 };
 
 //
