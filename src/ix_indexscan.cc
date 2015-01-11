@@ -185,6 +185,14 @@ RC IX_IndexScan::GetNextEntry(RID &rid) {
 
 //Closes the scan
 RC IX_IndexScan::CloseScan() {
+    if(bScanOpen==false){
+        return IX_SCANCLOSED;
+    }
+    currentBucket = -1;
+    currentLeaf = -1;
+    currentBucketPos = -1;
+    currentKey = -1;
+    bScanOpen = false;
     return 0;
 }
 
