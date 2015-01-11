@@ -2,6 +2,7 @@
 #include <unistd.h>
 #include <iostream>
 #include "ix.h"
+#include <string.h>
 
 using namespace std;
 
@@ -18,7 +19,7 @@ IX_IndexScan::~IX_IndexScan() {
 
 //Opens the scan
 RC IX_IndexScan::OpenScan(const IX_IndexHandle &indexHandle, CompOp compOp,
-        void *value, ClientHint pinHint = NO_HINT) {
+        void *value, ClientHint pinHint) {
 
     // Sanity Check: 'this' should not be open yet
     if (bScanOpen)
@@ -52,7 +53,7 @@ RC IX_IndexScan::OpenScan(const IX_IndexHandle &indexHandle, CompOp compOp,
     // Copy parameters to local variable
     this->compOp = compOp;
     this->value = value;
-    this->indexHandle = indexHandle;
+    this->indexHandle = (IX_IndexHandle *)&indexHandle;;
 
     // Set local state variables
     bScanOpen = TRUE;
@@ -63,6 +64,7 @@ RC IX_IndexScan::OpenScan(const IX_IndexHandle &indexHandle, CompOp compOp,
 
 //Gets the next entry relevant for the scan
 RC IX_IndexScan::GetNextEntry(RID &rid) {
+    RC rc = 0;
     // Sanity Check: 'this' must be open
     if (!bScanOpen) return IX_CLOSEDSCAN;
 
@@ -205,11 +207,11 @@ RC IX_IndexScan::goToFirstBucket(RID &rid){
     //PageHandle and NodeHeader for the node
     PF_PageHandle pageHandle;
     IX_NodeHeader nodeHeader;
-    char* pData, pValue;
+    char* pData;
 
     //Looks for a leaf node
     do{
-        if( (rc = indexHandle->filehandle->GetThisPage(currentLeaf)) ) return rc;
+        if( (rc = indexHandle->filehandle->GetThisPage(currentLeaf, pageHandle)) ) return rc;
         if( (rc = pageHandle.GetData(pData)) ) return rc;
         memcpy(&nodeHeader, pData, sizeof(IX_NodeHeader));
 
@@ -219,7 +221,7 @@ RC IX_IndexScan::goToFirstBucket(RID &rid){
         //Browse the node
         int i=0;
         for(; i<nodeHeader.nbKey; i++){
-            if(indexHandle->IsKeyGreater(pValue, pageHandle, i)>=0){
+            if(indexHandle->IsKeyGreater(value, pageHandle, i)>=0){
                 break;
             }
         }
@@ -237,7 +239,7 @@ RC IX_IndexScan::goToFirstBucket(RID &rid){
         //Browse the node and looks for the value
         int i=0;
         for(; i<nodeHeader.nbKey; i++){
-            if(indexHandle->IsKeyGreater(pValue, pageHandle, i)==0){
+            if(indexHandle->IsKeyGreater(value, pageHandle, i)==0){
                 break;
             }
         }
@@ -257,7 +259,7 @@ RC IX_IndexScan::goToFirstBucket(RID &rid){
         //Browse the node and looks for a lower value
         int i=nodeHeader.nbKey-1;
         for(; i>=0; i--){
-            if(indexHandle->IsKeyGreater(pValue, pageHandle, i)<0){
+            if(indexHandle->IsKeyGreater(value, pageHandle, i)<0){
                 break;
             }
         }
@@ -277,7 +279,7 @@ RC IX_IndexScan::goToFirstBucket(RID &rid){
             if( (rc = pageHandle.GetData(pData)) ) return rc;
             memcpy(&nodeHeader, pData, sizeof(IX_NodeHeader));
             //We look at the last key on the leaf
-            if(indexHandle->IsKeyGreater(pValue, pageHandle, nodeHeader.nbKey-1)<0){
+            if(indexHandle->IsKeyGreater(value, pageHandle, nodeHeader.nbKey-1)<0){
                 if( (rc = indexHandle->getPointer(pageHandle, nodeHeader.nbKey-1, currentBucket)) ) return rc;
                 currentBucketPos = 0;
                 currentKey = nodeHeader.nbKey-1;
@@ -302,7 +304,7 @@ RC IX_IndexScan::goToFirstBucket(RID &rid){
         //Browse the node and looks for a lower value
         int i=0;
         for(; i<nodeHeader.nbKey; i++){
-            if(indexHandle->IsKeyGreater(pValue, pageHandle, i)>0){
+            if(indexHandle->IsKeyGreater(value, pageHandle, i)>0){
                 break;
             }
         }
@@ -322,7 +324,7 @@ RC IX_IndexScan::goToFirstBucket(RID &rid){
             if( (rc = pageHandle.GetData(pData)) ) return rc;
             memcpy(&nodeHeader, pData, sizeof(IX_NodeHeader));
             //We look at the last key on the leaf
-            if(indexHandle->IsKeyGreater(pValue, pageHandle, 0)<0){
+            if(indexHandle->IsKeyGreater(value, pageHandle, 0)<0){
                 if( (rc = indexHandle->getPointer(pageHandle, 0, currentBucket)) ) return rc;
                 currentBucketPos = 0;
                 currentKey = 0;
@@ -347,7 +349,7 @@ RC IX_IndexScan::goToFirstBucket(RID &rid){
         */
         int i=nodeHeader.nbKey-1;
         for(; i>=0; i--){
-            if(indexHandle->IsKeyGreater(pValue, pageHandle, i)<=0){
+            if(indexHandle->IsKeyGreater(value, pageHandle, i)<=0){
                 break;
             }
         }
@@ -367,7 +369,7 @@ RC IX_IndexScan::goToFirstBucket(RID &rid){
             if( (rc = pageHandle.GetData(pData)) ) return rc;
             memcpy(&nodeHeader, pData, sizeof(IX_NodeHeader));
             //We look at the last key on the leaf
-            if(indexHandle->IsKeyGreater(pValue, pageHandle, nodeHeader.nbKey-1)<=0){
+            if(indexHandle->IsKeyGreater(value, pageHandle, nodeHeader.nbKey-1)<=0){
                 if( (rc = indexHandle->getPointer(pageHandle, nodeHeader.nbKey-1, currentBucket)) ) return rc;
                 currentBucketPos = 0;
                 currentKey = nodeHeader.nbKey-1;
@@ -393,7 +395,7 @@ RC IX_IndexScan::goToFirstBucket(RID &rid){
         //Browse the node and looks for a lower value
         int i=0;
         for(; i<nodeHeader.nbKey; i++){
-            if(indexHandle->IsKeyGreater(pValue, pageHandle, i)>=0){
+            if(indexHandle->IsKeyGreater(value, pageHandle, i)>=0){
                 break;
             }
         }
@@ -413,7 +415,7 @@ RC IX_IndexScan::goToFirstBucket(RID &rid){
             if( (rc = pageHandle.GetData(pData)) ) return rc;
             memcpy(&nodeHeader, pData, sizeof(IX_NodeHeader));
             //We look at the last key on the leaf
-            if(indexHandle->IsKeyGreater(pValue, pageHandle, 0)<=0){
+            if(indexHandle->IsKeyGreater(value, pageHandle, 0)<=0){
                 if( (rc = indexHandle->getPointer(pageHandle, 0, currentBucket)) ) return rc;
                 currentBucketPos = 0;
                 currentKey = 0;

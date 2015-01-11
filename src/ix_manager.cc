@@ -2,9 +2,15 @@
 #include <unistd.h>
 #include <iostream>
 #include "ix.h"
+#include <string.h>
+
+
+/*
+ *TODO faire que le nom du fichier soit composé du filename donné ET du numéro d'index
+*/
 
 IX_Manager::IX_Manager(PF_Manager &pfm) {
-    this->pfManager = pfm;
+    this->pfManager = &pfm;
 }
 IX_Manager::~IX_Manager() {
 }
@@ -13,13 +19,11 @@ IX_Manager::~IX_Manager() {
 RC IX_Manager::CreateIndex(const char *fileName, int indexNo, AttrType attrType,
 		int attrLength) {
     RC rc = 0;
-    char * fileNameForPF;
-    fileNameForPF = fileName + "." + indexNo;
     //Creates file with PF
-    if( (rc = pfManager.CreateFile(fileNameForPF)) ) return rc;
+    if( (rc = pfManager->CreateFile(fileName)) ) return rc;
     //Opens it
     PF_FileHandle fileHandle;
-    PF_Manager.OpenFile(fileNameForPF, fileHandle);
+    pfManager->OpenFile(fileName, fileHandle);
     //Creates IX_FileHeader for the file
     IX_FileHeader fileHeader;
     fileHeader.attrType = attrType;
@@ -31,32 +35,28 @@ RC IX_Manager::CreateIndex(const char *fileName, int indexNo, AttrType attrType,
     char * pData;
     if( (rc = pageHandle.GetData(pData)) ) return rc;
     //And writes fileHeader to it
-    memcpy(pData, &fileHeader, size(IX_FileHeader));
+    memcpy(pData, &fileHeader, sizeof(IX_FileHeader));
     PageNum nb;
     if( (rc = pageHandle.GetPageNum(nb)) || (rc = fileHandle.MarkDirty(nb))
             || (rc = fileHandle.UnpinPage(nb)) || (rc = fileHandle.ForcePages()) ) return rc;
 
-    return pfManager.CloseFile(fileHandle);
+    return pfManager->CloseFile(fileHandle);
 }
 
 // Destroy and Index
 RC IX_Manager::DestroyIndex(const char *fileName, int indexNo) {
-    char * fileNameForPF;
-    fileNameForPF = fileName + "." + indexNo;
-    return pfManager.DestroyFile(fileNameForPF);
+    return pfManager->DestroyFile(fileName);
 }
 
 // Open an Index
 RC IX_Manager::OpenIndex(const char *fileName, int indexNo,
 		IX_IndexHandle &indexHandle) {
     RC rc = 0;
-    char * fileNameForPF;
-    fileNameForPF = fileName + "." + indexNo;
     //Checks not already open
     if(indexHandle.bFileOpen) return IX_FILEOPEN;
     //Opens in PF
     PF_FileHandle fileHandle;
-    if( (rc = pfManager.OpenFile(fileNameForPF, fileHandle)) ) return rc;
+    if( (rc = pfManager->OpenFile(fileName, fileHandle)) ) return rc;
     //Marks open
     indexHandle.bFileOpen = true;
     indexHandle.filehandle = new PF_FileHandle(fileHandle);
@@ -87,7 +87,7 @@ RC IX_Manager::CloseIndex(IX_IndexHandle &indexHandle) {
     if( (rc = indexHandle.filehandle->MarkDirty(0))
             || (rc = indexHandle.filehandle->UnpinPage(0))
             || (rc = indexHandle.filehandle->ForcePages(0))
-            || (rc = this->pfManager.CloseFile(indexHandle.filehandle)) ) return rc;
+            || (rc = this->pfManager->CloseFile(*(indexHandle.filehandle))) ) return rc;
 
     indexHandle.bFileOpen = false;
 

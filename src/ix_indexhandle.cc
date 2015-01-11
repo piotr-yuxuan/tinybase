@@ -2,8 +2,14 @@
 #include <unistd.h>
 #include <iostream>
 #include "ix.h"
+#include <string.h>
+#include <stdlib.h>
 
 using namespace std;
+
+//Initialize static variables
+int IX_IndexHandle::Order = 5;
+int IX_IndexHandle::SizePointer =  sizeof(PageNum);
 
 /*
  * Implementation sketch of a B+ tree. This structure gracefully reorganise
@@ -41,18 +47,18 @@ RC IX_IndexHandle::InsertEntry(void *pData, const RID &rid) {
         //Creates a header for the root
         IX_NodeHeader rootHeader;
         rootHeader.level = -1;
-        rootHeader.maxKeyNb = IX_IndexHandle.Order*2;
+        rootHeader.maxKeyNb = IX_IndexHandle::Order * 2;
         rootHeader.nbKey = 0;
         rootHeader.prevPage = -1;
         rootHeader.nextPage = -1;
         rootHeader.parentPage = -1;
         //Copy the header of the root to memory
         char* pData2;
-        if(rc = pageHandle.GetData(pData2)) return rc;
+        if( (rc = pageHandle.GetData(pData2)) ) return rc;
         memcpy(pData2, &rootHeader, sizeof(IX_NodeHeader));
         //Updates the root page number in file header
         PageNum nb;
-        if(rc = pageHandle.GetPageNum(nb)) return rc;
+        if( (rc = pageHandle.GetPageNum(nb)) ) return rc;
         this->fileHeader.rootNb = nb;
         //Marks dirty and unpins
         if( (rc = filehandle->MarkDirty(nb)) || (rc = filehandle->UnpinPage(nb)) ) return rc;
@@ -91,10 +97,12 @@ RC IX_IndexHandle::InsertEntryToNode(const PageNum nodeNum, void *pData, const R
                 //Unpin node since we don't need it anymore
                 if( (rc = filehandle->UnpinPage(nodeNum)) ) return rc;
                 //Reccursive call to insertEntreToNode
-                InsertEntryToNode(nb, pData, rid);
+                return InsertEntryToNode(nb, pData, rid);
             }
         }
     }
+    //Should never get there
+    return -1;
 }
 
 //Inserts a new entry to a leaf node
@@ -175,7 +183,6 @@ RC IX_IndexHandle::InsertEntryToLeafNodeNoSplit(const PageNum nodeNum, void *pDa
         if( (rc = getPointer(pageHandle, i, pointer)) ) return rc;
         if( (rc = setPointer(pageHandle, i+1, pointer))) return rc;
     }
-    free(pData3);
 
     //Sets pos key to our key
     if( (rc = setKey(pageHandle, pos, pData)) ) return rc;
@@ -220,7 +227,7 @@ RC IX_IndexHandle::InsertEntryToLeafNodeSplit(const PageNum nodeNum, void *pData
     PF_PageHandle phLeaf1, phLeaf2;
     IX_NodeHeader leaf1Header, leaf2Header;
     PageNum leaf2PageNum, leaf2Parent;
-    char* pDataLeaf1, pDataLeaf2;
+    char *pDataLeaf1, *pDataLeaf2;
 
     //Retrieves leaf1 and its header
     if( (rc = filehandle->GetThisPage(nodeNum, phLeaf1)) ) return rc;
@@ -232,7 +239,7 @@ RC IX_IndexHandle::InsertEntryToLeafNodeSplit(const PageNum nodeNum, void *pData
     if( (rc = phLeaf2.GetData(pDataLeaf2)) ) return rc;
     if( (rc = phLeaf2.GetPageNum(leaf2PageNum)) ) return rc;
     leaf2Header.level = 1;
-    leaf2Header.maxKeyNb = IX_IndexHandle.Order*2;
+    leaf2Header.maxKeyNb = IX_IndexHandle::Order*2;
     leaf2Header.nbKey = 0;
 
     //Now we need to put the half the keys in the first leaf and the other half in the second one...
@@ -328,7 +335,6 @@ RC IX_IndexHandle::InsertEntryToIntlNodeNoSplit(
         if( (rc = getPointer(pageHandle, i, pointer)) ) return rc;
         if( (rc = setPointer(pageHandle, i+1, pointer))) return rc;
     }
-    free(pData3);
 
     //Sets pos key to our key
     if( (rc = setKey(pageHandle, pos, splitKey)) ) return rc;
@@ -355,7 +361,7 @@ RC IX_IndexHandle::InsertEntryToIntlNodeSplit(
 
     //Variables for the internal node (node1) and the new node (node2)
     PF_PageHandle phNode1, phNode2;
-    char * pDataNode1, pDataNode2;
+    char *pDataNode1, *pDataNode2;
     IX_NodeHeader node1Header, node2Header;
     int node2PageNumber, node2Parent;
 
@@ -369,7 +375,7 @@ RC IX_IndexHandle::InsertEntryToIntlNodeSplit(
     if( (rc = phNode2.GetData(pDataNode2)) ) return rc;
     if( (rc = phNode2.GetPageNum(node2PageNumber)) ) return rc;
     node2Header.level = 0; //Internal node
-    node2Header.maxKeyNb = IX_IndexHandle.Order*2;
+    node2Header.maxKeyNb = IX_IndexHandle::Order*2;
     node2Header.nbKey = 0;
 
     //Median key
@@ -428,7 +434,6 @@ RC IX_IndexHandle::InsertEntryToIntlNodeSplit(
             i1--;
         }
     }
-    free(pData3);
 
     //Updates headers
     node2Header.nextPage = node1Header.nextPage;
@@ -461,9 +466,8 @@ int IX_IndexHandle::IsKeyGreater(void *pData, PF_PageHandle pageHandle, int i) {
     //Case integer or float
     if(fileHeader.attrType==INT || fileHeader.attrType==FLOAT){
         int value1, value2; //value1 = value given, value2 = value of the ith key
-        memcpy(value1, pData, fileHeader.keySize);
-        memcpy(value2, pData2, fileHeader.keySize);
-        free(pData2);
+        memcpy(&value1, pData, fileHeader.keySize);
+        memcpy(&value2, pData2, fileHeader.keySize);
         if(value2>value1) return 1;
         if(value1>value2) return -1;
         if(value1==value2) return 0;
@@ -472,7 +476,7 @@ int IX_IndexHandle::IsKeyGreater(void *pData, PF_PageHandle pageHandle, int i) {
     //Case string
     if(fileHeader.attrType==FLOAT){
         char *string1, *string2;
-        string1 = (char*) pData1;
+        string1 = (char*) pData;
         string2 = (char*) pData2;
         return strncmp(string2,string1,fileHeader.keySize);
     }
@@ -483,23 +487,25 @@ int IX_IndexHandle::IsKeyGreater(void *pData, PF_PageHandle pageHandle, int i) {
 RC IX_IndexHandle::getKey(PF_PageHandle &pageHandle, int i, void *pData){
     //Of course we assume the node is loaded into pageHandle already
     RC rc = 0;
-    if( (rc = pageHandle.GetData(pData)) ) return rc;
+    char* pData2;
+    if( (rc = pageHandle.GetData(pData2)) ) return rc;
     IX_NodeHeader nodeHeader;
-    memcpy(&nodeHeader, pData, sizeof(IX_NodeHeader));
+    memcpy(&nodeHeader, pData2, sizeof(IX_NodeHeader));
     //Case root or internal node
     if(nodeHeader.level<1){
-        pData += sizeof(IX_NodeHeader); //Offset due to header
-        pData += SizePointer; //Offset due to pointer -1
-        pData += i*(SizePointer+fileHeader.keySize); //Offset due to key before
+        pData2 += sizeof(IX_NodeHeader); //Offset due to header
+        pData2 += SizePointer; //Offset due to pointer -1
+        pData2 += i*(SizePointer+fileHeader.keySize); //Offset due to key before
+        memcpy(pData, pData2, fileHeader.keySize);
         return 0;
     }
     //Case leaf node
     if(nodeHeader.level==1){
-        pData += sizeof(IX_NodeHeader); //Offset due to header
-        pData += i*(SizePointer+fileHeader.keySize); //Offset due to key before
+        pData2 += sizeof(IX_NodeHeader); //Offset due to header
+        pData2 += i*(SizePointer+fileHeader.keySize); //Offset due to key before
+        memcpy(pData, pData2, fileHeader.keySize);
         return 0;
     }
-    //We should never get there so we return -1
     return -1;
 }
 
@@ -507,7 +513,7 @@ RC IX_IndexHandle::getKey(PF_PageHandle &pageHandle, int i, void *pData){
 RC IX_IndexHandle::setKey(PF_PageHandle &pageHandle, int i, void *pData){
     //The trick is we just use getKey to get the adress of the i key
     RC rc = 0;
-    char* pData2;
+    void* pData2 = malloc(fileHeader.keySize);
     if( (rc = getKey(pageHandle, i, pData2)) ) return rc;
     memcpy(pData2, pData, fileHeader.keySize);
     return 0;
@@ -546,13 +552,33 @@ RC IX_IndexHandle::getPointer(PF_PageHandle &pageHandle, int i, PageNum &pageNum
 
 //Sets the pointer number i to pageNum in the node of pageHandle
 RC IX_IndexHandle::setPointer(PF_PageHandle &pageHandle, int i, PageNum pageNum) {
-    //The trick is we just use getPointer to get the adress of the i pointer
-    //Of course it also works if i=-1 for root and internal nodes
-    RC rc = 0;
-    char* pData2;
-    if( (rc = getPointer(pageHandle, i, pData2)) ) return rc;
-    memcpy(pData2, pData, SizePointer);
-    return 0;
+    //Of course we assume the node is loaded into pageHandle already
+    RC rc = 0; char* pData;
+    if( (rc = pageHandle.GetData(pData)) ) return rc;
+    IX_NodeHeader nodeHeader;
+    memcpy(&nodeHeader, pData, sizeof(IX_NodeHeader));
+    //Case root or internal node
+    if(nodeHeader.level<1){
+        pData += sizeof(IX_NodeHeader); //Offset due to header
+        pData += SizePointer; //Offset due to pointer -1
+        pData += i*(SizePointer+fileHeader.keySize); //Offset due to key before
+        pData += fileHeader.keySize; //The i key
+        //Please note that if i=-1 it still works and pData is at the adresse of the -1 pointer
+        //Now we copy it into pageNum
+        memcpy(pData, &pageNum, fileHeader.keySize);
+        return 0;
+    }
+    //Case leaf node
+    if(nodeHeader.level==1){
+        pData += sizeof(IX_NodeHeader); //Offset due to header
+        pData += i*(SizePointer+fileHeader.keySize); //Offset due to key before
+        pData += fileHeader.keySize; //The i key
+        //Now we copy it into pageNum
+        memcpy(pData, &pageNum, fileHeader.keySize);
+        return 0;
+    }
+    //We should never get there so we return -1
+    return -1;
 }
 
 //Sets the previous node in the header of a particular node

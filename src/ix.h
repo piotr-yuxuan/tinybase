@@ -44,8 +44,8 @@ class IX_IndexHandle {
     friend class IX_Manager;
     friend class IX_IndexScan;
 public:
-    static int Order = 5;
-    static int SizePointer = sizeof(pageNum);
+    static int Order;
+    static int SizePointer;
     IX_IndexHandle();
     ~IX_IndexHandle();
 
@@ -137,7 +137,7 @@ public:
     RC CloseIndex(IX_IndexHandle &indexHandle);
 
 private:
-    PF_Manager& pfManager;
+    PF_Manager *pfManager;
 };
 
 
