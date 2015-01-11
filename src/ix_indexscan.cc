@@ -68,7 +68,7 @@ RC IX_IndexScan::GetNextEntry(RID &rid) {
     if (!bScanOpen) return IX_CLOSEDSCAN;
 
     //Sanity Check: indexHandle must be open
-    if(indexHandle->bFileOpen==false) return IX_CLOSEFILE;
+    if(indexHandle->bFileOpen==false) return IX_CLOSEDFILE;
 
     //If it's the first time we look for the first entry to give
     if(currentLeaf==-1){
@@ -186,7 +186,7 @@ RC IX_IndexScan::GetNextEntry(RID &rid) {
 //Closes the scan
 RC IX_IndexScan::CloseScan() {
     if(bScanOpen==false){
-        return IX_SCANCLOSED;
+        return IX_CLOSEDSCAN;
     }
     currentBucket = -1;
     currentLeaf = -1;

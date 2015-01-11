@@ -140,16 +140,26 @@ private:
     PF_Manager& pfManager;
 };
 
+
 //
 // Print-error function
 //
-void IX_PrintError(RC rc) {
-	switch (rc) {
-	case 0:
-		break;
-	default:
-		break;
-	}
-}
+void IX_PrintError(RC rc);
+
+#define IX_INVIABLERID     (START_IX_WARN + 0) // inviable rid
+#define IX_UNREADRECORD    (START_IX_WARN + 1) // unread record
+#define IX_INVALIDRECSIZE  (START_IX_WARN + 2) // invalid record size
+#define IX_EMPTYNODE       (START_IX_WARN + 3) // node is empty
+#define IX_FULLBUCKET      (START_IX_WARN + 4) // the bucket is full
+#define IX_INVALIDCOMPOP   (START_IX_WARN + 5) // invalid comparison operator
+#define IX_INVALIDATTR     (START_IX_WARN + 6) // invalid attribute parameters
+#define IX_NULLPOINTER     (START_IX_WARN + 7) // pointer is null
+#define IX_SCANOPEN        (START_IX_WARN + 8) // scan is open
+#define IX_CLOSEDSCAN      (START_IX_WARN + 9) // scan is closed
+#define IX_CLOSEDFILE      (START_IX_WARN + 10)// file handle is closed
+#define IX_FILEOPEN        (START_IX_WARN + 11)// file handle is open
+#define IX_LASTWARN        IX_FILEOPEN
+
+#define IX_EOF             PF_EOF              // work-around for ix_test
 
 #endif

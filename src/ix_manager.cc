@@ -75,7 +75,7 @@ RC IX_Manager::OpenIndex(const char *fileName, int indexNo,
 RC IX_Manager::CloseIndex(IX_IndexHandle &indexHandle) {
     RC rc = 0;
     //Already closed?
-    if(!indexHandle.bFileOpen) return IX_FILECLOSED;
+    if(!indexHandle.bFileOpen) return IX_CLOSEDFILE;
 
     //We have to write the file header back
     char * pData ;

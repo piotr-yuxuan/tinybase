@@ -62,6 +62,12 @@ RC IX_IndexHandle::InsertEntry(void *pData, const RID &rid) {
     return InsertEntryToNode(this->fileHeader.rootNb, pData, rid);
 }
 
+//Deletes an entry
+RC IX_IndexHandle::DeleteEntry(void *pData, const RID &rid) {
+    //TODO
+    return -1;
+}
+
 //Inserts a new entry to a specified node
 RC IX_IndexHandle::InsertEntryToNode(const PageNum nodeNum, void *pData, const RID &rid) {
     RC rc = 0;
@@ -116,7 +122,7 @@ RC IX_IndexHandle::InsertEntryToLeafNode(const PageNum nodeNum, void *pData, con
             IX_BucketHeader bucketHeader;
             memcpy(&bucketHeader, pDataBucket, sizeof(IX_BucketHeader));
             if(bucketHeader.nbRid>=bucketHeader.nbRidMax){
-                return IX_BUCKETFULL;
+                return IX_FULLBUCKET;
             }
             //Inserts the RID
             memcpy(pDataBucket+sizeof(IX_BucketHeader)+bucketHeader.nbRid*sizeof(RID), &rid, sizeof(RID));
@@ -471,7 +477,7 @@ int IX_IndexHandle::IsKeyGreater(void *pData, PF_PageHandle pageHandle, int i) {
         string2 = (char*) pData2;
         return strncmp(string2,string1,fileHeader.keySize);
     }
-    return IX_TYPEERROR;
+    return IX_INVALIDATTR;
 }
 
 //Gets the value of the i key of the node to pData
