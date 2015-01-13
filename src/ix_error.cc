@@ -25,7 +25,8 @@ static char *IX_WarnMsg[] = {
   (char*)"scan open",
   (char*)"scan closed",
   (char*)"file closed",
-  (char*)"file open"
+  (char*)"file open",
+  (char*)"shouldn't get there"
 };
 
 // 

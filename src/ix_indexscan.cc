@@ -11,6 +11,7 @@ IX_IndexScan::IX_IndexScan() {
     currentBucketPos = -1;
     currentKey = -1;
     currentLeaf = -1;
+    bScanOpen = false;
 }
 
 IX_IndexScan::~IX_IndexScan() {
@@ -56,7 +57,7 @@ RC IX_IndexScan::OpenScan(const IX_IndexHandle &indexHandle, CompOp compOp,
     this->indexHandle = (IX_IndexHandle *)&indexHandle;;
 
     // Set local state variables
-    bScanOpen = TRUE;
+    bScanOpen = true;
 
     // Return ok
     return (0);
@@ -210,10 +211,15 @@ RC IX_IndexScan::goToFirstBucket(RID &rid){
     char* pData;
 
     //Looks for a leaf node
-    do{
+    while(1>0){
         if( (rc = indexHandle->filehandle->GetThisPage(currentLeaf, pageHandle)) ) return rc;
         if( (rc = pageHandle.GetData(pData)) ) return rc;
         memcpy(&nodeHeader, pData, sizeof(IX_NodeHeader));
+
+        //If it's a leaf node we break
+        if(nodeHeader.level==1){
+            break;
+        }
 
         //The node shouldn't be empty
         if(nodeHeader.nbKey<=0) return IX_EMPTYNODE;
@@ -230,7 +236,7 @@ RC IX_IndexScan::goToFirstBucket(RID &rid){
                 || indexHandle->filehandle->UnpinPage(currentLeaf) ) return rc;
         //Assigns new value to currentLeaf
         if( (rc = indexHandle->getPointer(pageHandle, i-1, currentLeaf)) ) return rc;
-    }while(nodeHeader.level!=1);
+    }
 
     //Now we are at the leaf where the value is if it exists in the three
 

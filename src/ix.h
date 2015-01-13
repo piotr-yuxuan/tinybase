@@ -75,8 +75,8 @@ private:
     //Returns true if key number i greater than pData value
     int IsKeyGreater(void *pData, PF_PageHandle pageHandle, int i);
     //For the keys in a given node (don't work for Bucket)
-    RC getKey(PF_PageHandle &pageHandle, int i, void *pData);
-    RC setKey(PF_PageHandle &pageHandle, int i, void *pData);
+    RC getKey(PF_PageHandle &pageHandle, int i, char *&pData);
+    RC setKey(PF_PageHandle &pageHandle, int i, char *pData);
     RC getPointer(PF_PageHandle &pageHandle, int i, PageNum &pageNum);
     RC setPointer(PF_PageHandle &pageHandle, int i, PageNum pageNum);
     //Sets the previous node of a particular node
@@ -158,7 +158,8 @@ void IX_PrintError(RC rc);
 #define IX_CLOSEDSCAN      (START_IX_WARN + 9) // scan is closed
 #define IX_CLOSEDFILE      (START_IX_WARN + 10)// file handle is closed
 #define IX_FILEOPEN        (START_IX_WARN + 11)// file handle is open
-#define IX_LASTWARN        IX_FILEOPEN
+#define IX_SHOULDNTBETHERE (START_IX_WARN + 12)//We shouldn't go to this piece of code
+#define IX_LASTWARN        IX_SHOULDNTBETHERE
 
 #define IX_EOF             PF_EOF              // work-around for ix_test
 
