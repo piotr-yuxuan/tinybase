@@ -58,6 +58,11 @@ public:
     // Force index files to disk
     RC ForcePages();
 
+    // Debugging method
+    RC PrintTree();
+    RC PrintNode(PageNum nodeNb);
+    RC PrintBucket(PageNum bucketNb);
+
 private:
     bool bFileOpen;
     PF_FileHandle *filehandle;
@@ -73,7 +78,7 @@ private:
     RC InsertEntryToIntlNodeSplit(const PageNum nodeNum, const PageNum childNodeNum, char *&splitKey,PageNum &splitNodeNum);
 
     //Returns true if key number i greater than pData value
-    int IsKeyGreater(void *pData, PF_PageHandle pageHandle, int i);
+    int IsKeyGreater(void *pData, PF_PageHandle &pageHandle, int i);
     //For the keys in a given node (don't work for Bucket)
     RC getKey(PF_PageHandle &pageHandle, int i, char *&pData);
     RC setKey(PF_PageHandle &pageHandle, int i, char *pData);

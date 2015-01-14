@@ -92,14 +92,14 @@ RC IX_IndexScan::GetNextEntry(RID &rid) {
     if( currentBucketPos<bucketHeader.nbRid){
         memcpy(&rid, pData+sizeof(IX_BucketHeader)+currentBucketPos*sizeof(RID), sizeof(RID));
         currentBucketPos++;
+        if( (rc = indexHandle->filehandle->UnpinPage(currentBucket)) ) return rc;
         return 0;
     }
 
     //Else we need to go to the next matching bucket
     if(compOp==EQ_OP){
         //Unpins current bucket and leaf
-        if( (rc = indexHandle->filehandle->UnpinPage(currentBucket))
-                || (rc = indexHandle->filehandle->UnpinPage(currentLeaf)) ) return rc;
+        if( (rc = indexHandle->filehandle->UnpinPage(currentBucket)) ) return rc;
         //There is no more than one bucket with a given value
         return IX_EOF;
     }
@@ -118,6 +118,7 @@ RC IX_IndexScan::GetNextEntry(RID &rid) {
             if( (rc = indexHandle->getPointer(phLeaf, currentKey, currentBucket)) ) return rc;
             currentBucketPos = 0;
             //Reccursive call
+            if( (rc = indexHandle->filehandle->UnpinPage(currentLeaf)) ) return rc;
             return GetNextEntry(rid);
         }
 
@@ -125,7 +126,9 @@ RC IX_IndexScan::GetNextEntry(RID &rid) {
         if( (rc = indexHandle->filehandle->UnpinPage(currentLeaf)) ) return rc;
         if( (rc = indexHandle->filehandle->UnpinPage(currentBucket)) ) return rc;
         //Else we have to go to the leaf on the left
-        if( leafHeader.prevPage<0) return IX_EOF;
+        if( leafHeader.prevPage<0){
+            return IX_EOF;
+        }
         currentLeaf = leafHeader.prevPage;
 
         //Loads the new leaf
@@ -138,6 +141,7 @@ RC IX_IndexScan::GetNextEntry(RID &rid) {
         currentBucketPos = 0; //Sets the bucket pos to the beginning
 
         //Reccursive call
+        if( (rc = indexHandle->filehandle->UnpinPage(currentLeaf)) ) return rc;
         return GetNextEntry(rid);
     }
     if(compOp==GT_OP || compOp==GE_OP){
@@ -158,14 +162,17 @@ RC IX_IndexScan::GetNextEntry(RID &rid) {
             if( (rc = indexHandle->getPointer(phLeaf, currentKey, currentBucket)) ) return rc;
             currentBucketPos = 0;
             //Reccursive call
+            if( (rc = indexHandle->filehandle->UnpinPage(currentLeaf)) ) return rc;
             return GetNextEntry(rid);
         }
 
         //Unpins leaf and bucket
         if( (rc = indexHandle->filehandle->UnpinPage(currentLeaf)) ) return rc;
         if( (rc = indexHandle->filehandle->UnpinPage(currentBucket)) ) return rc;
-        //Else we have to go to the leaf on the left
-        if( leafHeader.nextPage<0) return IX_EOF;
+        //Else we have to go to the leaf on the right
+        if( leafHeader.nextPage<0){
+            return IX_EOF;
+        }
         currentLeaf = leafHeader.nextPage;
 
         //Loads the new leaf
@@ -178,11 +185,13 @@ RC IX_IndexScan::GetNextEntry(RID &rid) {
         currentBucketPos = 0; //Sets the bucket pos to the beginning
 
         //Reccursive call
+        if( (rc = indexHandle->filehandle->UnpinPage(currentLeaf)) ) return rc;
         return GetNextEntry(rid);
     }
 
     //We should never get there
     return IX_INVALIDCOMPOP;
+    return 0;
 }
 
 //Closes the scan
@@ -202,7 +211,9 @@ RC IX_IndexScan::CloseScan() {
 RC IX_IndexScan::goToFirstBucket(RID &rid){
     RC rc = 0;
     //If no root nothing to do
-    if(indexHandle->fileHeader.rootNb<0) return IX_EOF;
+    if(indexHandle->fileHeader.rootNb<0){
+        return IX_EOF;
+    }
     currentLeaf = indexHandle->fileHeader.rootNb;
 
     //PageHandle and NodeHeader for the node
@@ -221,13 +232,15 @@ RC IX_IndexScan::goToFirstBucket(RID &rid){
             break;
         }
 
-        //The node shouldn't be empty
-        if(nodeHeader.nbKey<=0) return IX_EMPTYNODE;
+        //The node shouldn't be empty (if it's not the root)
+        if(nodeHeader.level!=-1 && nodeHeader.nbKey<=0){
+            return IX_EMPTYNODE;
+        }
 
         //Browse the node
         int i=0;
         for(; i<nodeHeader.nbKey; i++){
-            if(indexHandle->IsKeyGreater(value, pageHandle, i)>=0){
+            if(indexHandle->IsKeyGreater(value, pageHandle, i)>0){
                 break;
             }
         }
@@ -259,6 +272,7 @@ RC IX_IndexScan::goToFirstBucket(RID &rid){
         currentBucketPos = 0;
         currentKey = i;
         //Reccursive call
+        if( (rc = indexHandle->filehandle->UnpinPage(currentLeaf)) ) return rc;
         return GetNextEntry(rid);
     }
     if(compOp==LT_OP){
@@ -301,6 +315,7 @@ RC IX_IndexScan::goToFirstBucket(RID &rid){
         currentBucketPos = 0;
         currentKey = i;
         //Reccursive call
+        if( (rc = indexHandle->filehandle->UnpinPage(currentLeaf)) ) return rc;
         return GetNextEntry(rid);
     }
     if(compOp==GT_OP){
@@ -332,6 +347,7 @@ RC IX_IndexScan::goToFirstBucket(RID &rid){
             //We look at the last key on the leaf
             if(indexHandle->IsKeyGreater(value, pageHandle, 0)<0){
                 if( (rc = indexHandle->getPointer(pageHandle, 0, currentBucket)) ) return rc;
+                if( (rc = indexHandle->filehandle->UnpinPage(currentLeaf)) ) return rc;
                 currentBucketPos = 0;
                 currentKey = 0;
                 //Reccursive call
@@ -346,6 +362,7 @@ RC IX_IndexScan::goToFirstBucket(RID &rid){
         currentBucketPos = 0;
         currentKey = i;
         //Reccursive call
+        if( (rc = indexHandle->filehandle->UnpinPage(currentLeaf)) ) return rc;
         return GetNextEntry(rid);
     }
     if(compOp==LE_OP){
@@ -380,6 +397,7 @@ RC IX_IndexScan::goToFirstBucket(RID &rid){
                 currentBucketPos = 0;
                 currentKey = nodeHeader.nbKey-1;
                 //Reccursive call
+                if( (rc = indexHandle->filehandle->UnpinPage(currentLeaf)) ) return rc;
                 return GetNextEntry(rid);
             }else{
                 if( (rc = indexHandle->filehandle->UnpinPage(currentLeaf)) ) return rc;
@@ -391,6 +409,7 @@ RC IX_IndexScan::goToFirstBucket(RID &rid){
         currentBucketPos = 0;
         currentKey = i;
         //Reccursive call
+        if( (rc = indexHandle->filehandle->UnpinPage(currentLeaf)) ) return rc;
         return GetNextEntry(rid);
     }
     if(compOp==GE_OP){
@@ -426,6 +445,7 @@ RC IX_IndexScan::goToFirstBucket(RID &rid){
                 currentBucketPos = 0;
                 currentKey = 0;
                 //Reccursive call
+                if( (rc = indexHandle->filehandle->UnpinPage(currentLeaf)) ) return rc;
                 return GetNextEntry(rid);
             }else{
                 if( (rc = indexHandle->filehandle->UnpinPage(currentLeaf)) ) return rc;
@@ -437,6 +457,7 @@ RC IX_IndexScan::goToFirstBucket(RID &rid){
         currentBucketPos = 0;
         currentKey = i;
         //Reccursive call
+        if( (rc = indexHandle->filehandle->UnpinPage(currentLeaf)) ) return rc;
         return GetNextEntry(rid);
     }
 

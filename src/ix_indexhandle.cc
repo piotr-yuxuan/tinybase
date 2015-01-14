@@ -49,7 +49,7 @@ RC IX_IndexHandle::InsertEntry(void *pData, const RID &rid) {
         IX_NodeHeader rootHeader;
         rootHeader.level = -1;
         rootHeader.maxKeyNb = IX_IndexHandle::Order * 2;
-        rootHeader.nbKey = 0;
+        rootHeader.nbKey = 0; //Due to the first leaf (see below)
         rootHeader.prevPage = -1;
         rootHeader.nextPage = -1;
         rootHeader.parentPage = -1;
@@ -312,8 +312,8 @@ RC IX_IndexHandle::InsertEntryToLeafNodeSplit(const PageNum nodeNum, void *pData
             || (rc = filehandle->ForcePages()) ) return rc;
 
     //Finally we insert the new value using InsertEntryToLeafNodeNoSplit()
-    if(IsKeyGreater(pData, phLeaf2, 0)<0){
-        //If our new key is lower then the first one of leaf2 we insert in leaf 1
+    if(IsKeyGreater(pData, phLeaf2, 0)>0){
+        //If our new key is lower than the first one of leaf2 we insert in leaf 1
         return InsertEntryToLeafNodeNoSplit(nodeNum, pData, rid);
     }else{
         //If it is higher we insert in the new leaf (leaf 2)
@@ -530,13 +530,22 @@ RC IX_IndexHandle::InsertEntryToIntlNodeSplit(
 }
 
 //Compares the given value (pData) to number i key on the node (pageHandle)
-int IX_IndexHandle::IsKeyGreater(void *pData, PF_PageHandle pageHandle, int i) {
+int IX_IndexHandle::IsKeyGreater(void *pData, PF_PageHandle &pageHandle, int i) {
     RC rc = 0;
     char* pData2;
-    if( (rc = getKey(pageHandle, i, pData2)) ) return rc;
+    rc = getKey(pageHandle, i, pData2);
     //Case integer or float
-    if(fileHeader.attrType==INT || fileHeader.attrType==FLOAT){
+    if(fileHeader.attrType==INT){
         int value1, value2; //value1 = value given, value2 = value of the ith key
+        memcpy(&value1, pData, fileHeader.keySize);
+        memcpy(&value2, pData2, fileHeader.keySize);
+        if(value2>value1) return 1;
+        if(value1>value2) return -1;
+        if(value1==value2) return 0;
+        return IX_SHOULDNTBETHERE; //Shoudn't be needed
+    }
+    if(fileHeader.attrType==FLOAT){
+        float value1, value2; //value1 = value given, value2 = value of the ith key
         memcpy(&value1, pData, fileHeader.keySize);
         memcpy(&value2, pData2, fileHeader.keySize);
         if(value2>value1) return 1;
@@ -668,5 +677,81 @@ RC IX_IndexHandle::setPreviousNode(PageNum nodeNum, PageNum previousNode) {
     if( (rc = filehandle->MarkDirty(nodeNum))
             || (rc = filehandle->UnpinPage(nodeNum))
             || (rc = filehandle->ForcePages()) ) return rc;
+    return 0;
+}
+
+
+RC IX_IndexHandle::PrintTree(){
+    RC rc = 0;
+    printf("\n------------------------------\n");
+    if(fileHeader.rootNb==-1){
+        printf("The tree is empty\n");
+    }else{
+        if((rc = PrintNode(fileHeader.rootNb))) return rc;
+    }
+    printf("\n------------------------------\n");
+    return 0;
+}
+
+RC IX_IndexHandle::PrintNode(PageNum nodeNb){
+    printf("----\n");
+    PF_PageHandle ph;
+    RC rc;
+    char * pData;
+    IX_NodeHeader nodeHeader;
+    if((rc = filehandle->GetThisPage(nodeNb, ph)) ) return rc;
+    if( (rc = ph.GetData(pData))) return rc;
+    memcpy(&nodeHeader, pData, sizeof(IX_NodeHeader));
+    printf("Node nb %d | level %d | nb keys %d\n", nodeNb, nodeHeader.level, nodeHeader.nbKey);
+    printf("prev %d | next %d | parent %d\n", nodeHeader.prevPage, nodeHeader.nextPage, nodeHeader.parentPage);
+    pData+=sizeof(IX_NodeHeader);
+    int value;
+    if(nodeHeader.level!=1){
+        memcpy(&value, pData, 4); printf("%d ", value); //prints pointer -1
+        pData+=4;
+    }
+    for(int i=0; i<nodeHeader.nbKey; i++){
+        memcpy(&value, pData, 4); printf("(%d,", value); //prints key i
+        pData+=4;
+        memcpy(&value, pData, 4); printf("%d) ", value); //prints pointer i
+        pData+=4;
+    }
+    printf("\n");
+    if( (rc = ph.GetData(pData))) return rc;
+    pData += sizeof(IX_NodeHeader);
+    if(nodeHeader.level==1){
+        for(int i=0; i<nodeHeader.nbKey; i++){
+            //memcpy(&value, pData, 4); printf("Key%d %d ", i, value); //prints key i
+            pData+=4;
+            PageNum bNb;
+            memcpy(&bNb, pData, 4);
+            PrintBucket(bNb);//prints pointer i
+            pData+=4;
+        }
+    }
+    printf("----\n");
+    //Prints all the children if internal node
+    if(nodeHeader.level!=1){
+        for(int i=-1; i<nodeHeader.nbKey; i++){
+            PageNum childNb;
+            getPointer(ph, i, childNb);
+            printf("Displaying node %d\n", childNb);
+            PrintNode(childNb);
+        }
+    }
+    if( (rc=filehandle->UnpinPage(nodeNb))) return rc;
+    return 0;
+}
+
+RC IX_IndexHandle::PrintBucket(PageNum bucketNb){
+    PF_PageHandle ph;
+    RC rc;
+    char * pData;
+    IX_BucketHeader bucketHeader;
+    if((rc = filehandle->GetThisPage(bucketNb, ph)) ) return rc;
+    if( (rc = ph.GetData(pData))) return rc;
+    memcpy(&bucketHeader, pData, sizeof(IX_BucketHeader));
+    printf("Bucket nb %d | nb rid %d\n", bucketNb, bucketHeader.nbRid);
+    if( (rc=filehandle->UnpinPage(bucketNb))) return rc;
     return 0;
 }
