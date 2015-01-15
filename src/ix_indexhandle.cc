@@ -435,9 +435,14 @@ RC IX_IndexHandle::InsertEntryToIntlNodeSplit(
         if( (rc = filehandle->MarkDirty(rootPageNb)) ) return rc;
         //We don't forget to set the root as root in our fileHeader
         this->fileHeader.rootNb = rootPageNb;
-        //Inserts our node as a child of the new root
-        if( (rc = InsertEntryToIntlNodeNoSplit(rootPageNb, nodeNum, splitKey2, splitNodeNum2)) ) return rc;
-        node1Header.parentPage = splitNodeNum2;
+        //Inserts our node as the very left pointer of the new root
+        if( (rc = setPointer(phRoot, -1, nodeNum)) ) return rc;
+        //Marks root as the parent of our node
+        node1Header.parentPage = rootPageNb;
+        node1Header.level = 0; //It's no longer a root
+        //Marks the root as dirty and unpins it
+        if( (rc = filehandle->MarkDirty(rootPageNb))
+                || (rc = filehandle->UnpinPage(rootPageNb)) ) return rc;
     }
 
     //Allocates page for our new node
@@ -468,13 +473,24 @@ RC IX_IndexHandle::InsertEntryToIntlNodeSplit(
             if( (rc = setKey(phNode2, i2, splitKey)) ) return rc;
             if( (rc = setPointer(phNode2, i2, childNodeNum)) ) return rc;
             i2--; splitKeyWritten=true;
+            //And if the splitKey is written in node2, means the splitNode is node2
+            splitNodeNum = node2PageNumber;
         }else{
             //Puts i1 keys and pointer at i2 in node2
             if( (rc = getKey(phNode1, i1, pData3)) ) return rc;
             if( (rc = setKey(phNode2, i2, pData3)) ) return rc;
-            if( (rc = getPointer(phNode1, i1, pointer)))
+            if( (rc = getPointer(phNode1, i1, pointer)) ) return rc;
             if( (rc = setPointer(phNode2, i2, pointer)) ) return rc;
             i1--; i2--;
+            //We also need to change the parent in the new child of node2
+            PF_PageHandle phChild; IX_NodeHeader childHeader; char* pDataChild;
+            if( (rc = filehandle->GetThisPage(pointer, phChild)) ) return rc;
+            if( (rc = phChild.GetData(pDataChild)) ) return rc;
+            memcpy(&childHeader, pDataChild, sizeof(IX_NodeHeader));
+            childHeader.parentPage = node2PageNumber;
+            memcpy(pDataChild, &childHeader, sizeof(IX_NodeHeader));
+            if( (rc = filehandle->MarkDirty(pointer))) return rc;
+            if( (rc = filehandle->UnpinPage(pointer))) return rc;
         }
     }
     //We add the median key above
@@ -482,11 +498,19 @@ RC IX_IndexHandle::InsertEntryToIntlNodeSplit(
         //In this case the median pushed is the split key
         if( (rc = InsertEntryToIntlNode(node1Header.parentPage, node2PageNumber, splitKey, node2Parent)) ) return rc;
         splitKeyWritten=true;
+        //And if the splitKey is the median, means the splitNode is node2
+        splitNodeNum = node2PageNumber;
+        //We don't forget to set the median node as the -1 pointer in node2
+        if( (rc = setPointer(phNode2, -1, childNodeNum))) return rc;
     }else{
         //In this case the median pushed is next node1 key
         if( (rc = getKey(phNode1, i1, pData3)) ) return rc;
         if( (rc = InsertEntryToIntlNode(node1Header.parentPage, node2PageNumber, pData3, node2Parent)) ) return rc;
         i1--;
+        //We don't forget to set the median node as the -1 pointer in node2
+        PageNum medianNodeNb;
+        if( (rc = getPointer(phNode1, i1, medianNodeNb)) ) return rc;
+        if( (rc = setPointer(phNode2, -1, medianNodeNb))) return rc;
     }
     //Now only if splitKey has not been written so far we offset all the keys in node1 until we write it
     while(!splitKeyWritten){
@@ -495,6 +519,8 @@ RC IX_IndexHandle::InsertEntryToIntlNodeSplit(
             if( (rc = setKey(phNode1, i1+1, splitKey)) ) return rc;
             if( (rc = setPointer(phNode1, i1+1, childNodeNum)) ) return rc;
             splitKeyWritten=true;
+            //And if the splitKey is written in node1, means the splitNode is node1
+            splitNodeNum = nodeNum;
         }else{
             //Moves i1 to i1+1
             if( (rc = getKey(phNode1, i1, pData3)) ) return rc;
@@ -694,6 +720,10 @@ RC IX_IndexHandle::PrintTree(){
 
 RC IX_IndexHandle::PrintNode(PageNum nodeNb){
     printf("----\n");
+    if(nodeNb==0){
+        printf("Error: Requesting the node 0, which is the file header!\n");
+        return 0;
+    }
     PF_PageHandle ph;
     RC rc;
     char * pData;
