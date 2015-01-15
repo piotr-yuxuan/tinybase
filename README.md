@@ -1,6 +1,10 @@
 tinybase
 ========
 
+Edit du 15/01/2015
+Pour l'insertion ça a l'air de fonctionner, en testant un grand nombre de fois avec des nombres aléatoires on n'obtient pas d'erreur. Les tests 1, 2, 4 passent donc (et le 2 en changeant **FEW_ENTRIES** par **MANY_ENTRIES**, ce qui n'est pas anodin... Le test 3 concerne la deletion qui n'est pas implémentée pour le moment...
+
+
 Bon il faut qu'on se mette au travail là. Pierre plus je relis ce que tu as fait moins je comprends comment tu comptes implémenter l'algorithme de l'arbre B+. A mon avis **un index correspond à un fichier qui sera alloué par le IX_IndexManager** et ensuite dans le **IX_IndexHandle** il faut qu'on ait un *PF_FileHandle** en attribut pour gérer le fichier qui nous est donnée. Ensuite il faudrait qu'on ait les structures suivantes:
 
 * une structure **fileHeader** pour le fichier qui contienne entre autres le **numéro de la page de la racine**
