@@ -3,6 +3,9 @@
 #include <iostream>
 #include "ix.h"
 #include <string.h>
+#include <sstream>
+
+using namespace std;
 
 IX_Manager::IX_Manager(PF_Manager &pfm) {
     this->pfManager = &pfm;
@@ -20,7 +23,7 @@ RC IX_Manager::CreateIndex(const char *fileName, int indexNo, AttrType attrType,
     if( (rc = pfManager->CreateFile(fileNameForPF.str().c_str())) ) return rc;
     //Opens it
     PF_FileHandle fileHandle;
-    pfManager->OpenFile(fileName, fileHandle);
+    if( (rc = pfManager->OpenFile(fileNameForPF.str().c_str(), fileHandle)) ) return rc;
     //Creates IX_FileHeader for the file
     IX_FileHeader fileHeader;
     fileHeader.attrType = attrType;
