@@ -7,7 +7,7 @@
 using namespace std;
 
 //Initialize static variables
-int IX_IndexHandle::Order = 1;
+int IX_IndexHandle::Order = 5;
 int IX_IndexHandle::SizePointer =  sizeof(PageNum);
 
 /*
