@@ -7,7 +7,7 @@
 using namespace std;
 
 //Initialize static variables
-int IX_IndexHandle::Order = 5;
+int IX_IndexHandle::Order = 1;
 int IX_IndexHandle::SizePointer =  sizeof(PageNum);
 
 /*
@@ -286,18 +286,12 @@ RC IX_IndexHandle::InsertEntryToLeafNodeSplit(const PageNum nodeNum, void *pData
     //Copies the key from leaf 1 to leaf 2
     memcpy(pDataLeaf2+sizeof(IX_NodeHeader), pDataLeaf1+sizeof(IX_NodeHeader)+nbKey1*(fileHeader.keySize+SizePointer), nbKey2*(fileHeader.keySize+SizePointer));
 
-    //We call InsertEntryToIntlNode() because the new leaf need to be pointed from above
-    char * splitKey; //The split key is the first one of leaf2
-    splitKey = pDataLeaf2 + sizeof(IX_NodeHeader);
-    if( (rc = InsertEntryToIntlNode(leaf1Header.parentPage, leaf2PageNum, splitKey, leaf2Parent)) ) return rc;
-
     //Updates the headers
     leaf1Header.nbKey = nbKey1; //We don't need to "erase" the data from leaf1, nbKey update is enough
     leaf2Header.nbKey = nbKey2;
     leaf2Header.nextPage = leaf1Header.nextPage;
     if( (rc = setPreviousNode(leaf2Header.nextPage, leaf2PageNum)) ) return rc;
     leaf2Header.prevPage = nodeNum;
-    leaf2Header.parentPage = leaf2Parent;
     leaf1Header.nextPage = leaf2PageNum;
     //And writes them back to memory
     memcpy(pDataLeaf1, &leaf1Header, sizeof(IX_NodeHeader));
@@ -306,8 +300,15 @@ RC IX_IndexHandle::InsertEntryToLeafNodeSplit(const PageNum nodeNum, void *pData
     if( (rc = filehandle->MarkDirty(nodeNum))
             || (rc = filehandle->MarkDirty(leaf2PageNum))
             || (rc = filehandle->UnpinPage(nodeNum))
-            || (rc = filehandle->UnpinPage(leaf2PageNum))
-            || (rc = filehandle->ForcePages()) ) return rc;
+            || (rc = filehandle->UnpinPage(leaf2PageNum)) ) return rc;
+
+    //We call InsertEntryToIntlNode() because the new leaf need to be pointed from above
+    char * splitKey; //The split key is the first one of leaf2
+    splitKey = pDataLeaf2 + sizeof(IX_NodeHeader);
+    if( (rc = InsertEntryToIntlNode(leaf1Header.parentPage, leaf2PageNum, splitKey, leaf2Parent)) ) return rc;
+
+    //Updates the parent of leaf2
+    if( (rc = setParentNode(leaf2PageNum, leaf2Parent)) ) return rc;
 
     //Finally we insert the new value using InsertEntryToLeafNodeNoSplit()
     if(IsKeyGreater(pData, phLeaf2, 0)>0){
@@ -427,8 +428,6 @@ RC IX_IndexHandle::InsertEntryToIntlNodeSplit(
         rootHeader.prevPage = -1;
         rootHeader.parentPage = -1;
         //Write rootHeader to memory
-        char* splitKey2 = splitKey;
-        PageNum splitNodeNum2 = splitNodeNum;
         memcpy(pDataRoot, &rootHeader, sizeof(IX_NodeHeader));
         if( (rc = filehandle->MarkDirty(rootPageNb)) ) return rc;
         //We don't forget to set the root as root in our fileHeader
@@ -481,35 +480,49 @@ RC IX_IndexHandle::InsertEntryToIntlNodeSplit(
             if( (rc = setPointer(phNode2, i2, pointer)) ) return rc;
             i1--; i2--;
             //We also need to change the parent in the new child of node2
-            PF_PageHandle phChild; IX_NodeHeader childHeader; char* pDataChild;
-            if( (rc = filehandle->GetThisPage(pointer, phChild)) ) return rc;
-            if( (rc = phChild.GetData(pDataChild)) ) return rc;
-            memcpy(&childHeader, pDataChild, sizeof(IX_NodeHeader));
-            childHeader.parentPage = node2PageNumber;
-            memcpy(pDataChild, &childHeader, sizeof(IX_NodeHeader));
-            if( (rc = filehandle->MarkDirty(pointer))) return rc;
-            if( (rc = filehandle->UnpinPage(pointer))) return rc;
+            if( (rc = setParentNode(pointer, node2PageNumber)) ) return rc;
         }
     }
+
+
+    //Updates headers
+    node2Header.nextPage = node1Header.nextPage;
+    if( (rc = setPreviousNode(node2Header.nextPage, node2PageNumber)) ) return rc;
+    node2Header.prevPage = nodeNum;
+    node1Header.nextPage = node2PageNumber;
+    node2Header.nbKey = node1Header.nbKey-median;
+    node1Header.nbKey = median;
+
+    //Writes headers back to memory (needs to be done before any reccursive call)
+    memcpy(pDataNode1, &node1Header, sizeof(IX_NodeHeader));
+    memcpy(pDataNode2, &node2Header, sizeof(IX_NodeHeader));
+
+
     //We add the median key above
+    PageNum medianNodeNb;
     if( !splitKeyWritten && IsKeyGreater(splitKey, phNode1, i1) <= 0){
         //In this case the median pushed is the split key
+        medianNodeNb = childNodeNum;
         if( (rc = InsertEntryToIntlNode(node1Header.parentPage, node2PageNumber, splitKey, node2Parent)) ) return rc;
         splitKeyWritten=true;
         //And if the splitKey is the median, means the splitNode is node2
         splitNodeNum = node2PageNumber;
-        //We don't forget to set the median node as the -1 pointer in node2
-        if( (rc = setPointer(phNode2, -1, childNodeNum))) return rc;
     }else{
         //In this case the median pushed is next node1 key
+        if( (rc = getPointer(phNode1, i1, medianNodeNb)) ) return rc;
         if( (rc = getKey(phNode1, i1, pData3)) ) return rc;
         if( (rc = InsertEntryToIntlNode(node1Header.parentPage, node2PageNumber, pData3, node2Parent)) ) return rc;
         i1--;
-        //We don't forget to set the median node as the -1 pointer in node2
-        PageNum medianNodeNb;
-        if( (rc = getPointer(phNode1, i1, medianNodeNb)) ) return rc;
-        if( (rc = setPointer(phNode2, -1, medianNodeNb))) return rc;
     }
+
+    //Sets node2 parent
+    if( (rc = setParentNode(node2PageNumber, node2Parent)) ) return rc;
+
+    //We don't forget to set the median node as the -1 pointer in node2...
+    if( (rc = setPointer(phNode2, -1, medianNodeNb))) return rc;
+    //...And to set node2 as the parent of medianNodeNb
+    if( (rc = setParentNode(medianNodeNb, node2PageNumber)) ) return rc;
+
     //Now only if splitKey has not been written so far we offset all the keys in node1 until we write it
     while(!splitKeyWritten){
         if( i1<0 || IsKeyGreater(splitKey, phNode1, i1) <= 0){
@@ -528,19 +541,6 @@ RC IX_IndexHandle::InsertEntryToIntlNodeSplit(
             i1--;
         }
     }
-
-    //Updates headers
-    node2Header.nextPage = node1Header.nextPage;
-    if( (rc = setPreviousNode(node2Header.nextPage, node2PageNumber)) ) return rc;
-    node2Header.prevPage = nodeNum;
-    node2Header.parentPage = node2Parent;
-    node1Header.nextPage = node2PageNumber;
-    node2Header.nbKey = node1Header.nbKey-median;
-    node1Header.nbKey = median;
-
-    //Writes headers back to memory
-    memcpy(pDataNode1, &node1Header, sizeof(IX_NodeHeader));
-    memcpy(pDataNode2, &node2Header, sizeof(IX_NodeHeader));
 
     //Marks dirty, unpins and forces...
     if( (rc = filehandle->MarkDirty(nodeNum))
@@ -698,8 +698,26 @@ RC IX_IndexHandle::setPreviousNode(PageNum nodeNum, PageNum previousNode) {
     nodeHeader.prevPage = previousNode;
     memcpy(pData, &nodeHeader, sizeof(IX_NodeHeader));
     if( (rc = filehandle->MarkDirty(nodeNum))
-            || (rc = filehandle->UnpinPage(nodeNum))
-            || (rc = filehandle->ForcePages()) ) return rc;
+            || (rc = filehandle->UnpinPage(nodeNum)) ) return rc;
+    return 0;
+}
+
+//Sets the parent node in the header of a particular node
+RC IX_IndexHandle::setParentNode(PageNum child, PageNum parent) {
+    //If the page doesn't exist just returns
+    if(child<0) return 0;
+    //Else loads, change prevPage and writes back
+    RC rc = 0;
+    PF_PageHandle pageHandle;
+    IX_NodeHeader childHeader;
+    char* pData;
+    if( (rc = filehandle->GetThisPage(child, pageHandle))
+            || (rc = pageHandle.GetData(pData)) ) return rc;
+    memcpy(&childHeader, pData, sizeof(IX_NodeHeader));
+    childHeader.parentPage = parent;
+    memcpy(pData, &childHeader, sizeof(IX_NodeHeader));
+    if( (rc = filehandle->MarkDirty(child))
+            || (rc = filehandle->UnpinPage(child)) ) return rc;
     return 0;
 }
 
