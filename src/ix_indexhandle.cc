@@ -358,9 +358,8 @@ RC IX_IndexHandle::InsertEntryToIntlNodeNoSplit(
 
     //Goes through the keys to find the right one
     int pos = 0; //Position of the node after the value to insert
-    for(int i=0; i<nodeHeader.nbKey; i++) {
-        if(IsKeyGreater(splitKey, pageHandle, i)>0){
-            pos = i;
+    for(; pos<nodeHeader.nbKey; pos++) {
+        if(IsKeyGreater(splitKey, pageHandle, pos)>0){
             break;
         }
     }
