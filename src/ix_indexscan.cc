@@ -115,6 +115,7 @@ RC IX_IndexScan::GetNextEntry(RID &rid) {
         if(currentKey>0){
             currentKey--;
             //The bucket of the new key becomes the current bucket
+            if( (rc = indexHandle->filehandle->UnpinPage(currentBucket)) ) return rc;
             if( (rc = indexHandle->getPointer(phLeaf, currentKey, currentBucket)) ) return rc;
             currentBucketPos = 0;
             //Reccursive call
@@ -159,6 +160,7 @@ RC IX_IndexScan::GetNextEntry(RID &rid) {
         if(currentKey<leafHeader.nbKey-1){
             currentKey++;
             //The bucket of the new key becomes the current bucket
+            if( (rc = indexHandle->filehandle->UnpinPage(currentBucket)) ) return rc;
             if( (rc = indexHandle->getPointer(phLeaf, currentKey, currentBucket)) ) return rc;
             currentBucketPos = 0;
             //Reccursive call
