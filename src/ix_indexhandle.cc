@@ -96,7 +96,7 @@ RC IX_IndexHandle::InsertEntry(void *pData, const RID &rid) {
 //Deletes an entry
 RC IX_IndexHandle::DeleteEntry(void *pData, const RID &rid) {
     //TODO
-    return IX_SHOULDNTBETHERE;
+    return -1;
 }
 
 //Inserts a new entry to a specified node
@@ -136,7 +136,7 @@ RC IX_IndexHandle::InsertEntryToNode(const PageNum nodeNum, void *pData, const R
         return InsertEntryToNode(nb, pData, rid);
     }
     //Should never get there
-    return IX_SHOULDNTBETHERE;
+    return -1;
 }
 
 //Inserts a new entry to a leaf node
@@ -164,7 +164,7 @@ RC IX_IndexHandle::InsertEntryToLeafNode(const PageNum nodeNum, void *pData, con
             memcpy(&bucketHeader, pDataBucket, sizeof(IX_BucketHeader));
             if(bucketHeader.nbRid>=bucketHeader.nbRidMax){
                 if( (rc=filehandle->UnpinPage(nodeNum)) ) return rc;
-                return IX_FULLBUCKET;
+                return IX_NOMEM;
             }
             //Inserts the RID
             memcpy(pDataBucket+sizeof(IX_BucketHeader)+bucketHeader.nbRid*sizeof(RID), &rid, sizeof(RID));
@@ -567,7 +567,7 @@ int IX_IndexHandle::IsKeyGreater(void *pData, PF_PageHandle &pageHandle, int i) 
         if(value2>value1) return 1;
         if(value1>value2) return -1;
         if(value1==value2) return 0;
-        return IX_SHOULDNTBETHERE; //Shoudn't be needed
+        return -1; //Shoudn't be needed
     }
     if(fileHeader.attrType==FLOAT){
         float value1, value2; //value1 = value given, value2 = value of the ith key
@@ -576,7 +576,7 @@ int IX_IndexHandle::IsKeyGreater(void *pData, PF_PageHandle &pageHandle, int i) 
         if(value2>value1) return 1;
         if(value1>value2) return -1;
         if(value1==value2) return 0;
-        return IX_SHOULDNTBETHERE; //Shoudn't be needed
+        return -1; //Shoudn't be needed
     }
     //Case string
     if(fileHeader.attrType==STRING){
@@ -611,7 +611,7 @@ RC IX_IndexHandle::getKey(PF_PageHandle &pageHandle, int i, char *&pData){
         memcpy(&pData, &pData2, fileHeader.keySize);
         return 0;
     }
-    return IX_SHOULDNTBETHERE;
+    return -1;
 }
 
 //Sets the value of the i key of the node to pData
@@ -650,8 +650,8 @@ RC IX_IndexHandle::getPointer(PF_PageHandle &pageHandle, int i, PageNum &pageNum
         memcpy(&pageNum, pData, fileHeader.keySize);
         return 0;
     }
-    //We should never get there so we return IX_SHOULDNTBETHERE
-    return IX_SHOULDNTBETHERE;
+    //We should never get there so we return -1
+    return -1;
 }
 
 //Sets the pointer number i to pageNum in the node of pageHandle
@@ -681,8 +681,8 @@ RC IX_IndexHandle::setPointer(PF_PageHandle &pageHandle, int i, PageNum pageNum)
         memcpy(pData, &pageNum, fileHeader.keySize);
         return 0;
     }
-    //We should never get there so we return IX_SHOULDNTBETHERE
-    return IX_SHOULDNTBETHERE;
+    //We should never get there so we return -1
+    return -1;
 }
 
 //Sets the previous node in the header of a particular node

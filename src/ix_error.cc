@@ -13,20 +13,24 @@ using namespace std;
 //
 // Error table
 //
+//
+// Error table
+//
 static char *IX_WarnMsg[] = {
-  (char*)"inviable rid",
-  (char*)"unread record",
-  (char*)"invalid record size",
-  (char*)"node is empty",
-  (char*)"the bucket is full",
+  (char*)"invalid index number",
   (char*)"invalid comparison operator",
   (char*)"invalid attribute parameters",
   (char*)"null pointer",
   (char*)"scan open",
   (char*)"scan closed",
   (char*)"file closed",
-  (char*)"file open",
-  (char*)"shouldn't get there"
+  (char*)"entry not found",
+  (char*)"entry already exists",
+  (char*)"end of file"
+};
+
+static char *IX_ErrorMsg[] = {
+  (char*)"no memory"
 };
 
 // 

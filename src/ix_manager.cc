@@ -4,11 +4,6 @@
 #include "ix.h"
 #include <string.h>
 
-
-/*
- *TODO faire que le nom du fichier soit composé du filename donné ET du numéro d'index
-*/
-
 IX_Manager::IX_Manager(PF_Manager &pfm) {
     this->pfManager = &pfm;
 }
@@ -20,7 +15,9 @@ RC IX_Manager::CreateIndex(const char *fileName, int indexNo, AttrType attrType,
 		int attrLength) {
     RC rc = 0;
     //Creates file with PF
-    if( (rc = pfManager->CreateFile(fileName)) ) return rc;
+    stringstream fileNameForPF;
+    fileNameForPF << fileName << "." << indexNo;
+    if( (rc = pfManager->CreateFile(fileNameForPF.str().c_str())) ) return rc;
     //Opens it
     PF_FileHandle fileHandle;
     pfManager->OpenFile(fileName, fileHandle);
@@ -45,7 +42,9 @@ RC IX_Manager::CreateIndex(const char *fileName, int indexNo, AttrType attrType,
 
 // Destroy and Index
 RC IX_Manager::DestroyIndex(const char *fileName, int indexNo) {
-    return pfManager->DestroyFile(fileName);
+    stringstream fileNameForPF;
+    fileNameForPF << fileName << "." << indexNo;
+    return pfManager->DestroyFile(fileNameForPF.str().c_str());
 }
 
 // Open an Index
@@ -53,10 +52,12 @@ RC IX_Manager::OpenIndex(const char *fileName, int indexNo,
 		IX_IndexHandle &indexHandle) {
     RC rc = 0;
     //Checks not already open
-    if(indexHandle.bFileOpen) return IX_FILEOPEN;
+    if(indexHandle.bFileOpen) return IX_SCANOPEN;
     //Opens in PF
     PF_FileHandle fileHandle;
-    if( (rc = pfManager->OpenFile(fileName, fileHandle)) ) return rc;
+    stringstream fileNameForPF;
+    fileNameForPF << fileName << "." << indexNo;
+    if( (rc = pfManager->OpenFile(fileNameForPF.str().c_str(), fileHandle)) ) return rc;
     //Marks open
     indexHandle.bFileOpen = true;
     indexHandle.filehandle = new PF_FileHandle(fileHandle);
