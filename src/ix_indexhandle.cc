@@ -1,10 +1,8 @@
 #include <cstdio>
 #include <unistd.h>
-#include <stdio.h>
 #include <iostream>
 #include "ix.h"
 #include <string.h>
-#include <stdlib.h>
 
 using namespace std;
 
