@@ -77,6 +77,9 @@ private:
     RC InsertEntryToIntlNodeNoSplit(const PageNum nodeNum, const PageNum childNodeNum, char *&splitKey,PageNum &splitNodeNum);
     RC InsertEntryToIntlNodeSplit(const PageNum nodeNum, const PageNum childNodeNum, char *&splitKey,PageNum &splitNodeNum);
 
+    //Private deletion methods
+    RC DeleteEntryFromBucket(const PageNum bucketNum, const RID &rid);
+
     //Returns true if key number i greater than pData value
     int IsKeyGreater(void *pData, PF_PageHandle &pageHandle, int i);
     //For the keys in a given node (don't work for Bucket)

@@ -93,6 +93,60 @@ RC IX_IndexHandle::InsertEntry(void *pData, const RID &rid) {
 
 //Deletes an entry
 RC IX_IndexHandle::DeleteEntry(void *pData, const RID &rid) {
+    RC rc = 0;
+    //If the root is not set we return error
+    if(this->fileHeader.rootNb<0){
+        return IX_ENTRYNOTFOUND;
+    }
+
+    //We have to go to the location of the RID in tree
+    PF_PageHandle pageHandle;
+    IX_NodeHeader nodeHeader;
+    PageNum nodeNum = fileHeader.rootNb; //Starts research at root
+    char* pDataNode;
+    while(1>0){
+        if( (rc = filehandle->GetThisPage(nodeNum, pageHandle)) ) return rc;
+        if( (rc = pageHandle.GetData(pDataNode)) ) return rc;
+        //Copies header from memory
+        memcpy(&nodeHeader, pDataNode, sizeof(IX_NodeHeader));
+        //If node is a leaf, moves on to following
+        if(nodeHeader.level==1) break;
+        //Looks for the right child
+        int pos = 0;
+        for(; pos<nodeHeader.nbKey; pos++){
+            if(IsKeyGreater(pData, pageHandle, pos)>0){
+                break;
+            }
+        }
+        //If we didn't break anywhere pos==nodeHeader.nbKey
+        //Gives its new value to nodeNum
+        PageNum newNodenum;
+        if( (rc = getPointer(pageHandle, pos-1, newNodeNum)) ) return rc;
+        //Unpins
+        if( (rc = filehandle->UnpinPage(nodeNum)));
+        nodeNum = newNodenum;
+    }
+
+    /*
+     *At this point we should be at the right leaf where rid is located
+    */
+    //Looks for the pData value
+    int i=0;
+    for(;i<nodeHeader.nbKey; i++){
+        if(IsKeyGreater(pData, pageHandle, i)==0) break;
+    }
+    //If we didn't break anywhere, means the values doesn't exist
+    if(i==nodeHeader.nbKey){
+        return IX_ENTRYNOTFOUND;
+    }
+    //Else we have to remove the entry from the bucket
+    if( (rc = filehandle->UnpinPage(nodeNum)) ) return rc;
+    return DeleteEntryFromBucket(nodeNum, rid);
+
+}
+
+//Deletes an entry in a specified bucket
+RC IX_IndexHandle::DeleteEntryFromBucket(const PageNum bucketNum, const RID &rid){
     //TODO
     return -1;
 }
