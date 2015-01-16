@@ -58,6 +58,10 @@ RC Test1(void);
 RC Test2(void);
 RC Test3(void);
 RC Test4(void);
+RC Test5(void);
+RC Test6(void);
+RC Test7(void);
+
 
 void PrintError(RC rc);
 void LsFiles(char *fileName);
@@ -75,13 +79,16 @@ RC PrintIndex(IX_IndexHandle &ih);
 //
 // Array of pointers to the test functions
 //
-#define NUM_TESTS       3               // number of tests
+#define NUM_TESTS       7               // number of tests
 int (*tests[])() =                      // RC doesn't work on some compilers
 {
 	Test1,
 	Test2,
 	Test3,
-	Test4
+    Test4,
+    Test5,
+    Test6,
+    Test7
 };
 
 //
@@ -432,7 +439,7 @@ RC VerifyIntIndex(IX_IndexHandle &ih, int nStart, int nEntries, int bExists) {
 			printf("Verify error: found non-existent entry %d\n", value);
 			return (IX_EOF);  // What should be returned here?
 		} else if (bExists && rc == IX_EOF) {
-			printf("Verify error: entry %d not found\n", value);
+            printf("Verify error: entry N°%d (%d) not found\n", i, value);
 			return (IX_EOF);  // What should be returned here?
 		} else if (rc != 0 && rc != IX_EOF)
 			return (rc);
@@ -509,17 +516,17 @@ RC Test2(void) {
 
 	if ((rc = ixm.CreateIndex(FILENAME, index, INT, sizeof(int)))
 			|| (rc = ixm.OpenIndex(FILENAME, index, ih)) || (rc =
-					InsertIntEntries(ih, FEW_ENTRIES))
+                    InsertIntEntries(ih, MANY_ENTRIES))
 			|| (rc = ixm.CloseIndex(ih))
 			|| (rc = ixm.OpenIndex(FILENAME, index, ih))
 			||
 
 			// ensure inserted entries are all there
-			(rc = VerifyIntIndex(ih, 0, FEW_ENTRIES, TRUE))
+            (rc = VerifyIntIndex(ih, 0, MANY_ENTRIES, TRUE))
 			||
 
 			// ensure an entry not inserted is not there
-			(rc = VerifyIntIndex(ih, FEW_ENTRIES, 1, FALSE))
+            (rc = VerifyIntIndex(ih, MANY_ENTRIES, 1, FALSE))
 			|| (rc = ixm.CloseIndex(ih)))
 		return (rc);
 
@@ -584,7 +591,7 @@ RC Test4(void) {
 					InsertIntEntries(ih, FEW_ENTRIES)))
 		return (rc);
 
-	// Scan <
+    // Scan <
 	IX_IndexScan scanlt;
 	if ((rc = scanlt.OpenScan(ih, LT_OP, &value))) {
 		printf("Scan error: opening scan\n");
@@ -659,4 +666,140 @@ RC Test4(void) {
 
 	printf("Passed Test 4\n\n");
 	return (0);
+}
+
+
+
+RC Test5(void) {
+    RC rc;
+    IX_IndexHandle ih;
+    PF_Manager pfm;
+    IX_Manager m(pfm);
+    IX_IndexScan is;
+
+    printf("Test 5\n\n");
+    char ok;
+    printf("Creating index...\n");
+    if( (rc = m.CreateIndex(FILENAME, 1, INT, sizeof(int))) ) return rc;
+    printf("Opening index...\n");
+    if( (rc = m.OpenIndex(FILENAME, 1, ih)) ) return rc;
+    int values [20] = {13,3,5,2,1,7,15,16,14,10,19,8,6,18,11,4,9,12,17,20};
+    for(int i=0; i<20; i++){
+        printf("Inserting an entry (n°%d, value=%d)\n", i, values[i]);
+        int value = values[i];
+        RID rid(value+100, value+200);
+        if( (rc = ih.InsertEntry((void *) &value, rid)) ) return rc;
+        printf("Checking the entry (n°%d)\n", i);
+        if( (rc = is.OpenScan(ih, EQ_OP, (void *) &value)) ) return rc;
+        if( (rc = is.GetNextEntry(rid)) ) return rc;
+        if( (rc = is.CloseScan())) return rc;
+    }
+    std::cout << "-----> Print the tree?" << std::endl;
+    cin >> ok;
+    if(ok=='y'){
+        printf("Printing Tree\n");
+        if( (rc = ih.PrintTree())) return rc;
+    }
+    printf("Checking all the entries...\n");
+    for(int i=0; i<20; i++){
+        printf("    - Checking %d\n", i);
+        RID rid;
+        int value = values[i];
+        if( (rc = is.OpenScan(ih, EQ_OP, (void *) &value)) ) return rc;
+        if( (rc = is.GetNextEntry(rid)) ) return rc;
+        if( (rc = is.CloseScan())) return rc;
+    }
+    printf("Closing index...\n");
+    if( (rc = m.CloseIndex(ih)) ) return rc;
+    printf("Passed test5!\n\n");
+    return 0;
+}
+
+
+RC Test6(void) {
+    RC rc;
+    IX_IndexHandle ih;
+    PF_Manager pfm;
+    IX_Manager m(pfm);
+    IX_IndexScan is;
+
+    printf("Test 6\n");
+    printf("In this test we will insert as many entries as we want to test the insertion process\n\n");
+    char ok; int givenValue;
+    printf("Creating index...\n");
+    if( (rc = m.CreateIndex(FILENAME, 1, INT, sizeof(int))) ) return rc;
+    printf("Opening index...\n");
+    if( (rc = m.OpenIndex(FILENAME, 1, ih)) ) return rc;
+    while(1>0){
+        std::cout << "-> Value to insert? (0 for rand)";
+        cin >> givenValue;
+        int value = givenValue>0 ? givenValue : (rand() % 1000)+1; //A value between 1 and 1001
+        RID rid(23,46);
+        if( (ih.InsertEntry((void *) &value, rid)) ) return rc;
+        std::cout << "-> Inserts value " << value << ". Print tree? (press y/n or q to quit)";
+        cin >> ok;
+        if(ok=='y'){
+            if( (rc = ih.PrintTree())) return rc;
+        }
+        if(ok=='q'){
+            break;
+        }
+        printf("Checking the entry\n");
+        if( (rc = is.OpenScan(ih, EQ_OP, (void *) &value)) ) return rc;
+        if( (rc = is.GetNextEntry(rid)) ){
+            printf("Error happened!\n");
+            if( (rc = ih.PrintTree())) return rc;
+        }
+        if( (rc = is.CloseScan())) return rc;
+    }
+    printf("Closing index...\n");
+    if( (rc = m.CloseIndex(ih)) ) return rc;
+    printf("Passed test6!\n\n");
+    return 0;
+}
+
+
+RC Test7(void) {
+    printf("Test 7\n");
+    printf("In this test we will try to catch an error\n\n");
+    for(int k=1; k<1000; k++){
+        printf("-----Begins iteration %d-----\n\n", k);
+        RC rc;
+        IX_IndexHandle ih;
+        PF_Manager pfm;
+        IX_Manager m(pfm);
+        IX_IndexScan is;
+        printf("Creating index...\n");
+        if( (rc = m.CreateIndex(FILENAME, 1, INT, sizeof(int))) ) return rc;
+        printf("Opening index...\n");
+        if( (rc = m.OpenIndex(FILENAME, 1, ih)) ) return rc;
+
+        int nbValues = 50;
+        int values [nbValues];
+        for(int i=0; i<nbValues; i++){
+            values[i] = (rand() % 100)+1;
+        }
+        RID rid(23,46);
+        for(int i=0; i<nbValues; i++){
+            printf("Inserting %d\n", values[i]);
+            if( (ih.InsertEntry((void *) &values[i], rid)) ) return rc;
+            printf("Checking the entries\n");
+            for(int j=0; j<=i; j++){
+                if( (rc = is.OpenScan(ih, EQ_OP, (void *) &values[j])) ) return rc;
+                if( (rc = is.GetNextEntry(rid)) ){
+                    printf("Error happened when checking entry n°%d (value=%d)!\n", j, values[j]);
+                    if( (rc = ih.PrintTree())) return rc;
+                    return IX_EOF;
+                }
+                if( (rc = is.CloseScan())) return rc;
+            }
+        }
+        printf("Closing index...\n");
+        if( (rc = m.CloseIndex(ih)) ) return rc;
+        printf("Destroying index...\n");
+        if( (rc = m.DestroyIndex(FILENAME, 1)) ) return rc;
+        printf("-----Ends iteration-----\n\n");
+    }
+    printf("Passed test7!\n\n");
+    return 0;
 }
