@@ -198,8 +198,57 @@ RC IX_IndexHandle::DeleteEntryFromBucket(const PageNum bucketNum, const RID &rid
 
 //Deletes the bucket entry in a leaf
 RC IX_IndexHandle::DeleteBucketEntryFromLeafNode(const PageNum leafNum, const PageNum bucketNum){
-    //TODO
-    return -1;
+    RC rc = 0;
+    PF_PageHandle phLeaf;
+    IX_NodeHeader leafHeader;
+    char * pDataLeaf;
+
+    //Retrieves the leaf from PF
+    if( (rc = filehandle->GetThisPage(leafNum, phLeaf)) ) return rc;
+    if( (rc = phLeaf.GetData(pDataLeaf)) ) return rc;
+    memcpy(&leafHeader, pDataLeaf, sizeof(IX_NodeHeader));
+
+    //Loops through the leaf to find the entry to delete
+    int pos = 0;
+    for(; pos<leafHeader.nbKey; pos++){
+        PageNum leafPointer;
+        if( (rc = getPointer(phLeaf, pos, leafPointer)) ) return rc;
+        //If we find the right pointer, break
+        if(leafPointer==bucketNum) break;
+    }
+    //If we didn't break, means we didn't find the bucket pointer
+    if(pos==leafHeader.nbKey){
+        return IX_ENTRYNOTFOUND;
+    }
+    //Else we remove it, i.e offset the following keys & pointers
+    for(int i=pos; i<leafHeader.nbKey; i++){
+        int offset = SizePointer+fileHeader.keySize;
+        memcpy(pDataLeaf+i*offset, pDataLeaf+(i+1)*(offset), offset);
+    }
+
+    //Updates nb of keys
+    leafHeader.nbKey--;
+
+    //If nbKey==0 we have to remove the leaf
+    if(leafHeader.nbKey==0){
+        //Updates prev and next pages headers
+        if(leafHeader.nextPage>0){
+            if( (rc = setPreviousNode(leafHeader.nextPage, leafHeader.prevPage)) ) return 0;
+        }
+        if(leafHeader.prevPage>0){
+            if( (rc = setNextNode(leafHeader.prevPage, leafHeader.nextPage)) ) return 0;
+        }
+        //Unpins, deallocate and removes
+        PageNum parentNode = leafHeader.parentPage;
+        if( (rc = filehandle->UnpinPage(leafNum)) ) return rc;
+        if( (rc = filehandle->DisposePage(leafNum)) ) return rc;
+        //Removes from parent
+        return DeleteLeafEntryFromInternalNode(parentNode, leafNum);
+    }
+    //Else we just copy header back to memory and unpin
+    memcpy(pDataLeaf, &leafHeader, sizeof(IX_NodeHeader));
+    if( (rc = filehandle->UnpinPage(leafNum)) ) return rc;
+    return 0;
 }
 
 //Inserts a new entry to a specified node
@@ -801,6 +850,25 @@ RC IX_IndexHandle::setPreviousNode(PageNum nodeNum, PageNum previousNode) {
             || (rc = pageHandle.GetData(pData)) ) return rc;
     memcpy(&nodeHeader, pData, sizeof(IX_NodeHeader));
     nodeHeader.prevPage = previousNode;
+    memcpy(pData, &nodeHeader, sizeof(IX_NodeHeader));
+    if( (rc = filehandle->MarkDirty(nodeNum))
+            || (rc = filehandle->UnpinPage(nodeNum)) ) return rc;
+    return 0;
+}
+
+//Sets the previous node in the header of a particular node
+RC IX_IndexHandle::setNextNode(PageNum nodeNum, PageNum nextNode) {
+    //If the page doesn't exist just returns
+    if(nodeNum<0) return 0;
+    //Else loads, change nextPage and writes back
+    RC rc = 0;
+    PF_PageHandle pageHandle;
+    IX_NodeHeader nodeHeader;
+    char* pData;
+    if( (rc = filehandle->GetThisPage(nodeNum, pageHandle))
+            || (rc = pageHandle.GetData(pData)) ) return rc;
+    memcpy(&nodeHeader, pData, sizeof(IX_NodeHeader));
+    nodeHeader.nextPage = nextNode;
     memcpy(pData, &nodeHeader, sizeof(IX_NodeHeader));
     if( (rc = filehandle->MarkDirty(nodeNum))
             || (rc = filehandle->UnpinPage(nodeNum)) ) return rc;

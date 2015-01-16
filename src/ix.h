@@ -80,6 +80,7 @@ private:
     //Private deletion methods
     RC DeleteEntryFromBucket(const PageNum bucketNum, const RID &rid, const PageNum bucketParent);
     RC DeleteBucketEntryFromLeafNode(const PageNum leafNum, const PageNum bucketNum);
+    RC DeleteLeafEntryFromInternalNode(const PageNum nodeNum, const PageNum leafNum);
 
     //Returns true if key number i greater than pData value
     int IsKeyGreater(void *pData, PF_PageHandle &pageHandle, int i);
@@ -90,6 +91,7 @@ private:
     RC setPointer(PF_PageHandle &pageHandle, int i, PageNum pageNum);
     //Sets the previous node of a particular node
     RC setPreviousNode(PageNum nodeNum, PageNum previousNode);
+    RC setNextNode(PageNum nodeNum, PageNum nextNode);
     RC setParentNode(PageNum child, PageNum parent);
 };
 
