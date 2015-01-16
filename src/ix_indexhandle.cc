@@ -139,14 +139,65 @@ RC IX_IndexHandle::DeleteEntry(void *pData, const RID &rid) {
     if(i==nodeHeader.nbKey){
         return IX_ENTRYNOTFOUND;
     }
-    //Else we have to remove the entry from the bucket
+    //Else retrieves the bucket page number
+    PageNum bucketNum;
+    if( (rc = getPointer(pageHandle, i, bucketNum)) ) return rc;
+    //Removes the entry from the bucket
     if( (rc = filehandle->UnpinPage(nodeNum)) ) return rc;
-    return DeleteEntryFromBucket(nodeNum, rid);
-
+    return DeleteEntryFromBucket(bucketNum, rid, nodeNum);
 }
 
 //Deletes an entry in a specified bucket
-RC IX_IndexHandle::DeleteEntryFromBucket(const PageNum bucketNum, const RID &rid){
+RC IX_IndexHandle::DeleteEntryFromBucket(const PageNum bucketNum, const RID &rid, const PageNum bucketParent){
+    RC rc;
+    //Retrieves the bucket from PF
+    PF_PageHandle phBucket;
+    IX_BucketHeader bucketHeader;
+    char* pDataBucket;
+
+    if( (rc = filehandle->GetThisPage(bucketNum, phBucket)) ) return rc;
+    if( (rc = phBucket.GetData(pDataBucket)) ) return rc;
+    memcpy(&bucketHeader, pDataBucket, sizeof(IX_BucketHeader));
+
+    //Now we have to go through all the RIDs of the bucket
+    int pos=0;
+    for(; pos<bucketHeader.nbRid; pos++){
+        //Reads rid n°pos of the bucket
+        RID bucketRid;
+        memcpy(&bucketRid, pDataBucket+sizeof(IX_BucketHeader)+pos*sizeof(RID), sizeof(RID));
+        //Compares the rids
+        if(rid==bucketRid) break;
+    }
+    //If we didn't break means the rid doesn't exist
+    if(pos==bucketHeader.nbRid){
+        return IX_ENTRYNOTFOUND;
+    }
+    //Else we have to remove the bucket (i.e offset the following rids)
+    for(int i=pos; i<bucketHeader.nbRid; i++){
+        char* ridPos;
+        ridPos = pDataBucket+sizeof(IX_BucketHeader)+i*sizeof(RID);
+        memcpy(ridPos, ridPos+sizeof(RID), sizeof(RID));
+    }
+    //Decrements the number of rids of the bucket
+    bucketHeader.nbRid--;
+
+    //Now if the nb of rid == 0 we have to remove the bucket
+    if(bucketHeader.nbRid==0){
+        if( (rc = filehandle->UnpinPage(bucketNum)) ) return rc;
+        //Deallocate the page
+        if( (rc = filehandle->DisposePage(bucketNum)) ) return rc;
+        //Reccursive call to propagate above in the tree
+        return DeleteBucketEntryFromLeafNode(bucketParent, bucketNum);
+    }
+    //Else we just write the header back to memory and unpin the bucket
+    memcpy(pDataBucket, &bucketHeader, sizeof(IX_BucketHeader));
+    if( (rc = filehandle->UnpinPage(bucketNum)) ) return rc;
+
+    return 0;
+}
+
+//Deletes the bucket entry in a leaf
+RC IX_IndexHandle::DeleteBucketEntryFromLeafNode(const PageNum leafNum, const PageNum bucketNum){
     //TODO
     return -1;
 }
