@@ -191,7 +191,8 @@ RC IX_IndexHandle::DeleteEntryFromBucket(const PageNum bucketNum, const RID &rid
     }
     //Else we just write the header back to memory and unpin the bucket
     memcpy(pDataBucket, &bucketHeader, sizeof(IX_BucketHeader));
-    if( (rc = filehandle->UnpinPage(bucketNum)) ) return rc;
+    if( (rc = filehandle->MarkDirty(bucketNum))
+            ||(rc = filehandle->UnpinPage(bucketNum)) ) return rc;
 
     return 0;
 }
@@ -243,13 +244,85 @@ RC IX_IndexHandle::DeleteBucketEntryFromLeafNode(const PageNum leafNum, const Pa
         if( (rc = filehandle->UnpinPage(leafNum)) ) return rc;
         if( (rc = filehandle->DisposePage(leafNum)) ) return rc;
         //Removes from parent
-        return DeleteLeafEntryFromInternalNode(parentNode, leafNum);
+        return DeleteEntryFromInternalNode(parentNode, leafNum);
     }
     //Else we just copy header back to memory and unpin
     memcpy(pDataLeaf, &leafHeader, sizeof(IX_NodeHeader));
-    if( (rc = filehandle->UnpinPage(leafNum)) ) return rc;
+    if( (rc = filehandle->MarkDirty(leafNum))
+            || (rc = filehandle->UnpinPage(leafNum)) ) return rc;
     return 0;
 }
+
+//Deletes the entry in an internal node
+RC IX_IndexHandle::DeleteEntryFromInternalNode(const PageNum nodeNum, const PageNum entryNum){
+    RC rc = 0;
+    PF_PageHandle pageHandle;
+    IX_NodeHeader nodeHeader;
+    char* pData;
+
+    //Retrieves the node from PF
+    if( (rc = filehandle->GetThisPage(nodeNum, pageHandle))) return rc;
+    if( (rc= pageHandle.GetData(pData)) ) return rc;
+    memcpy(&nodeHeader, pData, sizeof(IX_NodeHeader));
+
+    //Retrieves the -1 pointer
+    PageNum nodePointer;
+    if( (rc = getPointer(pageHandle, -1, nodePointer)) ) return rc;
+    if(nodePointer==entryNum){
+        //if our entry is the -1 pointer
+        //We offset all that is behind
+        memcpy(pData+sizeof(IX_NodeHeader), pData+sizeof(IX_NodeHeader),
+               nodeHeader.nbKey*(SizePointer+fileHeader.keySize));
+    }else{
+        //Else we find our entry
+        int pos = 0;
+        for(; pos<nodeHeader.nbKey; pos++){
+            if( (rc = getPointer(pageHandle, pos, nodePointer)) ) return rc;
+            if(nodePointer==entryNum) break;
+        }
+        //If we didn't break anywhere means we couldn't find it
+        if(pos==nodeHeader.nbKey){
+            return IX_ENTRYNOTFOUND;
+        }
+        //We offset the keys and pointers after
+        memcpy(pData+sizeof(IX_NodeHeader)+pos*(SizePointer+fileHeader.keySize),
+               pData+sizeof(IX_NodeHeader)+(pos+1)*(SizePointer+fileHeader.keySize),
+               (nbKey-1-pos)*(SizePointer+fileHeader.keySize)
+               );
+    }
+    //In every case we have to decrement nb of keys
+    nodeHeader.nbKey--;
+
+    //Then if no key left we have to remove the node
+    if( (nodeHeader.level!=-1 && nodeHeader.nbKey==0)
+            || (nodeHeader.level==-1 && nodeHeader.nbKey==-1) ){
+        //Updates prev and next pages headers
+        if(nodeHeader.nextPage>0){
+            if( (rc = setPreviousNode(nodeHeader.nextPage, nodeHeader.prevPage)) ) return 0;
+        }
+        if(nodeHeader.prevPage>0){
+            if( (rc = setNextNode(nodeHeader.prevPage, nodeHeader.nextPage)) ) return 0;
+        }
+        //Unpins, deallocate and removes
+        PageNum parentNode = nodeHeader.parentPage;
+        if( (rc = filehandle->UnpinPage(nodeNum)) ) return rc;
+        if( (rc = filehandle->DisposePage(nodeNum)) ) return rc;
+        //Removes from parent (reccursive call)
+        if(nodeHeader.level!=-1){
+            return DeleteEntryFromInternalNode(parentNode, leafNum);
+        }else{
+            //If the node was the root we have to tell there is no more root
+            this->fileHeader.rootNb = -1;
+            return 0;
+        }
+    }
+    //Else we just write header back to memory, mark dirty and unpins
+    memcpy(pData, &nodeHeader, sizeof(IX_NodeHeader));
+    if( (rc = filehandle->MarkDirty(nodeNum))
+            || (rc = filehandle->UnpinPage(nodeNum)) ) return rc;
+    return 0;
+}
+
 
 //Inserts a new entry to a specified node
 RC IX_IndexHandle::InsertEntryToNode(const PageNum nodeNum, void *pData, const RID &rid) {

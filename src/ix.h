@@ -80,7 +80,7 @@ private:
     //Private deletion methods
     RC DeleteEntryFromBucket(const PageNum bucketNum, const RID &rid, const PageNum bucketParent);
     RC DeleteBucketEntryFromLeafNode(const PageNum leafNum, const PageNum bucketNum);
-    RC DeleteLeafEntryFromInternalNode(const PageNum nodeNum, const PageNum leafNum);
+    RC DeleteEntryFromInternalNode(const PageNum nodeNum, const PageNum entryNum);
 
     //Returns true if key number i greater than pData value
     int IsKeyGreater(void *pData, PF_PageHandle &pageHandle, int i);
