@@ -89,7 +89,7 @@ RC IX_IndexScan::GetNextEntry(RID &rid) {
     memcpy(&bucketHeader, pData, sizeof(IX_BucketHeader));
 
     //If we are not at the end of the bucket now
-    if( currentBucketPos<bucketHeader.nbRid){
+    if( currentBucketPos<bucketHeader.nbRid ){
         memcpy(&rid, pData+sizeof(IX_BucketHeader)+currentBucketPos*sizeof(RID), sizeof(RID));
         currentBucketPos++;
         if( (rc = indexHandle->filehandle->UnpinPage(currentBucket)) ) return rc;
@@ -98,6 +98,7 @@ RC IX_IndexScan::GetNextEntry(RID &rid) {
     }else if(bucketHeader.nextBucket!=-1){
         //We unpin the bucket
         if( (rc = indexHandle->filehandle->UnpinPage(currentBucket)) ) return rc;
+        currentBucket = bucketHeader.nextBucket;
         //BucketPos starts at 0 again
         currentBucketPos = 0;
         //And we use a reccursive call
