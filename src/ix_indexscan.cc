@@ -94,6 +94,14 @@ RC IX_IndexScan::GetNextEntry(RID &rid) {
         currentBucketPos++;
         if( (rc = indexHandle->filehandle->UnpinPage(currentBucket)) ) return rc;
         return 0;
+    //Or if the bucket has a next bucket
+    }else if(bucketHeader.nextBucket!=-1){
+        //We unpin the bucket
+        if( (rc = indexHandle->filehandle->UnpinPage(currentBucket)) ) return rc;
+        //BucketPos starts at 0 again
+        currentBucketPos = 0;
+        //And we use a reccursive call
+        return GetNextEntry(rid);
     }
 
     //Else we need to go to the next matching bucket

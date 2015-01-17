@@ -61,6 +61,8 @@ RC Test4(void);
 RC Test5(void);
 RC Test6(void);
 RC Test7(void);
+RC Test8(void);
+RC Test9(void);
 
 
 void PrintError(RC rc);
@@ -79,7 +81,7 @@ RC PrintIndex(IX_IndexHandle &ih);
 //
 // Array of pointers to the test functions
 //
-#define NUM_TESTS       7               // number of tests
+#define NUM_TESTS       9               // number of tests
 int (*tests[])() =                      // RC doesn't work on some compilers
 {
 	Test1,
@@ -88,7 +90,9 @@ int (*tests[])() =                      // RC doesn't work on some compilers
     Test4,
     Test5,
     Test6,
-    Test7
+    Test7,
+    Test8,
+    Test9
 };
 
 //
@@ -440,6 +444,7 @@ RC VerifyIntIndex(IX_IndexHandle &ih, int nStart, int nEntries, int bExists) {
 			return (IX_EOF);  // What should be returned here?
 		} else if (bExists && rc == IX_EOF) {
             printf("Verify error: entry N°%d (%d) not found\n", i, value);
+            ih.PrintTree();
 			return (IX_EOF);  // What should be returned here?
 		} else if (rc != 0 && rc != IX_EOF)
 			return (rc);
@@ -490,7 +495,7 @@ RC Test1(void) {
 
 	printf("Test 1: create, open, close, delete an index... \n");
 
-	if ((rc = ixm.CreateIndex(FILENAME, index, INT, sizeof(int)))
+    if ((rc = ixm.CreateIndex(FILENAME, index, INT, sizeof(int)))
 			|| (rc = ixm.OpenIndex(FILENAME, index, ih)) || (rc =
 					ixm.CloseIndex(ih)))
 		return (rc);
@@ -514,7 +519,7 @@ RC Test2(void) {
 
 	printf("Test2: Insert a few integer entries into an index... \n");
 
-	if ((rc = ixm.CreateIndex(FILENAME, index, INT, sizeof(int)))
+    if ((rc = ixm.CreateIndex(FILENAME, index, INT, sizeof(int)))
 			|| (rc = ixm.OpenIndex(FILENAME, index, ih)) || (rc =
                     InsertIntEntries(ih, MANY_ENTRIES))
 			|| (rc = ixm.CloseIndex(ih))
@@ -545,14 +550,14 @@ RC Test2(void) {
 RC Test3(void) {
 	RC rc;
 	int index = 0;
-	int nDelete = FEW_ENTRIES * 8 / 10;
+    int nDelete = MANY_ENTRIES * 8 / 10;
 	IX_IndexHandle ih;
 
 	printf("Test3: Delete a few integer entries from an index... \n");
 
 	if ((rc = ixm.CreateIndex(FILENAME, index, INT, sizeof(int)))
 			|| (rc = ixm.OpenIndex(FILENAME, index, ih)) || (rc =
-					InsertIntEntries(ih, FEW_ENTRIES)) || (rc =
+                    InsertIntEntries(ih, MANY_ENTRIES)) || (rc =
 					DeleteIntEntries(ih, nDelete)) || (rc = ixm.CloseIndex(ih))
 			|| (rc = ixm.OpenIndex(FILENAME, index, ih))
 			||
@@ -560,7 +565,7 @@ RC Test3(void) {
 			(rc = VerifyIntIndex(ih, 0, nDelete, FALSE))
 			||
 			// ensure non-deleted entries still exist
-			(rc = VerifyIntIndex(ih, nDelete, FEW_ENTRIES - nDelete, TRUE))
+            (rc = VerifyIntIndex(ih, nDelete, MANY_ENTRIES - nDelete, TRUE))
 			|| (rc = ixm.CloseIndex(ih)))
 		return (rc);
 
@@ -762,7 +767,7 @@ RC Test6(void) {
 RC Test7(void) {
     printf("Test 7\n");
     printf("In this test we will try to catch an error\n\n");
-    for(int k=1; k<1000; k++){
+    for(int k=1; k<2; k++){
         printf("-----Begins iteration %d-----\n\n", k);
         RC rc;
         IX_IndexHandle ih;
@@ -774,10 +779,10 @@ RC Test7(void) {
         printf("Opening index...\n");
         if( (rc = m.OpenIndex(FILENAME, 1, ih)) ) return rc;
 
-        int nbValues = 50;
+        int nbValues = 1000;
         int values [nbValues];
         for(int i=0; i<nbValues; i++){
-            values[i] = (rand() % 100)+1;
+            values[i] = (rand() % 1000)+1;
         }
         RID rid(23,46);
         for(int i=0; i<nbValues; i++){
@@ -801,5 +806,115 @@ RC Test7(void) {
         printf("-----Ends iteration-----\n\n");
     }
     printf("Passed test7!\n\n");
+    return 0;
+}
+
+
+RC Test8(void) {
+    printf("Test 8\n");
+    printf("Dans ce test on met a l'epreuve le bucket chaining\n\n");
+    for(int k=1; k<2; k++){
+        printf("-----Begins iteration %d-----\n\n", k);
+        RC rc;
+        IX_IndexHandle ih;
+        PF_Manager pfm;
+        IX_Manager m(pfm);
+        IX_IndexScan is;
+        printf("Creating index...\n");
+        if( (rc = m.CreateIndex(FILENAME, 1, INT, sizeof(int))) ) return rc;
+        printf("Opening index...\n");
+        if( (rc = m.OpenIndex(FILENAME, 1, ih)) ) return rc;
+
+        int nbValues = 1200;
+        int values [nbValues];
+        for(int i=0; i<nbValues; i++){
+            values[i] = (rand() % 2)+1;
+        }
+        RID rid(23,46);
+        for(int i=0; i<nbValues; i++){
+            printf("Insertion %d/%d, value = %d\n", i, nbValues, values[i]);
+            if( (rc = ih.InsertEntry((void *) &values[i], rid)) ) return rc;
+            printf("Checking the entries\n");
+            for(int j=0; j<=i; j++){
+                if( (rc = is.OpenScan(ih, EQ_OP, (void *) &values[j])) ) return rc;
+                if( (rc = is.GetNextEntry(rid)) ){
+                    printf("Error happened when checking entry n°%d (value=%d)!\n", j, values[j]);
+                    if( (rc = ih.PrintTree())) return rc;
+                    return IX_EOF;
+                }
+                if( (rc = is.CloseScan())) return rc;
+            }
+        }
+        printf("Closing index...\n");
+        if( (rc = m.CloseIndex(ih)) ) return rc;
+        printf("Destroying index...\n");
+        if( (rc = m.DestroyIndex(FILENAME, 1)) ) return rc;
+        printf("-----Ends iteration-----\n\n");
+    }
+    printf("Passed test8!\n\n");
+    return 0;
+}
+
+
+RC Test9(void) {
+    printf("Test 9\n");
+    printf("Dans ce test on met vraiment a l'epreuve le bucket chaining\n\n");
+    RC rc;
+    IX_IndexHandle ih;
+    PF_Manager pfm;
+    IX_Manager m(pfm);
+    IX_IndexScan is;
+    printf("Creating index...\n");
+    if( (rc = m.CreateIndex(FILENAME, 1, INT, sizeof(int))) ) return rc;
+    printf("Opening index...\n");
+    if( (rc = m.OpenIndex(FILENAME, 1, ih)) ) return rc;
+
+    int nbValues = 20000;
+    int values [nbValues];
+    int rid1 [nbValues];
+    int rid2 [nbValues];
+    bool deleted [nbValues];
+    //Random initialization
+    for(int i=0; i<nbValues; i++){
+        values[i] = (rand() % 30)+1;
+        rid1[i] = (rand() % 1000)+1;
+        rid1[i] = (rand() % 300)+1;
+        deleted[i] = false;
+    }
+    //Insertion
+    for(int i=0; i<nbValues; i++){
+        printf("Insertion %d/%d, value = %d\n", i, nbValues, values[i]);
+        RID rid(rid1[i], rid2[i]);
+        if( (rc = ih.InsertEntry((void *) &values[i], rid)) ) return rc;
+        printf("Checking the entries\n");
+        //Entries checking
+        for(int j=0; j<=i; j++){
+            if( (rc = is.OpenScan(ih, EQ_OP, (void *) &values[j])) ) return rc;
+            if( (rc = is.GetNextEntry(rid)) ){
+                printf("Error happened when checking entry n°%d (value=%d)!\n", j, values[j]);
+                if( (rc = ih.PrintTree())) return rc;
+                return IX_EOF;
+            }
+            if( (rc = is.CloseScan())) return rc;
+        }
+    }
+
+    //Let's have some fun deleting random entries
+    int deletedCount = 0;
+    while(deletedCount < nbValues*2/3){
+        int i = (rand() % nbValues);
+        if(deleted[i]) continue;
+        printf("Deleting entry n°%d\n", i);
+        RID rid(rid1[i], rid2[i]);
+        if( (rc = ih.DeleteEntry((void *) &values[i], rid)) ) return rc;
+        deleted[i] = true;
+        deletedCount++;
+    }
+    printf("Closing index...\n");
+    if( (rc = m.CloseIndex(ih)) ) return rc;
+    printf("Destroying index...\n");
+    if( (rc = m.DestroyIndex(FILENAME, 1)) ) return rc;
+
+    printf("Passed test9!\n\n");
     return 0;
 }

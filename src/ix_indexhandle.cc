@@ -144,11 +144,15 @@ RC IX_IndexHandle::DeleteEntry(void *pData, const RID &rid) {
     if( (rc = getPointer(pageHandle, i, bucketNum)) ) return rc;
     //Removes the entry from the bucket
     if( (rc = filehandle->UnpinPage(nodeNum)) ) return rc;
-    return DeleteEntryFromBucket(bucketNum, rid, nodeNum);
+    return DeleteEntryFromBucket(bucketNum, rid, nodeNum, false);
 }
 
 //Deletes an entry in a specified bucket
-RC IX_IndexHandle::DeleteEntryFromBucket(const PageNum bucketNum, const RID &rid, const PageNum bucketParent){
+RC IX_IndexHandle::DeleteEntryFromBucket(const PageNum bucketNum, const RID &rid, const PageNum bucketParent, bool nextBucket){
+    /*
+     *The boolean argument nextBucket value is true if the bucket is not the first one associated with
+     *its leaf. In this case, bucketParent is the pageNum of the previous bucket (and not of the leaf)
+    */
     RC rc;
     //Retrieves the bucket from PF
     PF_PageHandle phBucket;
@@ -168,9 +172,15 @@ RC IX_IndexHandle::DeleteEntryFromBucket(const PageNum bucketNum, const RID &rid
         //Compares the rids
         if(rid==bucketRid) break;
     }
-    //If we didn't break means the rid doesn't exist
+    //If we didn't break means the rid doesn't exist in this bucket
     if(pos==bucketHeader.nbRid){
-        return IX_ENTRYNOTFOUND;
+        if(bucketHeader.nextBucket!=-1){
+            if( (rc = filehandle->UnpinPage(bucketNum)) ) return rc;
+            //Reccursive call with the bucket as parent of the next bucket
+            return DeleteEntryFromBucket(bucketHeader.nextBucket, rid, bucketNum, true);
+        }else{
+            return IX_ENTRYNOTFOUND;
+        }
     }
     //Else we have to remove the bucket (i.e offset the following rids)
     for(int i=pos; i<bucketHeader.nbRid; i++){
@@ -186,8 +196,26 @@ RC IX_IndexHandle::DeleteEntryFromBucket(const PageNum bucketNum, const RID &rid
         if( (rc = filehandle->UnpinPage(bucketNum)) ) return rc;
         //Deallocate the page
         if( (rc = filehandle->DisposePage(bucketNum)) ) return rc;
-        //Reccursive call to propagate above in the tree
-        return DeleteBucketEntryFromLeafNode(bucketParent, bucketNum);
+        //We act according to the value of the nextBucket bool
+        if(nextBucket){
+            //Retrieves the previous bucket
+            PF_PageHandle phPrevBucket;
+            char* pDataPrevBucket;
+            IX_BucketHeader prevBucketHeader;
+            if( (rc = filehandle->GetThisPage(bucketParent, phPrevBucket)) ) return rc;
+            if( (rc = phPrevBucket.GetData(pDataPrevBucket)) ) return rc;
+            memcpy(&prevBucketHeader, pDataPrevBucket, sizeof(IX_BucketHeader));
+            //In case there is another bucket behind
+            prevBucketHeader.nextBucket = bucketHeader.nextBucket;
+            //Saves to memory and unpins
+            memcpy(pDataPrevBucket, &prevBucketHeader, sizeof(IX_BucketHeader));
+            if( (rc = filehandle->MarkDirty(bucketParent)) ) return rc;
+            if( (rc = filehandle->UnpinPage(bucketParent)) ) return rc;
+            return 0;
+        }else{
+            //Reccursive call to propagate above in the tree
+            return DeleteBucketEntryFromLeafNode(bucketParent, bucketNum);
+        }
     }
     //Else we just write the header back to memory and unpin the bucket
     memcpy(pDataBucket, &bucketHeader, sizeof(IX_BucketHeader));
@@ -376,32 +404,13 @@ RC IX_IndexHandle::InsertEntryToLeafNode(const PageNum nodeNum, void *pData, con
     //First we check if the key already exists
     for(int i=0; i<leafHeader.nbKey; i++){
         if(IsKeyGreater(pData, pageHandle, i)==0){
-            //Retrieves the bucket
+            //Retrieves the bucket PageNum
             PageNum bucket;
             if( (rc = getPointer(pageHandle, i, bucket)) ) return rc;
-            PF_PageHandle phBucket;
-            if( (rc = filehandle->GetThisPage(bucket, phBucket)) ) return rc;
-            char* pDataBucket;
-            if( (rc = phBucket.GetData(pDataBucket)) ) return rc;
-            //Loads bucket header from memory
-            IX_BucketHeader bucketHeader;
-            memcpy(&bucketHeader, pDataBucket, sizeof(IX_BucketHeader));
-            if(bucketHeader.nbRid>=bucketHeader.nbRidMax){
-                if( (rc=filehandle->UnpinPage(nodeNum)) ) return rc;
-                return IX_NOMEM;
-            }
-            //Inserts the RID
-            memcpy(pDataBucket+sizeof(IX_BucketHeader)+bucketHeader.nbRid*sizeof(RID), &rid, sizeof(RID));
-            //Increments nb of rids and copies back header to memory
-            bucketHeader.nbRid++;
-            memcpy(pDataBucket, &bucketHeader, sizeof(IX_BucketHeader));
-            //Marks dirty, etc.
-            if( (rc = filehandle->MarkDirty(bucket))
-                    || (rc = filehandle->UnpinPage(bucket))
-                    || (rc = filehandle->ForcePages()) ) return rc;
-            //Data is inserted it's done
-            if( (rc=filehandle->UnpinPage(nodeNum)) ) return rc;
-            return 0;
+            //Unpins the leaf node
+            if( (rc = filehandle->UnpinPage(nodeNum)) ) return rc;
+            //Inserts into the bucket
+            return InsertEntryToBucket(bucket, rid);
         }
     }
     //We are here means the key doesn't exist already in the leaf
@@ -460,7 +469,8 @@ RC IX_IndexHandle::InsertEntryToLeafNodeNoSplit(const PageNum nodeNum, void *pDa
     //Now we have to create a header for the bucket
     IX_BucketHeader bucketHeader;
     bucketHeader.nbRid = 1; //The RID we are inserting
-    bucketHeader.nbRidMax = (PF_PAGE_SIZE-sizeof(bucketHeader))/sizeof(RID);
+    bucketHeader.nbRidMax = (PF_PAGE_SIZE-sizeof(IX_BucketHeader))/sizeof(RID);
+    bucketHeader.nextBucket = -1; //No next bucket yet
 
     //Copy bucket header to memory
     if( (rc = phBucket.GetData(pData4)) ) return rc;
@@ -778,6 +788,62 @@ RC IX_IndexHandle::InsertEntryToIntlNodeSplit(
     return 0;
 }
 
+//Inserts a rid in a bucket
+RC IX_IndexHandle::InsertEntryToBucket(const PageNum bucketNb, const RID &rid){
+    RC rc = 0;
+    printf("Inserting entry to bucket n°%d\n", bucketNb);
+    //Retrieves the bucket
+    PF_PageHandle phBucket;
+    if( (rc = filehandle->GetThisPage(bucketNb, phBucket)) ) return rc;
+    char* pDataBucket;
+    if( (rc = phBucket.GetData(pDataBucket)) ) return rc;
+    //Loads bucket header from memory
+    IX_BucketHeader bucketHeader;
+    memcpy(&bucketHeader, pDataBucket, sizeof(IX_BucketHeader));
+    //If bucket is full
+    if(bucketHeader.nbRid>=bucketHeader.nbRidMax){
+        //If there is a next bucket, fine we insert in it
+        if(bucketHeader.nextBucket!=-1){
+            if( (rc = filehandle->UnpinPage(bucketNb)) ) return rc;
+            return InsertEntryToBucket(bucketHeader.nextBucket, rid);
+        }
+        //Else we create the next bucket
+        PF_PageHandle phNewBucket;
+        char* pDataNewBucket;
+        PageNum newBucketPageNum;
+        IX_BucketHeader newBucketHeader;
+        //Allocates a page for new bucket
+        if( (rc = filehandle->AllocatePage(phNewBucket)) ) return rc;
+        if( (rc = phNewBucket.GetData(pDataNewBucket)) ) return rc;
+        if( (rc = phNewBucket.GetPageNum(newBucketPageNum)) ) return rc;
+        newBucketHeader.nbRid = 0;
+        newBucketHeader.nbRidMax = (PF_PAGE_SIZE-sizeof(IX_BucketHeader))/sizeof(RID)-1;
+        newBucketHeader.nextBucket = -1;
+        //Copies header of the new bucket to memory
+        memcpy(pDataNewBucket, &newBucketHeader, sizeof(IX_BucketHeader));
+        //Unpins and marks dirty
+        if( (rc = filehandle->MarkDirty(newBucketPageNum)) ) return rc;
+        if( (rc = filehandle->UnpinPage(newBucketPageNum)) ) return rc;
+        //Also updates header and unpins, mark dirty the other bucket
+        bucketHeader.nextBucket = newBucketPageNum;
+        memcpy(pDataBucket, &bucketHeader, sizeof(IX_BucketHeader));
+        if( (rc = filehandle->MarkDirty(bucketNb))) return rc;
+        if( (rc = filehandle->UnpinPage(bucketNb))) return rc;
+        //And reccursive call to insert the rid
+        return InsertEntryToBucket(newBucketPageNum, rid);
+    }
+    //Inserts the RID
+    memcpy(pDataBucket+sizeof(IX_BucketHeader)+bucketHeader.nbRid*sizeof(RID), &rid, sizeof(RID));
+    //Increments nb of rids and copies back header to memory
+    bucketHeader.nbRid++;
+    memcpy(pDataBucket, &bucketHeader, sizeof(IX_BucketHeader));
+    //Marks dirty, etc.
+    if( (rc = filehandle->MarkDirty(bucketNb))
+            || (rc = filehandle->UnpinPage(bucketNb))
+            || (rc = filehandle->ForcePages()) ) return rc;
+    return 0;
+}
+
 //Compares the given value (pData) to number i key on the node (pageHandle)
 int IX_IndexHandle::IsKeyGreater(void *pData, PF_PageHandle &pageHandle, int i) {
     RC rc = 0;
@@ -1041,7 +1107,7 @@ RC IX_IndexHandle::PrintBucket(PageNum bucketNb){
     if((rc = filehandle->GetThisPage(bucketNb, ph)) ) return rc;
     if( (rc = ph.GetData(pData))) return rc;
     memcpy(&bucketHeader, pData, sizeof(IX_BucketHeader));
-    printf("Bucket nb %d | nb rid %d\n", bucketNb, bucketHeader.nbRid);
+    printf("Bucket nb %d | nb rid %d | Next Bucket %d (max nb rid = %d)\n", bucketNb, bucketHeader.nbRid, bucketHeader.nextBucket, bucketHeader.nbRidMax);
     if( (rc=filehandle->UnpinPage(bucketNb))) return rc;
-    return 0;
+    return bucketHeader.nextBucket==-1 ? 0 : PrintBucket(bucketHeader.nextBucket);
 }

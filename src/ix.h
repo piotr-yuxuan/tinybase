@@ -35,6 +35,7 @@ typedef struct IX_NodeHeader {
 typedef struct IX_BucketHeader {
     int nbRid; //Number of RID stored in the bucket
     int nbRidMax; //Max number of RID storable
+    int nextBucket; //PageNum of the next bucket, -1 if no next bucket
 } IX_BucketHeader;
 
 //
@@ -76,9 +77,10 @@ private:
     RC InsertEntryToIntlNode(const PageNum nodeNum, const PageNum childNodeNum, char *&splitKey, PageNum &splitNodeNum);
     RC InsertEntryToIntlNodeNoSplit(const PageNum nodeNum, const PageNum childNodeNum, char *&splitKey,PageNum &splitNodeNum);
     RC InsertEntryToIntlNodeSplit(const PageNum nodeNum, const PageNum childNodeNum, char *&splitKey,PageNum &splitNodeNum);
+    RC InsertEntryToBucket(const PageNum bucketNb, const RID &rid);
 
     //Private deletion methods
-    RC DeleteEntryFromBucket(const PageNum bucketNum, const RID &rid, const PageNum bucketParent);
+    RC DeleteEntryFromBucket(const PageNum bucketNum, const RID &rid, const PageNum bucketParent, bool nextBucket);
     RC DeleteBucketEntryFromLeafNode(const PageNum leafNum, const PageNum bucketNum);
     RC DeleteEntryFromInternalNode(const PageNum nodeNum, const PageNum entryNum);
 
