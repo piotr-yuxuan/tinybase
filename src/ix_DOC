@@ -1,0 +1,63 @@
+**Documentation for the Indexing (IX) component**
+
+
+Implementation choices
+----------------------
+We implemented the indexing component using a B+ tree. Each node or leaf is
+represented with a page in the file associated with our index. Thus, in all our
+methods we can refer to a node by its **Page Number** (i.e. PageNum variable).
+
+The tree is made of node and each node is made of a several things:
+    - A header (containing some useful information about the node such as its
+    parent, the previous node, etc.)
+    - Keys (values used to navigate through the tree). Thus keys can be INT,
+    FLOAT, or STRING according of the attrtype our index will be used for.
+    - Pointers, i.e. the number of an other PageNum
+There are three types of nodes :
+    - Thee root, i.e. the first node at the top of the tree
+    - Internal nodes
+    - Leaf nodes, i.e nodes at the bottom of the tree
+
+There are also **buckets** (they are not nodes so to say though) which are pages
+containing the RIDs for a given value. Buckets are pointed from the leaf nodes,
+and if there is not enough space in a bucket to store all the RIDs associated
+with a given value we use **bucket chaining** (there is a nextBucket field in
+the header of a bucket).
+
+
+Nodes structures
+----------------
+We have three structures for headers:
+    - **IX_FileHeader** is the global header for the file, it is always stored in
+    the first page of the file i.e. page 0. It contains the PageNum for the root
+    (or -1 if there is no root yet), the attrType of the index (i.e. INT, FLOAT
+    or STRING) and the size of the keys in the tree, which is the same as the
+    size of the attribute.
+    - **IX_NodeHeader** is the header struct for nodes. It's used for all the
+    kinds of nodes: root, internal nodes and leaf nodes. It includes the type of
+    the node (-1 for root, 0 for internal node and 1 for leaf node), the number
+    of keys currently stored in the node, the maximum possible number of keys
+    storable in it, and Page Numbers for the node's parent, previous node and
+    next node (set to -1 if there is no parent/prev/next node).
+    - **IX_BucketHeader** is the heade for buckets. It just contains the number
+    of rids stored in it, the maximum number of rid storable and the PageNum
+    of the next bucket if bucket chaining is needed (-1 otherwise).
+
+The way pages are written in the file:
+    - Root and internal nodes are written this way :
+    *Header* *pointer-1* *key0* *pointer0* ... *keyN-1* *pointerN-1*
+    Where the number of keys in the node is N. Please note the presence of a
+    "-1 pointer" which is very important. Hence there are N+1 pointers but
+    only N keys.
+    - Leaf nodes are written this way:
+    *Header* *key0* *pointer0* ... *keyN-1* *pointerN-1*
+    In this nodes the way things work is simple, a key is a value and the
+    following pointer is the PageNum of the bucket where the RIDs for this
+    value are stored. There are N keys and N pointers.
+    - Buckets are written this way:
+    *Header* *RID0* *RID1* ... *RIDN-1*
+    Also very simple, we have N RIDs put the one after the other.
+
+
+Insertion algorithm
+-------------------
