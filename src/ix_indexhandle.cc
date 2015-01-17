@@ -135,7 +135,7 @@ RC IX_IndexHandle::DeleteEntry(void *pData, const RID &rid) {
     for(;i<nodeHeader.nbKey; i++){
         if(IsKeyGreater(pData, pageHandle, i)==0) break;
     }
-    //If we didn't break anywhere, means the values doesn't exist
+    //If we didn't break anywhere, means the value doesn't exist
     if(i==nodeHeader.nbKey){
         return IX_ENTRYNOTFOUND;
     }
@@ -224,7 +224,7 @@ RC IX_IndexHandle::DeleteBucketEntryFromLeafNode(const PageNum leafNum, const Pa
     //Else we remove it, i.e offset the following keys & pointers
     for(int i=pos; i<leafHeader.nbKey; i++){
         int offset = SizePointer+fileHeader.keySize;
-        memcpy(pDataLeaf+i*offset, pDataLeaf+(i+1)*(offset), offset);
+        memcpy(pDataLeaf+sizeof(IX_NodeHeader)+i*offset, pDataLeaf+sizeof(IX_NodeHeader)+(i+1)*(offset), offset);
     }
 
     //Updates nb of keys
@@ -271,7 +271,7 @@ RC IX_IndexHandle::DeleteEntryFromInternalNode(const PageNum nodeNum, const Page
     if(nodePointer==entryNum){
         //if our entry is the -1 pointer
         //We offset all that is behind
-        memcpy(pData+sizeof(IX_NodeHeader), pData+sizeof(IX_NodeHeader),
+        memcpy(pData+sizeof(IX_NodeHeader), pData+sizeof(IX_NodeHeader)+SizePointer+fileHeader.keySize,
                nodeHeader.nbKey*(SizePointer+fileHeader.keySize));
     }else{
         //Else we find our entry
@@ -285,17 +285,16 @@ RC IX_IndexHandle::DeleteEntryFromInternalNode(const PageNum nodeNum, const Page
             return IX_ENTRYNOTFOUND;
         }
         //We offset the keys and pointers after
-        memcpy(pData+sizeof(IX_NodeHeader)+pos*(SizePointer+fileHeader.keySize),
-               pData+sizeof(IX_NodeHeader)+(pos+1)*(SizePointer+fileHeader.keySize),
+        memcpy(pData+sizeof(IX_NodeHeader)+SizePointer+pos*(SizePointer+fileHeader.keySize),
+               pData+sizeof(IX_NodeHeader)+SizePointer+(pos+1)*(SizePointer+fileHeader.keySize),
                (nodeHeader.nbKey-1-pos)*(SizePointer+fileHeader.keySize)
                );
     }
     //In every case we have to decrement nb of keys
     nodeHeader.nbKey--;
 
-    //Then if no key left we have to remove the node
-    if( (nodeHeader.level!=-1 && nodeHeader.nbKey==0)
-            || (nodeHeader.level==-1 && nodeHeader.nbKey==-1) ){
+    //Then if nbKey==-1 (i.e. no key left and no pointer -1 left) we remove the node
+    if( (nodeHeader.nbKey==-1) ){
         //Updates prev and next pages headers
         if(nodeHeader.nextPage>0){
             if( (rc = setPreviousNode(nodeHeader.nextPage, nodeHeader.prevPage)) ) return 0;
