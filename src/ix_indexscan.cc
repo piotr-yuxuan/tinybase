@@ -243,11 +243,6 @@ RC IX_IndexScan::goToFirstBucket(RID &rid){
             break;
         }
 
-        //The node shouldn't be empty (if it's not the root)
-        if(nodeHeader.level!=-1 && nodeHeader.nbKey<=0){
-            return IX_ENTRYNOTFOUND;
-        }
-
         //Browse the node
         int i=0;
         for(; i<nodeHeader.nbKey; i++){
