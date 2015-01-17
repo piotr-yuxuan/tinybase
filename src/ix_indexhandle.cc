@@ -120,11 +120,11 @@ RC IX_IndexHandle::DeleteEntry(void *pData, const RID &rid) {
         }
         //If we didn't break anywhere pos==nodeHeader.nbKey
         //Gives its new value to nodeNum
-        PageNum newNodenum;
+        PageNum newNodeNum;
         if( (rc = getPointer(pageHandle, pos-1, newNodeNum)) ) return rc;
         //Unpins
         if( (rc = filehandle->UnpinPage(nodeNum)));
-        nodeNum = newNodenum;
+        nodeNum = newNodeNum;
     }
 
     /*
@@ -287,7 +287,7 @@ RC IX_IndexHandle::DeleteEntryFromInternalNode(const PageNum nodeNum, const Page
         //We offset the keys and pointers after
         memcpy(pData+sizeof(IX_NodeHeader)+pos*(SizePointer+fileHeader.keySize),
                pData+sizeof(IX_NodeHeader)+(pos+1)*(SizePointer+fileHeader.keySize),
-               (nbKey-1-pos)*(SizePointer+fileHeader.keySize)
+               (nodeHeader.nbKey-1-pos)*(SizePointer+fileHeader.keySize)
                );
     }
     //In every case we have to decrement nb of keys
@@ -309,7 +309,7 @@ RC IX_IndexHandle::DeleteEntryFromInternalNode(const PageNum nodeNum, const Page
         if( (rc = filehandle->DisposePage(nodeNum)) ) return rc;
         //Removes from parent (reccursive call)
         if(nodeHeader.level!=-1){
-            return DeleteEntryFromInternalNode(parentNode, leafNum);
+            return DeleteEntryFromInternalNode(parentNode, nodeNum);
         }else{
             //If the node was the root we have to tell there is no more root
             this->fileHeader.rootNb = -1;
@@ -763,7 +763,7 @@ RC IX_IndexHandle::InsertEntryToIntlNodeSplit(
             //Moves i1 to i1+1
             if( (rc = getKey(phNode1, i1, pData3)) ) return rc;
             if( (rc = setKey(phNode1, i1+1, pData3)) ) return rc;
-            if( (rc = getPointer(phNode1, i1, pointer)))
+            if( (rc = getPointer(phNode1, i1, pointer)) ) return rc;
             if( (rc = setPointer(phNode1, i1+1, pointer)) ) return rc;
             i1--;
         }
