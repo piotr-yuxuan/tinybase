@@ -116,6 +116,7 @@ public:
     // Close index scan
     RC CloseScan();
 private:
+    const int EndOfBucket = -2;
     int bScanOpen;
     IX_IndexHandle *indexHandle;
     PageNum currentLeaf; //Current leaf for the scan
@@ -124,6 +125,7 @@ private:
     int currentBucketPos; //Current position in the bucket
     CompOp compOp;
     void *value;
+    bool bIsEOF; //If true next GetNextEntry call will return IX_EOF
     //Method to go to the first leaf, first bucket
     RC goToFirstBucket(RID &rid);
 };

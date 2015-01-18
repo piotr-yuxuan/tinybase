@@ -63,6 +63,7 @@ RC Test6(void);
 RC Test7(void);
 RC Test8(void);
 RC Test9(void);
+RC Test10(void);
 
 
 void PrintError(RC rc);
@@ -81,7 +82,7 @@ RC PrintIndex(IX_IndexHandle &ih);
 //
 // Array of pointers to the test functions
 //
-#define NUM_TESTS       9               // number of tests
+#define NUM_TESTS       10               // number of tests
 int (*tests[])() =                      // RC doesn't work on some compilers
 {
 	Test1,
@@ -92,7 +93,8 @@ int (*tests[])() =                      // RC doesn't work on some compilers
     Test6,
     Test7,
     Test8,
-    Test9
+    Test9,
+    Test10
 };
 
 //
@@ -441,14 +443,17 @@ RC VerifyIntIndex(IX_IndexHandle &ih, int nStart, int nEntries, int bExists) {
 		rc = scan.GetNextEntry(rid);
 		if (!bExists && rc == 0) {
 			printf("Verify error: found non-existent entry %d\n", value);
+            ih.PrintTree();
 			return (IX_EOF);  // What should be returned here?
 		} else if (bExists && rc == IX_EOF) {
             printf("Verify error: entry N°%d (%d) not found\n", i, value);
             ih.PrintTree();
 			return (IX_EOF);  // What should be returned here?
-		} else if (rc != 0 && rc != IX_EOF)
-			return (rc);
-
+        } else if (rc != 0 && rc != IX_EOF){
+            ih.PrintTree();
+            printf("Value looked for: %d\n", value);
+            return (rc);
+        }
 		if (bExists && rc == 0) {
 			// Did we get the right entry?
 			if ((rc = rid.GetPageNum(pageNum))
@@ -916,5 +921,90 @@ RC Test9(void) {
     if( (rc = m.DestroyIndex(FILENAME, 1)) ) return rc;
 
     printf("Passed test9!\n\n");
+    return 0;
+}
+
+
+RC Test10(void) {
+    printf("Test 10\n");
+    printf("This is a tricky one\n\n");
+    RC rc;
+    IX_IndexHandle ih;
+    PF_Manager pfm;
+    IX_Manager m(pfm);
+    IX_IndexScan is;
+
+    printf("Creating index...\n");
+    if( (rc = m.CreateIndex(FILENAME, 1, INT, sizeof(int))) ) return rc;
+    printf("Opening index...\n");
+    if( (rc = m.OpenIndex(FILENAME, 1, ih)) ) return rc;
+
+    int nbValues = 100;
+    int values [nbValues];
+    int rid1 [nbValues];
+
+    int value = (rand()%100) + 1;
+    int valueCount = 0;
+    printf("Value chosen = %d\n", value);
+
+    //Random initialization
+    for(int i=0; i<nbValues; i++){
+        values[i] = (rand() % 100)+1;
+        rid1[i] = (rand() % 1000)+1;
+        if(values[i]>=value) valueCount++;
+    }
+
+    printf("Value count = %d\n", valueCount);
+
+    //Insertion
+    for(int i=0; i<nbValues; i++){
+        printf("Insertion %d/%d, value = %d\n", i, nbValues, values[i]);
+        RID rid(rid1[i], values[i]);
+        if( (rc = ih.InsertEntry((void *) &values[i], rid)) ) return rc;
+        printf("Checking the entries\n");
+    }
+
+    //We check that the scan works
+    printf("Checking scan features...\n");
+    for(int i=0; i<nbValues; i++){
+        if( (rc = is.OpenScan(ih, EQ_OP, (void * ) &values[i])) ) return rc;
+        RID scanRid;
+        if( (rc = is.GetNextEntry(scanRid)) ) return rc;
+        PageNum slotNb;
+        if( (rc = scanRid.GetSlotNum(slotNb)) ) return rc;
+        if(slotNb!=values[i]){
+            printf("Scan rrror: slotnb doesn't match! (slotNb=%d, value=%d) \N", slotNb, values[i]);
+        }
+        if( (rc = is.CloseScan()) ) return rc;
+    }
+    printf("Ends checking scan features...\n");
+
+
+    //Now we take some values and delete while scaning
+    if( (rc = is.OpenScan(ih, GE_OP, (void * ) &value)) ) return rc;
+    RID rid;
+    int deleteCount = 0;
+    while( 1 > 0){
+        printf("Gets the next entry for value\n");
+        rc = is.GetNextEntry(rid);
+        if(rc == IX_EOF) break;
+        if(rc != 0) return rc;
+        //Deletes the record
+        int ridValue;
+        if( (rc =rid.GetSlotNum(ridValue)) ) return rc;
+        printf("Deletes a record (ridValue=%d)\n", ridValue);
+        if( (rc = ih.DeleteEntry((void*) &ridValue, rid)) ) return rc;
+        deleteCount++;
+    }
+    if( (rc = is.CloseScan()) ) return rc;
+    printf("Closing index...\n");
+    if( (rc = m.CloseIndex(ih)) ) return rc;
+    printf("Destroying index...\n");
+    if( (rc = m.DestroyIndex(FILENAME, 1)) ) return rc;
+    if(deleteCount<valueCount){
+        printf("Error, not enough rid deleted (%d/%d)!\n", deleteCount, valueCount);
+    }else{
+        printf("Passed test10!\n\n");
+    }
     return 0;
 }
