@@ -59,5 +59,168 @@ The way pages are written in the file:
     Also very simple, we have N RIDs put the one after the other.
 
 
-Insertion algorithm
--------------------
+Insertion algorithm : the basics
+--------------------------------
+When the tree is initialized there is no node and no bucket.
+
+In our examples each node can contain up to 2 keys (to keep it simple) plus the
+-1 pointer if there is one and buckets cain contain up to 2 rids (actual page size
+show bucket can contain up to around 500 rids so it's also very simplified).
+
+When the InsertEntry() method is called for the first time a root is created,
+but also a first leaf. Then we use a reccursive call to InsertEntryToNode()
+with the root number as node number. After the first insertion the tree may
+look like this (let's say the inserted value is 13:
+
+======================Figure 1: Tree after first insertion======================
+
+                                  Root (n°1)
+                                (2)  __()  __()
+                                 |
+                                 |
+                          First Leaf (n°2)
+                             13(3)  __()
+                               |
+                               |
+                      First Bucket (n°3)
+                           RID1 __
+
+================================================================================
+
+Let's explain a little bit our notations. n°X means the node/bucket page number
+in the file is X. A value into brackets means it's a pointer, a key otherwise.
+For example in the first leaf, 13(3) means the key0 is 13 and the pointer0
+associated with it 3 (the page number of the first bucket). The (2) in the root
+node is the pointer-1 so it is perfectly normal it has no key associated with it.
+
+Then when we insert a new value, let's say 8, the method insertEntryToNode() will
+be called with 1 as first parameter (i.e. root nodeNumber). Since the root has
+only the -1 pointer it will call insertEntryToLeafNode(2, ...) to delegate the job
+to its leaf. The leaf is not full so it calls insertEntryToLeafNodeNoSplit(2,...)
+and this method insert the value at the right place (and offsets 13(3) to do so).
+We finally get something like this:
+
+======================Figure 2: Tree after second insertion=====================
+
+                                  Root (n°1)
+                                (2) __() __()
+                                 |
+                                 |
+                             Leaf (n°2)
+                             8(4)  13(3)
+                              /      \
+                             /        \
+                         B.(n°4)    B.(n°3)
+                         RID2 __    RID1 __
+
+================================================================================
+
+Of course a new bucket was allocated to store the second RID since the value is
+not the same as bucket n°3 (we will cover this later in this document).
+So at this point we have a root with an only leaf node child and two buckets
+associated with values.
+
+We can insert one more value again, let's say 17. But this time the leaf is full
+so insertEntryToLeafNode() will call insertEntryToLeafNodeSplit(). This method
+allocates a new page for the "split" leaf, copies the second half of the keys/
+pointers of the first leaf into the second leaf.
+
+Then the method use the first key of the second leaf as a "split key". In our
+case the splitKey is 13. Since our value - 17 - is higher than the split key,
+it will be inserted in the second leaf.
+
+insertEntryToLeafNodeSplit() will then call insertEntryToNode(1, ...) to insert
+our new leaf in the parent node of our first leaf (i.e. the root in our case).
+The key for the inserted pointer will be the splitKey. So we have:
+
+=========================Figure 3: Tree after leaf split========================
+
+                                      Root (n°1)
+                                   (2)  13(5)  __()
+                                   /      |
+                                  /       |
+                          Leaf (n°2)   Leaf (n°5)
+                          8(4) __()    13(3)  17(6)
+                          /              |      \
+                         /               |       \
+                    B.(n°4)           B.(n°3)  B.(n°6)
+                    RID2 __           RID1 __  RID3 __
+
+================================================================================
+
+So now according to the value of the next insertion we will just insert in the
+empty key/pointer couple of leaf N°2 or have to split leaf n°5 (if value is
+above 13). Let's say we insert 21 . The process is fairly the same as above,
+we get the following tree:
+
+=======================Figure 4: After another leaf split=======================
+
+                                      Root (n°1)
+                                   (2)  13(5)  17(7)
+                                   /      |        \
+                                  /       |         \
+                          Leaf (n°2)   Leaf (n°5)   Leaf (n°7)
+                          8(4) __()    13(3) __()   17(6) 21(8)
+                           |             |            |     \
+                           |             |            |      \
+                         B.(n°4)      B.(n°3)      B.(n°6)   B.(n°8)
+                         RID2 __      RID1 __      RID3 __   RID4 __
+
+================================================================================
+
+Also please note that when performing insertions we always take care of updating
+the headers. Let's examine a couple of headers in our example.
+Leaf n°2 header is:
+{level=1, maxKeyNb=2, nbKey=1, parentPage=1, prevPage=-1, nextPage=5}
+The root header is:
+{level=-1, maxKeyNb=2, nbKey=2, parentPage=-1, prevPage=-1, nextPage=-1}
+The number of keys in the root is 2 since the -1 pointer is not taken into
+account (it has no key associated with it anyway).
+
+Now let's come to the tricky part: insertion in an internal node with split.
+This is performed by the method InsertEntryToIntlNodeSplit() and is probably one
+of the hardest piece of code of our IX to understand. In our case the "internal
+node" to split is the root, but it makes no difference except thatwe have to
+create a new root for the tree.
+
+Let's say we wan't to add a rid with the key 18 to our tree. The root goes
+through all its keys and pointers and since 18>17 it makes a reccursive call to
+insertEntryToLeafNode(7, ...). But the leaf n°7 is full so another call to
+insertEntryToLeafNodeSplit(7, ...) is made. A new leaf is created with the
+splitKey 21 (see above) and 18 is inserted to the leaf n°7 since 18<21.
+A call to insertEntryToIntlNode(1, ...) is made with the splitkey 21. Since 1
+is full it has to split.
+
+And we have three values to "place" in our two nodes: 13, 17 and 21. We take the
+median key - 17 - and "push" it above (in the new root created) by calling
+insertEntryToIntlNode(10, ...) because the number of the new root is 10 in our
+example.
+
+=======================Figure 5: After internal node split======================
+
+                                     Root (n°10)
+                                   (1)  17(11) __()
+                                  /         \
+                                 /           \
+                          Ex-Root (n°1)   Intl node (n°11)
+                        (2)  13(5) __()    (7)  21(9) __()
+                        /      |            |       \
+                       /       |            |        \
+               Leaf (n°2)  Leaf (n°5)   Leaf (n°7)    Leaf (n°9)
+               8(4) __()   13(3) __()   17(6) 18(12)  21(8) __()
+                |            |            |      |       \
+                |            |            |      |        \
+               B.(n°4)    B.(n°3)    B.(n°6)   B.(n°12)   B.(n°8)
+               RID2 __    RID1 __    RID3 __   RID5 __    RID4 __
+
+================================================================================
+
+And as you can see, node n°1 (the ex-root) has become the -1 pointer of the new
+root. This change is performed in the InsertEntryToIntlNodeSplit() method. And
+we forgot to make this change in the first place, which cost us hours of
+debugging...
+
+
+Insertion with an existing value
+--------------------------------
+
