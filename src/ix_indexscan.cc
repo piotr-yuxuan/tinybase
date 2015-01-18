@@ -553,7 +553,7 @@ RC IX_IndexScan::getCurrentKeyNb(PF_PageHandle phLeaf, int &currentKeyNb){
             return 0;
         }
     }
-    //If we didn't find the key it the leaf, error
+    //If we didn't find the key in the leaf, error
     return IX_ENTRYNOTFOUND;
 }
 

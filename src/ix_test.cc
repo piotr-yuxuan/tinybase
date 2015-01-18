@@ -64,6 +64,7 @@ RC Test7(void);
 RC Test8(void);
 RC Test9(void);
 RC Test10(void);
+RC Test11(void);
 
 
 void PrintError(RC rc);
@@ -82,7 +83,7 @@ RC PrintIndex(IX_IndexHandle &ih);
 //
 // Array of pointers to the test functions
 //
-#define NUM_TESTS       10               // number of tests
+#define NUM_TESTS       11               // number of tests
 int (*tests[])() =                      // RC doesn't work on some compilers
 {
 	Test1,
@@ -94,7 +95,8 @@ int (*tests[])() =                      // RC doesn't work on some compilers
     Test7,
     Test8,
     Test9,
-    Test10
+    Test10,
+    Test11
 };
 
 //
@@ -1050,5 +1052,123 @@ RC Test10(void) {
         printf("End of iteration n°%d\n\n", k);
     }
     printf("Passed test10!\n\n");
+    return 0;
+}
+
+
+
+RC Test11(void) {
+    printf("Test 11\n");
+    printf("This is the ultimate test\n\n");
+    RC rc;
+    IX_IndexHandle ih;
+    PF_Manager pfm;
+    IX_Manager m(pfm);
+    IX_IndexScan is;
+
+    printf("Creating index...\n");
+    if( (rc = m.CreateIndex(FILENAME, 1, INT, sizeof(int))) ) return rc;
+    printf("Opening index...\n");
+    if( (rc = m.OpenIndex(FILENAME, 1, ih)) ) return rc;
+
+    int nbTests = 1000;
+    for(int k=0; k<nbTests; k++){
+        //Choses a random nb of values
+        int nbValues = rand()%5000 + 100;
+        int maxValue = (rand()%100)*10+1;
+        int scanValue = rand()%maxValue+1; //Random value for the scan
+        int values [nbValues];
+        int rid1 [nbValues];
+        bool deleted [nbValues];
+        CompOp compOps [5] = {LT_OP, LE_OP, EQ_OP, GE_OP, GT_OP};
+        int compCount [5] = {0,0,0,0,0};
+
+        //inserts values
+        for(int i=0; i<nbValues; i++){
+            int value = (rand()%maxValue)+1;
+            values[i]=value;
+            if(value < scanValue) compCount[0]++;
+            if(value <= scanValue) compCount[1]++;
+            if(value == scanValue) compCount[2]++;
+            if(value >= scanValue) compCount[3]++;
+            if(value > scanValue) compCount[4]++;
+            rid1[i] = rand()%1000+100;
+            RID rid(rid1[i], i);
+            deleted[i] = false;
+            if((rc = ih.InsertEntry((void*) &value, rid))) return rc;
+        }
+
+        //Chooses a random Compop and random scan value
+        int compOpInt = rand()%5;
+        CompOp compOp = compOps[compOpInt];
+
+        switch(compOp){
+        case LT_OP:
+            printf("%d/%d | nbEntries: %d | maxValue: %d | scanValue: %d | ScanOp: LT | \n", k+1, nbTests, nbValues, maxValue, scanValue);
+            break;
+        case LE_OP:
+            printf("%d/%d | nbEntries: %d | maxValue: %d | scanValue: %d | ScanOp: LE | \n", k+1, nbTests, nbValues, maxValue, scanValue);
+            break;
+        case EQ_OP:
+            printf("%d/%d | nbEntries: %d | maxValue: %d | scanValue: %d | ScanOp: EQ | \n", k+1, nbTests, nbValues, maxValue, scanValue);
+            break;
+        case GE_OP:
+            printf("%d/%d | nbEntries: %d | maxValue: %d | scanValue: %d | ScanOp: GE | \n", k+1, nbTests, nbValues, maxValue, scanValue);
+            break;
+        case GT_OP:
+            printf("%d/%d | nbEntries: %d | maxValue: %d | scanValue: %d | ScanOp: GT | \n", k+1, nbTests, nbValues, maxValue, scanValue);
+            break;
+        }
+
+
+        //Opens scan with this comop
+        if( (rc = is.OpenScan(ih, compOp, (void*) &scanValue)) ) return rc;
+
+        RID rid;
+        int avgNbToDelete = rand()%nbValues;
+        int deletedCount = 0;
+        int scanCount = 0;
+        while( (rc = is.GetNextEntry(rid))!=IX_EOF ){
+            scanCount++;
+            //Deletes with proba p
+            int randNb = rand()%nbValues;
+            if(randNb>avgNbToDelete){
+                continue;
+            }
+            //Retrieves i
+            int i;
+            if( (rc = rid.GetSlotNum(i))) return rc;
+            //Deletes
+            if( (rc = ih.DeleteEntry((void*) &values[i], rid)) ) return rc;
+            deletedCount++;
+        }
+
+        //Closes scan
+        if( (rc = is.CloseScan()) ) return rc;
+
+        if(scanCount!=compCount[compOpInt]){
+            printf("Error!!! Scan didn't retrieve the right nb of entries (%d/%d)\n", scanCount, compCount[compOpInt]);
+            return -1;
+        }
+
+        //Clears the tree
+        int zeroValue = 0;
+        if( (rc = is.OpenScan(ih, GE_OP, (void*) &zeroValue)) ) return rc;
+        while( (rc = is.GetNextEntry(rid) != IX_EOF )){
+            int i;
+            if( (rc = rid.GetSlotNum(i))) return rc;
+            if( (rc = ih.DeleteEntry((void*) &values[i], rid)) ){
+                return rc;
+            }
+        }
+        if( (rc = is.CloseScan()) ) return rc;
+    }
+
+    printf("Closing index...\n");
+    if( (rc = m.CloseIndex(ih)) ) return rc;
+    printf("Destroying index...\n");
+    if( (rc = m.DestroyIndex(FILENAME, 1)) ) return rc;
+
+    printf("Passed test11!\n\n");
     return 0;
 }

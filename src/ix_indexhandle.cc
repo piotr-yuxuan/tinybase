@@ -182,7 +182,7 @@ RC IX_IndexHandle::DeleteEntryFromBucket(const PageNum bucketNum, const RID &rid
             return IX_ENTRYNOTFOUND;
         }
     }
-    //Else we have to remove the bucket (i.e offset the following rids)
+    //Else we have to remove the rid (i.e offset the following rids)
     for(int i=pos; i<bucketHeader.nbRid; i++){
         char* ridPos;
         ridPos = pDataBucket+sizeof(IX_BucketHeader)+i*sizeof(RID);
@@ -213,8 +213,32 @@ RC IX_IndexHandle::DeleteEntryFromBucket(const PageNum bucketNum, const RID &rid
             if( (rc = filehandle->UnpinPage(bucketParent)) ) return rc;
             return 0;
         }else{
-            //Reccursive call to propagate above in the tree
-            return DeleteBucketEntryFromLeafNode(bucketParent, bucketNum);
+            //If we are here that means the bucket is the first one attached to the leaf
+            if(bucketHeader.nextBucket==-1){
+                //Reccursive call to propagate above in the tree
+                return DeleteBucketEntryFromLeafNode(bucketParent, bucketNum);
+            }else{
+                //In this case we have to attach the next bucket to the parent leaf
+                PF_PageHandle phParentLeaf;
+                char* pDataParentLeaf;
+                IX_NodeHeader parentLeafHeader;
+                if( (rc = filehandle->GetThisPage(bucketParent, phParentLeaf)) ) return rc;
+                if( (rc = phParentLeaf.GetData(pDataParentLeaf)) ) return rc;
+                memcpy(&parentLeafHeader, pDataParentLeaf, sizeof(IX_NodeHeader));
+                //Looks for the pointer to the removed bucket in parent leaf
+                for(int i=0; i<parentLeafHeader.nbKey; i++){
+                    PageNum pointer;
+                    if( (rc = getPointer(phParentLeaf, i, pointer)) ) return rc;
+                    if(pointer==bucketNum){
+                        //We found the right one, we update parent leaf
+                        if( (rc = setPointer(phParentLeaf, i, bucketHeader.nextBucket)) ) return rc;
+                        if( (rc = filehandle->MarkDirty(bucketParent)) ) return rc;
+                        if( (rc = filehandle->UnpinPage(bucketParent)) ) return rc;
+                        return 0;
+                    }
+                }
+                return IX_ENTRYNOTFOUND;
+            }
         }
     }
     //Else we just write the header back to memory and unpin the bucket
