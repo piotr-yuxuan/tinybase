@@ -791,7 +791,6 @@ RC IX_IndexHandle::InsertEntryToIntlNodeSplit(
 //Inserts a rid in a bucket
 RC IX_IndexHandle::InsertEntryToBucket(const PageNum bucketNb, const RID &rid){
     RC rc = 0;
-    printf("Inserting entry to bucket n°%d\n", bucketNb);
     //Retrieves the bucket
     PF_PageHandle phBucket;
     if( (rc = filehandle->GetThisPage(bucketNb, phBucket)) ) return rc;

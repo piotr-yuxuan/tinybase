@@ -927,84 +927,128 @@ RC Test9(void) {
 
 RC Test10(void) {
     printf("Test 10\n");
-    printf("This is a tricky one\n\n");
+    printf("This is a tricky, hard one\n\n");
     RC rc;
     IX_IndexHandle ih;
     PF_Manager pfm;
     IX_Manager m(pfm);
     IX_IndexScan is;
 
-    printf("Creating index...\n");
-    if( (rc = m.CreateIndex(FILENAME, 1, INT, sizeof(int))) ) return rc;
-    printf("Opening index...\n");
-    if( (rc = m.OpenIndex(FILENAME, 1, ih)) ) return rc;
+    for(int k=0; k<100; k++){
+        printf("----------------\nIteration n°%d\n----------------\n\n", k);
+        printf("Creating index...\n");
+        if( (rc = m.CreateIndex(FILENAME, 1, INT, sizeof(int))) ) return rc;
+        printf("Opening index...\n");
+        if( (rc = m.OpenIndex(FILENAME, 1, ih)) ) return rc;
 
-    int nbValues = 100;
-    int values [nbValues];
-    int rid1 [nbValues];
+        printf("Initializing values for insertion\n\n");
 
-    int value = (rand()%100) + 1;
-    int valueCount = 0;
-    printf("Value chosen = %d\n", value);
+        int nbValues = 100;
+        int values [nbValues];
+        int rid1 [nbValues];
 
-    //Random initialization
-    for(int i=0; i<nbValues; i++){
-        values[i] = (rand() % 100)+1;
-        rid1[i] = (rand() % 1000)+1;
-        if(values[i]>=value) valueCount++;
-    }
+        int value = (rand()%100) + 1;
+        int valueCount [5] = {0,0,0,0,0}; //For LT, LE, EQ, GE, GT
 
-    printf("Value count = %d\n", valueCount);
-
-    //Insertion
-    for(int i=0; i<nbValues; i++){
-        printf("Insertion %d/%d, value = %d\n", i, nbValues, values[i]);
-        RID rid(rid1[i], values[i]);
-        if( (rc = ih.InsertEntry((void *) &values[i], rid)) ) return rc;
-        printf("Checking the entries\n");
-    }
-
-    //We check that the scan works
-    printf("Checking scan features...\n");
-    for(int i=0; i<nbValues; i++){
-        if( (rc = is.OpenScan(ih, EQ_OP, (void * ) &values[i])) ) return rc;
-        RID scanRid;
-        if( (rc = is.GetNextEntry(scanRid)) ) return rc;
-        PageNum slotNb;
-        if( (rc = scanRid.GetSlotNum(slotNb)) ) return rc;
-        if(slotNb!=values[i]){
-            printf("Scan rrror: slotnb doesn't match! (slotNb=%d, value=%d) \N", slotNb, values[i]);
+        //Random initialization
+        for(int i=0; i<nbValues; i++){
+            values[i] = (rand() % 100)+1;
+            rid1[i] = (rand() % 1000)+1;
+            //Counts for different compop
+            if(values[i]<value) valueCount[0]++;
+            if(values[i]<=value) valueCount[1]++;
+            if(values[i]==value) valueCount[2]++;
+            if(values[i]>=value) valueCount[3]++;
+            if(values[i]>value) valueCount[4]++;
         }
+
+        printf("Value chosen = %d\n", value);
+        printf("Found %d LT, %d LE, %d EQ, %d GE, %d GT\n\n", valueCount[0], valueCount[1], valueCount[2], valueCount[3], valueCount[4]);
+
+        //Insertion
+        printf("Inserting %d values\n", nbValues);
+        for(int i=0; i<nbValues; i++){
+            RID rid(rid1[i], values[i]);
+            if( (rc = ih.InsertEntry((void *) &values[i], rid)) ) return rc;
+        }
+        printf("Values inserted and checked after each insertion\n\n");
+
+
+        //We check that the scan works
+        printf("Checking scan features...\n");
+        for(int i=0; i<nbValues; i++){
+            if( (rc = is.OpenScan(ih, EQ_OP, (void * ) &values[i])) ) return rc;
+            RID scanRid;
+            if( (rc = is.GetNextEntry(scanRid)) ) return rc;
+            PageNum slotNb;
+            if( (rc = scanRid.GetSlotNum(slotNb)) ) return rc;
+            if(slotNb!=values[i]){
+                printf("Scan error: slotnb doesn't match! (slotNb=%d, value=%d) \N", slotNb, values[i]);
+                return -1;
+            }
+            if( (rc = is.CloseScan()) ) return rc;
+        }
+        printf("Ends checking scan features...\n\n");
+
+        //Now we take some values and delete while scaning
+        CompOp operators [5] = {LT_OP, LE_OP, EQ_OP, GE_OP, GT_OP};
+        int opInt = rand() % 5;
+        CompOp opChosen = operators[opInt];
+        switch(opChosen){
+        case LT_OP:
+            printf("Starting onscan deletion with LT_OP\n");
+            break;
+        case LE_OP:
+            printf("Starting onscan deletion with LE_OP\n");
+            break;
+        case EQ_OP:
+            printf("Starting onscan deletion with EQ_OP\n");
+            break;
+        case GE_OP:
+            printf("Starting onscan deletion with GE_OP\n");
+            break;
+        case GT_OP:
+            printf("Starting onscan deletion with GT_OP\n");
+            break;
+        }
+
+        if( (rc = is.OpenScan(ih, opChosen, (void * ) &value)) ) return rc;
+        RID rid;
+        int deleteCount = 0;
+        printf("Scan & delete : ");
+        while( 1 > 0){
+            printf("S");
+            rc = is.GetNextEntry(rid);
+            if(rc == IX_EOF) break;
+            if(rc != 0) return rc;
+            //Deletes the record
+            int ridValue;
+            if( (rc =rid.GetSlotNum(ridValue)) ) return rc;
+            printf("D(%d) ", ridValue);
+            if( (rc = ih.DeleteEntry((void*) &ridValue, rid)) ){
+                ih.PrintTree();
+                return rc;
+            }
+            deleteCount++;
+        }
+        printf("\n");
+
+        if(deleteCount!=valueCount[opInt]){
+            ih.PrintTree();
+            printf("Error, not enough rid deleted (%d/%d)!\n", deleteCount, valueCount[opInt]);
+            return -1;
+        }else{
+            printf("Deleted %d entries successfully!\n", deleteCount);
+        }
+
         if( (rc = is.CloseScan()) ) return rc;
-    }
-    printf("Ends checking scan features...\n");
+        printf("Closing index...\n");
+        if( (rc = m.CloseIndex(ih)) ) return rc;
+        printf("Destroying index...\n");
+        if( (rc = m.DestroyIndex(FILENAME, 1)) ) return rc;
 
-
-    //Now we take some values and delete while scaning
-    if( (rc = is.OpenScan(ih, GE_OP, (void * ) &value)) ) return rc;
-    RID rid;
-    int deleteCount = 0;
-    while( 1 > 0){
-        printf("Gets the next entry for value\n");
-        rc = is.GetNextEntry(rid);
-        if(rc == IX_EOF) break;
-        if(rc != 0) return rc;
-        //Deletes the record
-        int ridValue;
-        if( (rc =rid.GetSlotNum(ridValue)) ) return rc;
-        printf("Deletes a record (ridValue=%d)\n", ridValue);
-        if( (rc = ih.DeleteEntry((void*) &ridValue, rid)) ) return rc;
-        deleteCount++;
+        printf("End of iteration n°%d\n\n", k);
     }
-    if( (rc = is.CloseScan()) ) return rc;
-    printf("Closing index...\n");
-    if( (rc = m.CloseIndex(ih)) ) return rc;
-    printf("Destroying index...\n");
-    if( (rc = m.DestroyIndex(FILENAME, 1)) ) return rc;
-    if(deleteCount<valueCount){
-        printf("Error, not enough rid deleted (%d/%d)!\n", deleteCount, valueCount);
-    }else{
-        printf("Passed test10!\n\n");
-    }
+    printf("Passed test10!\n\n");
     return 0;
 }

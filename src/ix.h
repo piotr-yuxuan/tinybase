@@ -120,7 +120,7 @@ private:
     int bScanOpen;
     IX_IndexHandle *indexHandle;
     PageNum currentLeaf; //Current leaf for the scan
-    int currentKey; //Current key in the leaf
+    void* currentKey; //Current key in the leaf
     PageNum currentBucket; //Current bucket we are scaning
     int currentBucketPos; //Current position in the bucket
     CompOp compOp;
@@ -128,6 +128,10 @@ private:
     bool bIsEOF; //If true next GetNextEntry call will return IX_EOF
     //Method to go to the first leaf, first bucket
     RC goToFirstBucket(RID &rid);
+    //Method that updates the value of currentKeyNb using currentKey
+    RC getCurrentKeyNb(PF_PageHandle phLeaf, int &currentKeyNb);
+    //The opposite
+    RC saveCurrentKey(PF_PageHandle phLeaf, const int &currentKeyNb);
 };
 
 //

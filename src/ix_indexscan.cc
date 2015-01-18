@@ -1,5 +1,6 @@
 #include <cstdio>
 #include <unistd.h>
+#include <stdlib.h>
 #include <iostream>
 #include "ix.h"
 #include <string.h>
@@ -9,7 +10,6 @@ using namespace std;
 IX_IndexScan::IX_IndexScan() {
     currentBucket = -1;
     currentBucketPos = -1;
-    currentKey = -1;
     currentLeaf = -1;
     bScanOpen = false;
 }
@@ -59,6 +59,9 @@ RC IX_IndexScan::OpenScan(const IX_IndexHandle &indexHandle, CompOp compOp,
     // Set local state variables
     bScanOpen = true;
     bIsEOF = false;
+
+    //Allocates memory for our
+    currentKey = malloc(indexHandle.fileHeader.keySize);
 
     // Return ok
     return (0);
@@ -149,14 +152,20 @@ RC IX_IndexScan::GetNextEntry(RID &rid) {
         if( (rc = indexHandle->filehandle->GetThisPage(currentLeaf, phLeaf)) ) return rc;
         if( (rc = phLeaf.GetData(pData2)) ) return rc;
         memcpy(&leafHeader, pData2, sizeof(IX_NodeHeader));
+
+        //Retrieves the current key number
+        int currentKeyNb;
+        if( (rc = getCurrentKeyNb(phLeaf, currentKeyNb)) ) return rc;
+
         //If we are not at the first key of the leaf we decrement the key
-        if(currentKey>0){
-            currentKey--;
+        if(currentKeyNb>0){
+            currentKeyNb--;
             //The bucket of the new key becomes the current bucket
             if( (rc = indexHandle->filehandle->UnpinPage(currentBucket)) ) return rc;
-            if( (rc = indexHandle->getPointer(phLeaf, currentKey, currentBucket)) ) return rc;
+            if( (rc = indexHandle->getPointer(phLeaf, currentKeyNb, currentBucket)) ) return rc;
             currentBucketPos = EndOfBucket;
-            //Unpins and returns
+            //Saves current key, Unpins and returns
+            if( (rc = saveCurrentKey(phLeaf, currentKeyNb))) return rc;
             if( (rc = indexHandle->filehandle->UnpinPage(currentLeaf)) ) return rc;
             return 0;
         }
@@ -175,12 +184,13 @@ RC IX_IndexScan::GetNextEntry(RID &rid) {
         if( (rc = indexHandle->filehandle->GetThisPage(currentLeaf, phLeaf)) ) return rc;
         if( (rc = phLeaf.GetData(pData2)) ) return rc;
         memcpy(&leafHeader, pData2, sizeof(IX_NodeHeader));
-        currentKey = leafHeader.nbKey-1; //Sets the currentKey to the last key
+        currentKeyNb = leafHeader.nbKey-1; //Sets the currentKeyNb to the last key
         //Gets the new bucket number
-        if( (rc = indexHandle->getPointer(phLeaf, currentKey, currentBucket)) ) return rc;
+        if( (rc = indexHandle->getPointer(phLeaf, currentKeyNb, currentBucket)) ) return rc;
         currentBucketPos = EndOfBucket; //Sets the bucket pos to the end
 
-        //Reccursive call
+        //Saves the current key, Unpins, and return
+        if( (rc = saveCurrentKey(phLeaf, currentKeyNb))) return rc;
         if( (rc = indexHandle->filehandle->UnpinPage(currentLeaf)) ) return rc;
         return 0;
     }
@@ -195,14 +205,20 @@ RC IX_IndexScan::GetNextEntry(RID &rid) {
         if( (rc = indexHandle->filehandle->GetThisPage(currentLeaf, phLeaf)) ) return rc;
         if( (rc = phLeaf.GetData(pData2)) ) return rc;
         memcpy(&leafHeader, pData2, sizeof(IX_NodeHeader));
+
+        //Retrieves the current key number
+        int currentKeyNb;
+        if( (rc = getCurrentKeyNb(phLeaf, currentKeyNb)) ) return rc;
+
         //If we are not at the last key of the leaf we increment the key
-        if(currentKey<leafHeader.nbKey-1){
-            currentKey++;
+        if(currentKeyNb<leafHeader.nbKey-1){
+            currentKeyNb++;
             //The bucket of the new key becomes the current bucket
             if( (rc = indexHandle->filehandle->UnpinPage(currentBucket)) ) return rc;
-            if( (rc = indexHandle->getPointer(phLeaf, currentKey, currentBucket)) ) return rc;
+            if( (rc = indexHandle->getPointer(phLeaf, currentKeyNb, currentBucket)) ) return rc;
             currentBucketPos = EndOfBucket;
-            //Reccursive call
+            //Saves the current key, Unpins, and return
+            if( (rc = saveCurrentKey(phLeaf, currentKeyNb))) return rc;
             if( (rc = indexHandle->filehandle->UnpinPage(currentLeaf)) ) return rc;
             return 0;
         }
@@ -221,12 +237,13 @@ RC IX_IndexScan::GetNextEntry(RID &rid) {
         if( (rc = indexHandle->filehandle->GetThisPage(currentLeaf, phLeaf)) ) return rc;
         if( (rc = phLeaf.GetData(pData2)) ) return rc;
         memcpy(&leafHeader, pData2, sizeof(IX_NodeHeader));
-        currentKey = 0; //Sets the currentKey to the first key
+        currentKeyNb = 0; //Sets the currentKeyNb to the first key
         //Gets the new bucket number
-        if( (rc = indexHandle->getPointer(phLeaf, currentKey, currentBucket)) ) return rc;
+        if( (rc = indexHandle->getPointer(phLeaf, currentKeyNb, currentBucket)) ) return rc;
         currentBucketPos = EndOfBucket; //Sets the bucket pos to the end
 
-        //Reccursive call
+        //Saves the current key, Unpins, and return
+        if( (rc = saveCurrentKey(phLeaf, currentKeyNb))) return rc;
         if( (rc = indexHandle->filehandle->UnpinPage(currentLeaf)) ) return rc;
         return 0;
     }
@@ -243,7 +260,7 @@ RC IX_IndexScan::CloseScan() {
     currentBucket = -1;
     currentLeaf = -1;
     currentBucketPos = -1;
-    currentKey = -1;
+    free(currentKey); //Desallocates memory for the current key
     bScanOpen = false;
     return 0;
 }
@@ -308,7 +325,8 @@ RC IX_IndexScan::goToFirstBucket(RID &rid){
         //Else finds the right bucket
         if( (rc = indexHandle->getPointer(pageHandle, i, currentBucket)) ) return rc;
         currentBucketPos = EndOfBucket;
-        currentKey = i;
+        //Updates current key
+        if( (rc = saveCurrentKey(pageHandle, i)) ) return rc;
         //Reccursive call
         if( (rc = indexHandle->filehandle->UnpinPage(currentLeaf)) ) return rc;
         return GetNextEntry(rid);
@@ -322,7 +340,7 @@ RC IX_IndexScan::goToFirstBucket(RID &rid){
             }
         }
         //If we didn't break anywhere => we have to look at the very right value of prev leaf
-        if(i==nodeHeader.nbKey){
+        if(i==-1){
             //If the leaf was the very left one no match
             if(nodeHeader.prevPage<0){
                 if( (rc = indexHandle->filehandle->UnpinPage(currentLeaf)) ) return rc;
@@ -341,8 +359,10 @@ RC IX_IndexScan::goToFirstBucket(RID &rid){
             if(indexHandle->IsKeyGreater(value, pageHandle, nodeHeader.nbKey-1)<0){
                 if( (rc = indexHandle->getPointer(pageHandle, nodeHeader.nbKey-1, currentBucket)) ) return rc;
                 currentBucketPos = EndOfBucket;
-                currentKey = nodeHeader.nbKey-1;
+                //Updates current key
+                if( (rc = saveCurrentKey(pageHandle, nodeHeader.nbKey-1)) ) return rc;
                 //Reccursive call
+                if( (rc = indexHandle->filehandle->UnpinPage(currentLeaf)) ) return rc;
                 return GetNextEntry(rid);
             }else{
                 if( (rc = indexHandle->filehandle->UnpinPage(currentLeaf)) ) return rc;
@@ -353,7 +373,8 @@ RC IX_IndexScan::goToFirstBucket(RID &rid){
         //Else finds the right bucket
         if( (rc = indexHandle->getPointer(pageHandle, i, currentBucket)) ) return rc;
         currentBucketPos = EndOfBucket;
-        currentKey = i;
+        //Updates current key
+        if( (rc = saveCurrentKey(pageHandle, i)) ) return rc;
         //Reccursive call
         if( (rc = indexHandle->filehandle->UnpinPage(currentLeaf)) ) return rc;
         return GetNextEntry(rid);
@@ -369,7 +390,7 @@ RC IX_IndexScan::goToFirstBucket(RID &rid){
                 break;
             }
         }
-        //If we didn't break anywhere => we have to look at the very left value of prev leaf
+        //If we didn't break anywhere => we have to look at the very left value of next leaf
         if(i==nodeHeader.nbKey){
             //If the leaf was the very right one no match
             if(nodeHeader.nextPage<0){
@@ -380,17 +401,18 @@ RC IX_IndexScan::goToFirstBucket(RID &rid){
             //Unpins, marks dirty
             if( (rc = indexHandle->filehandle->MarkDirty(currentLeaf))
                     || indexHandle->filehandle->UnpinPage(currentLeaf) ) return rc;
-            //The leaf on the left becomes the current leaf
+            //The leaf on the right becomes the current leaf
             currentLeaf = nodeHeader.nextPage;
             if( (rc = indexHandle->filehandle->GetThisPage(currentLeaf, pageHandle)) ) return rc;
             if( (rc = pageHandle.GetData(pData)) ) return rc;
             memcpy(&nodeHeader, pData, sizeof(IX_NodeHeader));
-            //We look at the last key on the leaf
-            if(indexHandle->IsKeyGreater(value, pageHandle, 0)<0){
+            //We look at the first key on the leaf
+            if(indexHandle->IsKeyGreater(value, pageHandle, 0)>0){
                 if( (rc = indexHandle->getPointer(pageHandle, 0, currentBucket)) ) return rc;
                 if( (rc = indexHandle->filehandle->UnpinPage(currentLeaf)) ) return rc;
                 currentBucketPos = EndOfBucket;
-                currentKey = 0;
+                //Updates current key
+                if( (rc = saveCurrentKey(pageHandle, 0)) ) return rc;
                 //Reccursive call
                 return GetNextEntry(rid);
             }else{
@@ -402,7 +424,8 @@ RC IX_IndexScan::goToFirstBucket(RID &rid){
         //Else finds the right bucket
         if( (rc = indexHandle->getPointer(pageHandle, i, currentBucket)) ) return rc;
         currentBucketPos = EndOfBucket;
-        currentKey = i;
+        //Updates current key
+        if( (rc = saveCurrentKey(pageHandle, i)) ) return rc;
         //Reccursive call
         if( (rc = indexHandle->filehandle->UnpinPage(currentLeaf)) ) return rc;
         return GetNextEntry(rid);
@@ -419,7 +442,7 @@ RC IX_IndexScan::goToFirstBucket(RID &rid){
             }
         }
         //If we didn't break anywhere => we have to look at the very right value of prev leaf
-        if(i==nodeHeader.nbKey){
+        if(i==-1){
             //If the leaf was the very left one no match
             if(nodeHeader.prevPage<0){
                 if( (rc = indexHandle->filehandle->UnpinPage(currentLeaf)) ) return rc;
@@ -438,7 +461,8 @@ RC IX_IndexScan::goToFirstBucket(RID &rid){
             if(indexHandle->IsKeyGreater(value, pageHandle, nodeHeader.nbKey-1)<=0){
                 if( (rc = indexHandle->getPointer(pageHandle, nodeHeader.nbKey-1, currentBucket)) ) return rc;
                 currentBucketPos = EndOfBucket;
-                currentKey = nodeHeader.nbKey-1;
+                //Updates current key
+                if( (rc = saveCurrentKey(pageHandle, nodeHeader.nbKey-1)) ) return rc;
                 //Reccursive call
                 if( (rc = indexHandle->filehandle->UnpinPage(currentLeaf)) ) return rc;
                 return GetNextEntry(rid);
@@ -451,7 +475,8 @@ RC IX_IndexScan::goToFirstBucket(RID &rid){
         //Else finds the right bucket
         if( (rc = indexHandle->getPointer(pageHandle, i, currentBucket)) ) return rc;
         currentBucketPos = EndOfBucket;
-        currentKey = i;
+        //Updates current key
+        if( (rc = saveCurrentKey(pageHandle, i)) ) return rc;
         //Reccursive call
         if( (rc = indexHandle->filehandle->UnpinPage(currentLeaf)) ) return rc;
         return GetNextEntry(rid);
@@ -461,14 +486,14 @@ RC IX_IndexScan::goToFirstBucket(RID &rid){
          *This case is the same as GT_OP except that when we use
          *IsKeyCreater() we use >= instead of >
         */
-        //Browse the node and looks for a lower value
+        //Browse the node and looks for a greater value
         int i=0;
         for(; i<nodeHeader.nbKey; i++){
             if(indexHandle->IsKeyGreater(value, pageHandle, i)>=0){
                 break;
             }
         }
-        //If we didn't break anywhere => we have to look at the very left value of prev leaf
+        //If we didn't break anywhere => we have to look at the very left value of next leaf
         if(i==nodeHeader.nbKey){
             //If the leaf was the very right one no match
             if(nodeHeader.nextPage<0){
@@ -479,16 +504,17 @@ RC IX_IndexScan::goToFirstBucket(RID &rid){
             //Unpins, marks dirty
             if( (rc = indexHandle->filehandle->MarkDirty(currentLeaf))
                     || indexHandle->filehandle->UnpinPage(currentLeaf) ) return rc;
-            //The leaf on the left becomes the current leaf
+            //The leaf on the right becomes the current leaf
             currentLeaf = nodeHeader.nextPage;
             if( (rc = indexHandle->filehandle->GetThisPage(currentLeaf, pageHandle)) ) return rc;
             if( (rc = pageHandle.GetData(pData)) ) return rc;
             memcpy(&nodeHeader, pData, sizeof(IX_NodeHeader));
-            //We look at the last key on the leaf
-            if(indexHandle->IsKeyGreater(value, pageHandle, 0)<=0){
+            //We look at the first key on the leaf
+            if(indexHandle->IsKeyGreater(value, pageHandle, 0)>=0){
                 if( (rc = indexHandle->getPointer(pageHandle, 0, currentBucket)) ) return rc;
                 currentBucketPos = EndOfBucket;
-                currentKey = 0;
+                //Updates current key
+                if( (rc = saveCurrentKey(pageHandle, 0)) ) return rc;
                 //Reccursive call
                 if( (rc = indexHandle->filehandle->UnpinPage(currentLeaf)) ) return rc;
                 return GetNextEntry(rid);
@@ -501,7 +527,8 @@ RC IX_IndexScan::goToFirstBucket(RID &rid){
         //Else finds the right bucket
         if( (rc = indexHandle->getPointer(pageHandle, i, currentBucket)) ) return rc;
         currentBucketPos = EndOfBucket;
-        currentKey = i;
+        //Updates current key
+        if( (rc = saveCurrentKey(pageHandle, i)) ) return rc;
         //Reccursive call
         if( (rc = indexHandle->filehandle->UnpinPage(currentLeaf)) ) return rc;
         return GetNextEntry(rid);
@@ -510,3 +537,45 @@ RC IX_IndexScan::goToFirstBucket(RID &rid){
     //We should never get there
     return IX_INVALIDCOMPOP;
 }
+
+
+//Get the key number in leaf thanks to its value
+RC IX_IndexScan::getCurrentKeyNb(PF_PageHandle phLeaf, int &currentKeyNb){
+    RC rc;
+    //Assumes the ph is open etc.
+    char * pData;
+    IX_NodeHeader leafHeader;
+    if( (rc = phLeaf.GetData(pData)) ) return rc;
+    memcpy(&leafHeader, pData, sizeof(IX_NodeHeader));
+    for(currentKeyNb = 0; currentKeyNb < leafHeader.nbKey; currentKeyNb++){
+        if(indexHandle->IsKeyGreater(currentKey, phLeaf, currentKeyNb)==0){
+            //We found the key we return
+            return 0;
+        }
+    }
+    //If we didn't find the key it the leaf, error
+    return IX_ENTRYNOTFOUND;
+}
+
+
+//Save the currenKeyNb key to our currentKey attribute
+RC IX_IndexScan::saveCurrentKey(PF_PageHandle phLeaf, const int &currentKeyNb){
+    RC rc;
+    //Assumes ph is open, etc.
+    //Also please note this method doesn't ensure the key exists it just copies
+    char * pData;
+    if( (rc = phLeaf.GetData(pData)) ) return rc;
+    //Copies to our currentKey
+    pData += sizeof(IX_NodeHeader)+currentKeyNb*(indexHandle->SizePointer+indexHandle->fileHeader.keySize);
+    memcpy(currentKey, pData, indexHandle->fileHeader.keySize);
+    return 0;
+}
+
+
+
+
+
+
+
+
+
