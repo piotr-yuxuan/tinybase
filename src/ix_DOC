@@ -13,13 +13,13 @@ The tree is made of node and each node is made of a several things:
     parent, the previous node, etc.)
     - Keys (values used to navigate through the tree). Thus keys can be INT,
     FLOAT, or STRING according of the attrtype our index will be used for.
-    - Pointers, i.e. the number of an other PageNum
+    - Pointers, i.e. the number of another PageNum
 
-There are three types of nodes :
+There are three types of nodes:
 
     - Thee root, i.e. the first node at the top of the tree
     - Internal nodes
-    - Leaf nodes, i.e nodes at the bottom of the tree
+    - Leaf nodes, i.e. nodes at the bottom of the tree
 
 There are also **buckets** (they are not nodes so to say though) which are pages
 containing the RIDs for a given value. Buckets are pointed from the leaf nodes,
@@ -51,13 +51,13 @@ We have three structures for headers:
     storable in it, and Page Numbers for the node's parent, previous node and
     next node (set to -1 if there is no parent/prev/next node).
 
-    - **IX_BucketHeader** is the heade for buckets. It just contains the number
+    - **IX_BucketHeader** is the header for buckets. It just contains the number
     of rids stored in it, the maximum number of rid storable and the PageNum
     of the next bucket if bucket chaining is needed (-1 otherwise).
 
 The way pages are written in the file:
 
-    - Root and internal nodes are written this way :
+    - Root and internal nodes are written this way:
     *Header* *pointer-1* *key0* *pointer0* ... *keyN-1* *pointerN-1*
     Where the number of keys in the node is N. Please note the presence of a
     "-1 pointer" which is very important. Hence there are N+1 pointers but
@@ -74,17 +74,17 @@ The way pages are written in the file:
     Also very simple, we have N RIDs put the one after the other.
 
 
---------------------------------
-Insertion algorithm : the basics
---------------------------------
+-------------------------------
+Insertion algorithm: the basics
+-------------------------------
 When the tree is initialized there is no node and no bucket.
 
 In our examples each node can contain up to 2 keys (to keep it simple) plus the
--1 pointer if there is one and buckets cain contain up to 2 rids (actual page size
+-1 pointer if there is one and buckets can contain up to 2 rids (actual page size
 show bucket can contain up to around 500 rids so it's also very simplified).
 
 When the InsertEntry() method is called for the first time a root is created,
-but also a first leaf. Then we use a reccursive call to InsertEntryToNode()
+but also a first leaf. Then we use a recursive call to InsertEntryToNode()
 with the root number as node number. After the first insertion the tree may
 look like this (let's say the inserted value is 13:
 
@@ -196,11 +196,11 @@ account (it has no key associated with it anyway).
 Now let's come to the tricky part: insertion in an internal node with split.
 This is performed by the method InsertEntryToIntlNodeSplit() and is probably one
 of the hardest piece of code of our IX to understand. In our case the "internal
-node" to split is the root, but it makes no difference except thatwe have to
+node" to split is the root, but it makes no difference except that we have to
 create a new root for the tree.
 
-Let's say we wan't to add a rid with the key 18 to our tree. The root goes
-through all its keys and pointers and since 18>17 it makes a reccursive call to
+Let's say we want to add a rid with the key 18 to our tree. The root goes
+through all its keys and pointers and since 18>17 it makes a recursive call to
 insertEntryToLeafNode(7, ...). But the leaf n°7 is full so another call to
 insertEntryToLeafNodeSplit(7, ...) is made. A new leaf is created with the
 splitKey 21 (see above) and 18 is inserted to the leaf n°7 since 18<21.
@@ -237,7 +237,7 @@ we forgot to make this change in the first place, which cost us hours of
 debugging...
 
 We didn't see quite all the cases in our examples above but is it probably enough
-to understand how the algorithm works globaly. Some tricky cases can happend
+to understand how the algorithm works globally. Some tricky cases can happen
 sometimes and we tried to make sure everyone is handled by our algorithm
 (see the testing section for more details).
 
@@ -246,9 +246,9 @@ sometimes and we tried to make sure everyone is handled by our algorithm
 Insertion with an existing value
 --------------------------------
 
-In our examples above all the inserted values were distincts. But insertions can
+In our examples above all the inserted values were distinct. But insertions can
 also be made on existing values. This case is actually quite simple. When the
-insertEntry() method is called we saw that reccursive calls are used then to
+insertEntry() method is called we saw that recursive calls are used then to
 "go" to the leaf were the value should be inserted.
 
 In the insertEntryToLeafNode() method, we just perform a check on all the leaf
@@ -289,9 +289,9 @@ Now that we saw how insertion is working in our B+ tree we need to look at how
 we can retrieve RIDs, i.e. performing a scan (done with the IX_IndexScan class).
 
 The OpenScan() method is no big deal, really. It just copies the parameters as
-priate attributes and performs a couple of checks. What we need to focus on is
+private attributes and performs a couple of checks. What we need to focus on is
 the getNextEntry() method. We had a first implementation that worked perfectly
-except for ongoing scan deletion (i.e. scaning and deleting entries retrieved
+except for ongoing scan deletion (i.e. scanning and deleting entries retrieved
 by the scan while scaning). So we had to build a new one to solve this issue.
 It's this second implementation we explain here.
 
@@ -304,7 +304,7 @@ the prevPage and nextPage pointers in leafs headers).
 However, one very important point is that the "move" to the next entry is
 actually performed right after we copied the value of the entry in the rid.
 And also note that when retrieving RIDs from a bucket the retrieval is done
-strating at the end of the bucket. All these "implementation choices" were
+starting at the end of the bucket. All these "implementation choices" were
 made to ensure ongoing scan deletion is possible. Let's take an example.
 
 =============================Figure 7: Scan example=============================
@@ -332,8 +332,8 @@ made to ensure ongoing scan deletion is possible. Let's take an example.
 ================================================================================
 
 This is the tree of our examples above, including the bucket chaining for the
-key 8. You should be able to get this tree by perfoming the following insertions
-in order: 13,8,17,21,18,8,8,8,8.
+key 8. You should be get this tree by performing the following insertions in
+this order: 13,8,17,21,18,8,8,8,8.
 
 Let's say we opened a scan with the GE_OP and 7 value (this scan actually goes
 through the whole tree). When calling getNextEntry() for the first time, the
@@ -366,7 +366,7 @@ We did not have quite enough time to implement a fully working, efficient
 deletion algorithm. So we stuck to lazy deletion, i.e. when an entry is deleted
 and a node is less than half full we do not rebalance the three.
 
-As usual the algorithm uses reccursive calls. When DeleteEntry() is called it
+As usual the algorithm uses recursive calls. When DeleteEntry() is called it
 goes through the tree using the keys and the pointers to find the RID and the
 value in it. When it's done (i.e. we found the leaf and bucket where the rid is
 stored), we call DeleteEntryFromBucket() which actually removes the RID from the
@@ -380,7 +380,7 @@ Two cases are possible then:
     - The bucket is empty. We have to remove the bucket, i.e. call the dispose()
     method of PF_FileHandle. Then, the question is to know if the bucket is the
     only one attached to its leaf (remember, bucket chaining).
-    We know if there is a bucket before thanks to the **nextBucket** boolean
+    We know if there is a bucket before thanks to the **nextBucket** Boolean
     argument of the DeleteEntryFromBucket() method (true if the bucket is a
     "next bucket" and false otherwise).
     And of course we also know if there is another bucket next to our bucket
@@ -404,7 +404,7 @@ cases again:
 
 DeleteEntryFromInternalNode() works the same way again. It removes the pointer
 associated with the leaf, and the key if there was one (i.e. if the leaf was not
-the -1 pointer). And then two cases agains, but slightly different:
+the -1 pointer). And then two cases again, but slightly different:
 
     - If the tree is empty (i.e. no key) AND the pointer we just removed before
     was the -1 pointer, we remove the node and propagate above by calling
@@ -413,7 +413,7 @@ the -1 pointer). And then two cases agains, but slightly different:
     - Otherwise we have nothing to do.
 
 As you can see the changes propagates upper in the tree when needed. We didn't
-explain all the cases (there are extra crunchs of code to handle cases such as
+explain all the cases (there are extra crunches of code to handle cases such as
 when the node is the root, etc.) but the idea is there.
 
 
@@ -424,7 +424,7 @@ Deletion while scanning
 We saw above how scan work and how the deletion algorithm works. So you should
 be able to understand how it possible to scan and delete on the go. Actually it
 is fairly simple, the trick is that in the scan we move to the next entry right
-after retreiving the previous one (as explained above).
+after retrieving the previous one (as explained above).
 
 This way when a deletion is made on the entry just retrieved with the scan, if
 the leaf is deleted, that means the previous entry was the last one remaining on
@@ -434,7 +434,7 @@ The same for the buckets. If a bucket was deleted it means the RID on it was the
 last one so the scan already moved on to the next bucket or the next leaf.
 
 When the rid was not the last one, however, all the rids behind it in its bucket
-are offseted in the page, that's the reason why we go thourgh a bucket starting
+are offseted in the page, that's the reason why we go through a bucket starting
 with the end of it.
 
 ======================Figure 8: Bucket Chaining & deletion======================
@@ -448,12 +448,12 @@ with the end of it.
 
 ================================================================================
 
-Let's illustrate with our previous bucket chaining example. The scan retrives
+Let's illustrate with our previous bucket chaining example. The scan retrieves
 the RID6 first. Then if RID6 is deleted the scan retrieves RID2 so there is no
 issue (while if we retrieved RID2 first and delete it, then RID6 would be moved
 to the first position in the bucket and the scan would then try to retrieve an
 empty RID...). Then if RID2 is deleted, the bucket n°4 is removed, and the leaf
-points to bucket n°12. The scan has already moved on to ucket n°12 so again
+points to bucket n°12. The scan has already moved on to bucket n°12 so again
 everything works well.
 
 Making ongoing deletion work is also the reason why our currentKey attribute in
@@ -477,7 +477,7 @@ performs the insertions. Then, it chooses a random value in our range of values
 and a random operator (in the 5 possible LT_OP, LE_OP, EQ_OP, GE_OP and GT_OP)
 to perform a scan with this value and this operator. Then we choose a random
 percentage of values to delete while doing the scan and we delete while doing
-the scan with this percentage as probability of deleting. While scaning we keep
+the scan with this percentage as probability of deleting. While scanning we keep
 the count of the number of entries returned by the scan and make sure it's the
 good one. And finally when we are over when delete all the remaining entries
 using a scan again. The test repeats all the steps given before many times.

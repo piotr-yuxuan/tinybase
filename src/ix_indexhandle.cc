@@ -7,7 +7,7 @@
 using namespace std;
 
 /*
- * Implementation sketch of a B+ tree. This structure gracefully reorganise
+ * Implementation sketch of a B+ tree. This structure gracefully reorganizes
  * itself when needed.
  *
  * <pre>
@@ -172,13 +172,13 @@ RC IX_IndexHandle::DeleteEntryFromBucket(const PageNum bucketNum, const RID &rid
     if(pos==bucketHeader.nbRid){
         if(bucketHeader.nextBucket!=-1){
             if( (rc = filehandle->UnpinPage(bucketNum)) ) return rc;
-            //Reccursive call with the bucket as parent of the next bucket
+            //Recursive call with the bucket as parent of the next bucket
             return DeleteEntryFromBucket(bucketHeader.nextBucket, rid, bucketNum, true);
         }else{
             return IX_ENTRYNOTFOUND;
         }
     }
-    //Else we have to remove the rid (i.e offset the following rids)
+    //Else we have to remove the rid (i.e. offset the following rids)
     for(int i=pos; i<bucketHeader.nbRid; i++){
         char* ridPos;
         ridPos = pDataBucket+sizeof(IX_BucketHeader)+i*sizeof(RID);
@@ -211,7 +211,7 @@ RC IX_IndexHandle::DeleteEntryFromBucket(const PageNum bucketNum, const RID &rid
         }else{
             //If we are here that means the bucket is the first one attached to the leaf
             if(bucketHeader.nextBucket==-1){
-                //Reccursive call to propagate above in the tree
+                //Recursive call to propagate above in the tree
                 return DeleteBucketEntryFromLeafNode(bucketParent, bucketNum);
             }else{
                 //In this case we have to attach the next bucket to the parent leaf
@@ -269,7 +269,7 @@ RC IX_IndexHandle::DeleteBucketEntryFromLeafNode(const PageNum leafNum, const Pa
     if(pos==leafHeader.nbKey){
         return IX_ENTRYNOTFOUND;
     }
-    //Else we remove it, i.e offset the following keys & pointers
+    //Else we remove it, i.e. offset the following keys & pointers
     for(int i=pos; i<leafHeader.nbKey; i++){
         int offset = fh.sizePointer+fh.keySize;
         memcpy(pDataLeaf+sizeof(IX_NodeHeader)+i*offset, pDataLeaf+sizeof(IX_NodeHeader)+(i+1)*(offset), offset);
@@ -354,7 +354,7 @@ RC IX_IndexHandle::DeleteEntryFromInternalNode(const PageNum nodeNum, const Page
         PageNum parentNode = nodeHeader.parentPage;
         if( (rc = filehandle->UnpinPage(nodeNum)) ) return rc;
         if( (rc = filehandle->DisposePage(nodeNum)) ) return rc;
-        //Removes from parent (reccursive call)
+        //Removes from parent (recursive call)
         if(nodeHeader.level!=-1){
             return DeleteEntryFromInternalNode(parentNode, nodeNum);
         }else{
@@ -395,7 +395,7 @@ RC IX_IndexHandle::InsertEntryToNode(const PageNum nodeNum, void *pData, const R
                 if( (rc = getPointer(pageHandle, i-1, nb)) ) return rc;
                 //Unpin node since we don't need it anymore
                 if( (rc = filehandle->UnpinPage(nodeNum)) ) return rc;
-                //Reccursive call to insertEntreToNode
+                //Recursive call to insertEntreToNode
                 return InsertEntryToNode(nb, pData, rid);
             }
         }
@@ -404,7 +404,7 @@ RC IX_IndexHandle::InsertEntryToNode(const PageNum nodeNum, void *pData, const R
         if( (rc = getPointer(pageHandle, nodeHeader.nbKey-1, nb)) ) return rc;
         //Unpin node since we don't need it anymore
         if( (rc = filehandle->UnpinPage(nodeNum)) ) return rc;
-        //Reccursive call to insertEntreToNode
+        //Recursive call to insertEntreToNode
         return InsertEntryToNode(nb, pData, rid);
     }
     //Should never get there
@@ -749,7 +749,7 @@ RC IX_IndexHandle::InsertEntryToIntlNodeSplit(
     node2Header.nbKey = node1Header.nbKey-median;
     node1Header.nbKey = median;
 
-    //Writes headers back to memory (needs to be done before any reccursive call)
+    //Writes headers back to memory (needs to be done before any recursive call)
     memcpy(pDataNode1, &node1Header, sizeof(IX_NodeHeader));
     memcpy(pDataNode2, &node2Header, sizeof(IX_NodeHeader));
 
@@ -848,7 +848,7 @@ RC IX_IndexHandle::InsertEntryToBucket(const PageNum bucketNb, const RID &rid){
         memcpy(pDataBucket, &bucketHeader, sizeof(IX_BucketHeader));
         if( (rc = filehandle->MarkDirty(bucketNb))) return rc;
         if( (rc = filehandle->UnpinPage(bucketNb))) return rc;
-        //And reccursive call to insert the rid
+        //And recursive call to insert the rid
         return InsertEntryToBucket(newBucketPageNum, rid);
     }
     //Inserts the RID

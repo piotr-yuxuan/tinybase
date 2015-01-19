@@ -327,7 +327,7 @@ RC IX_IndexScan::goToFirstBucket(RID &rid){
         currentBucketPos = EndOfBucket;
         //Updates current key
         if( (rc = saveCurrentKey(pageHandle, i)) ) return rc;
-        //Reccursive call
+        //Recursive call
         if( (rc = indexHandle->filehandle->UnpinPage(currentLeaf)) ) return rc;
         return GetNextEntry(rid);
     }
@@ -361,7 +361,7 @@ RC IX_IndexScan::goToFirstBucket(RID &rid){
                 currentBucketPos = EndOfBucket;
                 //Updates current key
                 if( (rc = saveCurrentKey(pageHandle, nodeHeader.nbKey-1)) ) return rc;
-                //Reccursive call
+                //Recursive call
                 if( (rc = indexHandle->filehandle->UnpinPage(currentLeaf)) ) return rc;
                 return GetNextEntry(rid);
             }else{
@@ -375,7 +375,7 @@ RC IX_IndexScan::goToFirstBucket(RID &rid){
         currentBucketPos = EndOfBucket;
         //Updates current key
         if( (rc = saveCurrentKey(pageHandle, i)) ) return rc;
-        //Reccursive call
+        //Recursive call
         if( (rc = indexHandle->filehandle->UnpinPage(currentLeaf)) ) return rc;
         return GetNextEntry(rid);
     }
@@ -413,7 +413,7 @@ RC IX_IndexScan::goToFirstBucket(RID &rid){
                 currentBucketPos = EndOfBucket;
                 //Updates current key
                 if( (rc = saveCurrentKey(pageHandle, 0)) ) return rc;
-                //Reccursive call
+                //Recursive call
                 return GetNextEntry(rid);
             }else{
                 if( (rc = indexHandle->filehandle->UnpinPage(currentLeaf)) ) return rc;
@@ -426,7 +426,7 @@ RC IX_IndexScan::goToFirstBucket(RID &rid){
         currentBucketPos = EndOfBucket;
         //Updates current key
         if( (rc = saveCurrentKey(pageHandle, i)) ) return rc;
-        //Reccursive call
+        //Recursive call
         if( (rc = indexHandle->filehandle->UnpinPage(currentLeaf)) ) return rc;
         return GetNextEntry(rid);
     }
@@ -463,7 +463,7 @@ RC IX_IndexScan::goToFirstBucket(RID &rid){
                 currentBucketPos = EndOfBucket;
                 //Updates current key
                 if( (rc = saveCurrentKey(pageHandle, nodeHeader.nbKey-1)) ) return rc;
-                //Reccursive call
+                //Recursive call
                 if( (rc = indexHandle->filehandle->UnpinPage(currentLeaf)) ) return rc;
                 return GetNextEntry(rid);
             }else{
@@ -477,7 +477,7 @@ RC IX_IndexScan::goToFirstBucket(RID &rid){
         currentBucketPos = EndOfBucket;
         //Updates current key
         if( (rc = saveCurrentKey(pageHandle, i)) ) return rc;
-        //Reccursive call
+        //Recursive call
         if( (rc = indexHandle->filehandle->UnpinPage(currentLeaf)) ) return rc;
         return GetNextEntry(rid);
     }
@@ -515,7 +515,7 @@ RC IX_IndexScan::goToFirstBucket(RID &rid){
                 currentBucketPos = EndOfBucket;
                 //Updates current key
                 if( (rc = saveCurrentKey(pageHandle, 0)) ) return rc;
-                //Reccursive call
+                //Recursive call
                 if( (rc = indexHandle->filehandle->UnpinPage(currentLeaf)) ) return rc;
                 return GetNextEntry(rid);
             }else{
@@ -529,7 +529,7 @@ RC IX_IndexScan::goToFirstBucket(RID &rid){
         currentBucketPos = EndOfBucket;
         //Updates current key
         if( (rc = saveCurrentKey(pageHandle, i)) ) return rc;
-        //Reccursive call
+        //Recursive call
         if( (rc = indexHandle->filehandle->UnpinPage(currentLeaf)) ) return rc;
         return GetNextEntry(rid);
     }
