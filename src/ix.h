@@ -37,7 +37,7 @@ typedef struct IX_NodeHeader {
 typedef struct IX_BucketHeader {
     int nbRid; //Number of RID stored in the bucket
     int nbRidMax; //Max number of RID storable
-    int nextBucket; //PageNum of the next bucket, -1 if no next bucket
+    PageNum nextBucket; //PageNum of the next bucket, -1 if no next bucket
 } IX_BucketHeader;
 
 //
