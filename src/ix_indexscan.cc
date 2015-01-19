@@ -61,7 +61,7 @@ RC IX_IndexScan::OpenScan(const IX_IndexHandle &indexHandle, CompOp compOp,
     bIsEOF = false;
 
     //Allocates memory for our
-    currentKey = malloc(indexHandle.fileHeader.keySize);
+    currentKey = malloc(indexHandle.fh.keySize);
 
     // Return ok
     return (0);
@@ -269,11 +269,11 @@ RC IX_IndexScan::CloseScan() {
 RC IX_IndexScan::goToFirstBucket(RID &rid){
     RC rc = 0;
     //If no root nothing to do
-    if(indexHandle->fileHeader.rootNb<0){
+    if(indexHandle->fh.rootNb<0){
         bIsEOF = true;
         return GetNextEntry(rid);
     }
-    currentLeaf = indexHandle->fileHeader.rootNb;
+    currentLeaf = indexHandle->fh.rootNb;
 
     //PageHandle and NodeHeader for the node
     PF_PageHandle pageHandle;
@@ -566,8 +566,8 @@ RC IX_IndexScan::saveCurrentKey(PF_PageHandle phLeaf, const int &currentKeyNb){
     char * pData;
     if( (rc = phLeaf.GetData(pData)) ) return rc;
     //Copies to our currentKey
-    pData += sizeof(IX_NodeHeader)+currentKeyNb*(indexHandle->SizePointer+indexHandle->fileHeader.keySize);
-    memcpy(currentKey, pData, indexHandle->fileHeader.keySize);
+    pData += sizeof(IX_NodeHeader)+currentKeyNb*(indexHandle->fh.sizePointer+indexHandle->fh.keySize);
+    memcpy(currentKey, pData, indexHandle->fh.keySize);
     return 0;
 }
 

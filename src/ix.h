@@ -18,6 +18,8 @@ typedef struct IX_FileHeader {
     PageNum rootNb;
     AttrType attrType;
     int keySize;
+    int order; //The order of the tree, there will be up to 2*order keys per node
+    int sizePointer;
 } IX_FileHeader;
 
 // Structure for a node header
@@ -45,8 +47,6 @@ class IX_IndexHandle {
     friend class IX_Manager;
     friend class IX_IndexScan;
 public:
-    static int Order;
-    static int SizePointer;
     IX_IndexHandle();
     ~IX_IndexHandle();
 
@@ -67,7 +67,7 @@ public:
 private:
     bool bFileOpen;
     PF_FileHandle *filehandle;
-    IX_FileHeader fileHeader; //Header for the file of the index
+    IX_FileHeader fh; //Header for the file of the index
 
     //Private insertion methods
     RC InsertEntryToNode(const PageNum nodeNum, void *pData, const RID &rid);

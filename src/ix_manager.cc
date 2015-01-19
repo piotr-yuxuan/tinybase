@@ -29,6 +29,10 @@ RC IX_Manager::CreateIndex(const char *fileName, int indexNo, AttrType attrType,
     fileHeader.attrType = attrType;
     fileHeader.keySize = attrLength;
     fileHeader.rootNb = -1;
+    fileHeader.sizePointer = sizeof(PageNum);
+    //The number of keys in nodes will be up to order*2 (+ the -1 pointer in intl nodes)
+    fileHeader.order = (PF_PAGE_SIZE-sizeof(IX_NodeHeader)-fileHeader.sizePointer)/(fileHeader.sizePointer+fileHeader.keySize);
+    fileHeader.order = fileHeader.order >= 5 ? 5 : fileHeader.order; //Limits to 5 the order
     //Allocates page for the header
     PF_PageHandle pageHandle;
     if( (rc = fileHandle.AllocatePage(pageHandle)) ) return rc;
@@ -69,7 +73,7 @@ RC IX_Manager::OpenIndex(const char *fileName, int indexNo,
     if( (rc = fileHandle.GetThisPage(0, pageHandle)) || (rc = fileHandle.UnpinPage(0)) ) return rc;
     char* pData;
     if( (rc = pageHandle.GetData(pData)) ) return rc;
-    memcpy( &(indexHandle.fileHeader), pData, sizeof(IX_FileHeader)); //Copies from memory
+    memcpy( &(indexHandle.fh), pData, sizeof(IX_FileHeader)); //Copies from memory
 
     return 0;
 }
@@ -86,7 +90,7 @@ RC IX_Manager::CloseIndex(IX_IndexHandle &indexHandle) {
     if( (rc = indexHandle.filehandle->GetThisPage(0, pageHandle)) ) return rc;
     if( (rc = pageHandle.GetData(pData)) ) return rc;
 
-    memcpy( pData, &(indexHandle.fileHeader), sizeof(IX_FileHeader)); //Copies to memory
+    memcpy( pData, &(indexHandle.fh), sizeof(IX_FileHeader)); //Copies to memory
 
     if( (rc = indexHandle.filehandle->MarkDirty(0))
             || (rc = indexHandle.filehandle->UnpinPage(0))
