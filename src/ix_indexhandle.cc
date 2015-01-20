@@ -826,9 +826,20 @@ RC IX_IndexHandle::InsertEntryToBucket(const PageNum bucketNb, const RID &rid){
     if( (rc = filehandle->GetThisPage(bucketNb, phBucket)) ) return rc;
     char* pDataBucket;
     if( (rc = phBucket.GetData(pDataBucket)) ) return rc;
+
     //Loads bucket header from memory
     IX_BucketHeader bucketHeader;
     memcpy(&bucketHeader, pDataBucket, sizeof(IX_BucketHeader));
+
+    //Checks the existing RIDs in the bucket to see if entry already exist
+    for(int i=0; i<bucketHeader.nbRid; i++){
+        RID bucketRid;
+        memcpy(&bucketRid, pDataBucket+sizeof(IX_BucketHeader)+i*sizeof(RID), sizeof(RID));
+        if(bucketRid==rid){
+            return IX_ENTRYEXISTS;
+        }
+    }
+
     //If bucket is full
     if(bucketHeader.nbRid>=bucketHeader.nbRidMax){
         //If there is a next bucket, fine we insert in it
@@ -861,11 +872,13 @@ RC IX_IndexHandle::InsertEntryToBucket(const PageNum bucketNb, const RID &rid){
         //And recursive call to insert the rid
         return InsertEntryToBucket(newBucketPageNum, rid);
     }
+
     //Inserts the RID
     memcpy(pDataBucket+sizeof(IX_BucketHeader)+bucketHeader.nbRid*sizeof(RID), &rid, sizeof(RID));
     //Increments nb of rids and copies back header to memory
     bucketHeader.nbRid++;
     memcpy(pDataBucket, &bucketHeader, sizeof(IX_BucketHeader));
+
     //Marks dirty, etc.
     if( (rc = filehandle->MarkDirty(bucketNb))
             || (rc = filehandle->UnpinPage(bucketNb))

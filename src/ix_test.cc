@@ -791,9 +791,9 @@ RC Test7(void) {
         for(int i=0; i<nbValues; i++){
             values[i] = (rand() % 1000)+1;
         }
-        RID rid(23,46);
         for(int i=0; i<nbValues; i++){
             printf("Inserting %d\n", values[i]);
+            RID rid(23,i);//i ensures we d'ont have duplicate entries
             if( (ih.InsertEntry((void *) &values[i], rid)) ) return rc;
             printf("Checking the entries\n");
             for(int j=0; j<=i; j++){
@@ -837,8 +837,8 @@ RC Test8(void) {
         for(int i=0; i<nbValues; i++){
             values[i] = (rand() % 2)+1;
         }
-        RID rid(23,46);
         for(int i=0; i<nbValues; i++){
+            RID rid(23,i); //i ensures we don't have duplicate entries
             printf("Insertion %d/%d, value = %d\n", i, nbValues, values[i]);
             if( (rc = ih.InsertEntry((void *) &values[i], rid)) ) return rc;
             printf("Checking the entries\n");
@@ -876,22 +876,20 @@ RC Test9(void) {
     printf("Opening index...\n");
     if( (rc = m.OpenIndex(FILENAME, 1, ih)) ) return rc;
 
-    int nbValues = 20000;
+    int nbValues = 5000;
     int values [nbValues];
     int rid1 [nbValues];
-    int rid2 [nbValues];
     bool deleted [nbValues];
     //Random initialization
     for(int i=0; i<nbValues; i++){
         values[i] = (rand() % 30)+1;
         rid1[i] = (rand() % 1000)+1;
-        rid1[i] = (rand() % 300)+1;
         deleted[i] = false;
     }
     //Insertion
     for(int i=0; i<nbValues; i++){
         printf("Insertion %d/%d, value = %d\n", i, nbValues, values[i]);
-        RID rid(rid1[i], rid2[i]);
+        RID rid(rid1[i], i); //i ensures no duplicates
         if( (rc = ih.InsertEntry((void *) &values[i], rid)) ) return rc;
         printf("Checking the entries\n");
         //Entries checking
@@ -912,7 +910,7 @@ RC Test9(void) {
         int i = (rand() % nbValues);
         if(deleted[i]) continue;
         printf("Deleting entry n°%d\n", i);
-        RID rid(rid1[i], rid2[i]);
+        RID rid(rid1[i], i);
         if( (rc = ih.DeleteEntry((void *) &values[i], rid)) ) return rc;
         deleted[i] = true;
         deletedCount++;
@@ -947,7 +945,6 @@ RC Test10(void) {
 
         int nbValues = 100;
         int values [nbValues];
-        int rid1 [nbValues];
 
         int value = (rand()%100) + 1;
         int valueCount [5] = {0,0,0,0,0}; //For LT, LE, EQ, GE, GT
@@ -955,7 +952,6 @@ RC Test10(void) {
         //Random initialization
         for(int i=0; i<nbValues; i++){
             values[i] = (rand() % 100)+1;
-            rid1[i] = (rand() % 1000)+1;
             //Counts for different compop
             if(values[i]<value) valueCount[0]++;
             if(values[i]<=value) valueCount[1]++;
@@ -970,7 +966,7 @@ RC Test10(void) {
         //Insertion
         printf("Inserting %d values\n", nbValues);
         for(int i=0; i<nbValues; i++){
-            RID rid(rid1[i], values[i]);
+            RID rid(values[i], i); //i to ensure no duplicate
             if( (rc = ih.InsertEntry((void *) &values[i], rid)) ) return rc;
         }
         printf("Values inserted and checked after each insertion\n\n");
@@ -982,12 +978,6 @@ RC Test10(void) {
             if( (rc = is.OpenScan(ih, EQ_OP, (void * ) &values[i])) ) return rc;
             RID scanRid;
             if( (rc = is.GetNextEntry(scanRid)) ) return rc;
-            PageNum slotNb;
-            if( (rc = scanRid.GetSlotNum(slotNb)) ) return rc;
-            if(slotNb!=values[i]){
-                printf("Scan error: slotnb doesn't match! (slotNb=%d, value=%d) \N", slotNb, values[i]);
-                return -1;
-            }
             if( (rc = is.CloseScan()) ) return rc;
         }
         printf("Ends checking scan features...\n\n");
@@ -1025,7 +1015,7 @@ RC Test10(void) {
             if(rc != 0) return rc;
             //Deletes the record
             int ridValue;
-            if( (rc =rid.GetSlotNum(ridValue)) ) return rc;
+            if( (rc =rid.GetPageNum(ridValue)) ) return rc;
             printf("D(%d) ", ridValue);
             if( (rc = ih.DeleteEntry((void*) &ridValue, rid)) ){
                 ih.PrintTree();
