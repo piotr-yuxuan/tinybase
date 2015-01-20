@@ -34,6 +34,11 @@ IX_IndexHandle::~IX_IndexHandle() {
 //Inserts a new entry using the insertions methods
 RC IX_IndexHandle::InsertEntry(void *pData, const RID &rid) {
     RC rc = 0;
+    //Sanity check: pData must not be NULL
+    if(pData==NULL){
+        return IX_NULLPOINTER;
+    }
+
     //If the root number is not defined we create a root
     if(this->fh.rootNb==-1){
         //Allocates a new page for the root
@@ -90,6 +95,11 @@ RC IX_IndexHandle::InsertEntry(void *pData, const RID &rid) {
 //Deletes an entry
 RC IX_IndexHandle::DeleteEntry(void *pData, const RID &rid) {
     RC rc = 0;
+    //Sanity check: pData must not be NULL
+    if(pData==NULL){
+        return IX_NULLPOINTER;
+    }
+
     //If the root is not set we return error
     if(this->fh.rootNb<0){
         return IX_ENTRYNOTFOUND;
@@ -868,7 +878,7 @@ int IX_IndexHandle::IsKeyGreater(void *pData, PF_PageHandle &pageHandle, int i) 
     RC rc = 0;
     char* pData2;
     rc = getKey(pageHandle, i, pData2);
-    //Case integer or float
+    //Case integer
     if(fh.attrType==INT){
         int value1, value2; //value1 = value given, value2 = value of the ith key
         memcpy(&value1, pData, fh.keySize);
@@ -878,6 +888,7 @@ int IX_IndexHandle::IsKeyGreater(void *pData, PF_PageHandle &pageHandle, int i) 
         if(value1==value2) return 0;
         return -1; //Shoudn't be needed
     }
+    //Case float
     if(fh.attrType==FLOAT){
         float value1, value2; //value1 = value given, value2 = value of the ith key
         memcpy(&value1, pData, fh.keySize);

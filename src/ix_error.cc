@@ -26,7 +26,9 @@ static char *IX_WarnMsg[] = {
   (char*)"file closed",
   (char*)"entry not found",
   (char*)"entry already exists",
-  (char*)"end of file"
+  (char*)"end of file",
+  (char*)"index already open",
+  (char*)"size required exceeds PF_PAGE_SIZE"
 };
 
 static char *IX_ErrorMsg[] = {

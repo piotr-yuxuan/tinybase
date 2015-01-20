@@ -22,13 +22,20 @@ IX_IndexScan::~IX_IndexScan() {
 RC IX_IndexScan::OpenScan(const IX_IndexHandle &indexHandle, CompOp compOp,
         void *value, ClientHint pinHint) {
 
+    //Sanity check: value must not be NULL (since we don't handle NO_OP)
+    if(value==NULL){
+        return IX_NULLPOINTER;
+    }
+
     // Sanity Check: 'this' should not be open yet
     if (bScanOpen)
        // Test: opened IX_IndexScan
        return (IX_SCANOPEN);
 
-    // TODO
-    //Check IndexHandle is open
+    //Checks IndexHandle is open
+    if(!indexHandle.bFileOpen){
+        return IX_CLOSEDFILE;
+    }
 
     // Sanity Check: compOp
     switch (compOp) {

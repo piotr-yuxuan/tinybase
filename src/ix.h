@@ -176,7 +176,9 @@ void IX_PrintError(RC rc);
 #define IX_ENTRYNOTFOUND   (START_IX_WARN + 7) // entry not found
 #define IX_ENTRYEXISTS     (START_IX_WARN + 8) // entry already exists
 #define IX_EOF             (START_IX_WARN + 9) // end of file
-#define IX_LASTWARN        IX_EOF
+#define IX_INDEXOPEN       (START_IX_WARN + 10)// index is already open
+#define IX_PAGELIMIT       (START_IX_WARN + 11)// size required exceeds PF_PAGE_SIZE
+#define IX_LASTWARN        IX_PAGELIMIT
 
 #define IX_NOMEM           (START_IX_ERR - 0)  // no memory
 #define IX_LASTERROR       IX_NOMEM
