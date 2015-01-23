@@ -22,7 +22,7 @@
 #include <cstdlib>
 #include <cassert>
 
-#include "tinybase.h"
+#include "redbase.h"
 #include "pf.h"
 #include "rm.h"
 

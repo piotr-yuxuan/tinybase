@@ -1,0 +1,91 @@
+
+                           CS346 RedBase Part 1: RM
+
+                                                      05433063  Hyunjung Park
+                                                      (hyunjung@stanford.edu)
+
+*** Outline ***
+
+-Design
+-Testing
+-Etc.
+
+
+*** Design ***
+
+Overall, this RM component is quite straightforward and does not have many
+design issues. 
+
+[File and Page Layout]
+Each file has a file header page (pageNum=0) and data pages. A file header
+contains the fixed size of records, the number of records per page, the size
+of the data page header, and the location of the first page with free space.
+A data page header contains the location of the next page with free space,
+and a bitmap indicating availabilities of all record slots in the page.
+
+[Keeping Track of Free Space]
+Since the record size is fixed once a file is created, I used a bitmap for
+keeping track of free record slots in data pages. In fact, bitmap is not only 
+the simplest but also the most space-efficient, since each record requires at 
+least one bit which indicates its validity. To reduce the waste of space, char 
+array was used in the implemention.
+
+To avoid a linear search for finding a page with free slot, I maintained a
+linked list of pages that have empty slots in them. All pages in this free
+list have at least one free slot. This strategy helps us to save I/O counts by
+reducing the total number of occupied pages (which have at least one record). 
+To accomplish this, empty page is immediately disposed upon a deletion of the 
+last record (Actually, the list of disposed pages is maintained separately by
+PF component).
+
+Different orderings of pages in the free list can affect I/O counts later, so
+it can be a design choice. Since this issue depends on workload, I inserted
+the new page with free slot (which can be made by new page allocation or 
+deletion of a record in a full page) at the beginning of the free list. Due
+to the file header caching in RM_FileHandle object, this list insertion is
+free in terms of I/O counts. Note that this strategy can be improved later.
+
+[File Scan]
+Every call to GetNextRec() begins at the point where the previous call ended.
+To save a few I/O counts, GetNextRec() checks whether if there is more records
+satisfying the scan condition in the page (after finding the next record). If
+there is no more records, the next call to GetNextRec() can be started at the
+next page.
+
+[Error Handling]
+For handling unexpected return codes from the PF component, I simply passed
+the PF return code along. The global PrintError() is not included since
+rm_test.cc already has one.
+
+
+*** Testing ***
+
+[Correctness]
+In addition to Test6/7 in rm_test.cc which examine the manipulation of records
+and the file scan functionality, I tested various cases to make sure that each
+functions works correctly. These cases include:
+-Insertion of records after deletion of records (Inserted record should be 
+ located at the first page with free slot and the first free slot at the page)
+-File scan which returns records in non-contiguous pages (File scan should
+ be able to skip one or more pages without satisfying records)
+-Deletion of all records in a specific page while a file scan is in the middle
+ of the page (File scan should proceed to the next page)
+-etc.
+
+[Robustness]
+In order to make sure that unexpected errors are properly handled, I added
+comments (in the source code) describing the situations where those errors 
+could occur. Test3/4/5 in rm_test.cc examine all error handlings extensively.
+
+
+*** Etc. ***
+
+-No known bugs.
+-Basic idea behind optimizing RM_FileScan::GetNextRec() was described by TA
+in the help session on Monday.
+-Some of shared testers in /usr/class/cs346/redbase/testers/ was used in the
+testing process.
+
+
+*** Thank you ***
+

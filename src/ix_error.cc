@@ -1,18 +1,16 @@
 //
-// File:        IX_error.cc
+// File:        ix_error.cc
 // Description: IX_PrintError function
+// Author:      Hyunjung Park (hyunjung@stanford.edu)
 //
 
 #include <cerrno>
 #include <cstdio>
 #include <iostream>
-#include "ix.h"
+#include "ix_internal.h"
 
 using namespace std;
 
-//
-// Error table
-//
 //
 // Error table
 //
@@ -26,9 +24,7 @@ static char *IX_WarnMsg[] = {
   (char*)"file closed",
   (char*)"entry not found",
   (char*)"entry already exists",
-  (char*)"end of file",
-  (char*)"index already open",
-  (char*)"size required exceeds PF_PAGE_SIZE"
+  (char*)"end of file"
 };
 
 static char *IX_ErrorMsg[] = {
@@ -36,9 +32,9 @@ static char *IX_ErrorMsg[] = {
 };
 
 // 
-// RM_PrintError
+// IX_PrintError
 //
-// Desc: Send a message corresponding to a RM return code to cerr
+// Desc: Send a message corresponding to a IX return code to cerr
 // In:   rc - return code for which a message is desired
 //
 void IX_PrintError(RC rc)
@@ -47,6 +43,10 @@ void IX_PrintError(RC rc)
   if (rc >= START_IX_WARN && rc <= IX_LASTWARN)
     // Print warning
     cerr << "IX warning: " << IX_WarnMsg[rc - START_IX_WARN] << "\n";
+  // Error codes are negative, so invert everything
+  else if (-rc >= -START_IX_ERR && -rc < -IX_LASTERROR)
+    // Print error
+    cerr << "IX error: " << IX_ErrorMsg[-rc + START_IX_ERR] << "\n";
   else if (rc == 0)
     cerr << "IX_PrintError called with return code of 0\n";
   else

@@ -16,7 +16,7 @@
 #ifndef PF_H
 #define PF_H
 
-#include "tinybase.h"
+#include "redbase.h"
 
 //
 // PageNum: uniquely identifies a page in a file

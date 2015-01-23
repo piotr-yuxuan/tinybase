@@ -1,148 +1,297 @@
-#include <cstdio>
-#include <unistd.h>
-#include <iostream>
-#include "ix.h"
-#include <string.h>
-#include <sstream>
+//
+// File:        ix_manager.cc
+// Description: IX_Manager class implementation
+// Author:      Hyunjung Park (hyunjung@stanford.edu)
+//
 
-using namespace std;
+#include "ix_internal.h"
 
-IX_Manager::IX_Manager(PF_Manager &pfm) {
-    this->pfManager = &pfm;
-}
-IX_Manager::~IX_Manager() {
-}
-
-// Create a new Index
-RC IX_Manager::CreateIndex(const char *fileName, int indexNo, AttrType attrType,
-		int attrLength) {
-    RC rc = 0;
-
-    //Sanity check: fileName must not be NULL
-    if(fileName==NULL){
-        return IX_NULLPOINTER;
-    }
-
-    //Sanity check on attrType/attrLength
-    if(attrType==INT && attrLength!=sizeof(int)) return IX_INVALIDATTR;
-    if(attrType==FLOAT && attrLength!=sizeof(float)) return IX_INVALIDATTR;
-
-    //Creates file with PF
-    stringstream fileNameForPF;
-    fileNameForPF << fileName << "." << indexNo;
-    if( (rc = pfManager->CreateFile(fileNameForPF.str().c_str())) ) return rc;
-
-    //Opens it
-    PF_FileHandle fileHandle;
-    if( (rc = pfManager->OpenFile(fileNameForPF.str().c_str(), fileHandle)) ) return rc;
-
-    //Creates IX_FileHeader for the file
-    IX_FileHeader fileHeader;
-    fileHeader.attrType = attrType;
-    fileHeader.keySize = attrLength;
-    fileHeader.rootNb = -1;
-    fileHeader.sizePointer = sizeof(PageNum);
-
-    //The number of keys in nodes will be up to order*2 (+ the -1 pointer in intl nodes)
-    fileHeader.order = (PF_PAGE_SIZE-sizeof(IX_NodeHeader)-fileHeader.sizePointer)/(fileHeader.sizePointer+fileHeader.keySize);
-    fileHeader.order = fileHeader.order >= 5 ? 5 : fileHeader.order; //Limits to 5 the order
-
-    //We make sure an internal node can at least contain one value (+ two pointers)
-    if( ((sizeof(IX_NodeHeader)+attrLength+fileHeader.sizePointer*2)>PF_PAGE_SIZE)){
-        return IX_PAGELIMIT;
-    }
-    //We don't need to check for leaf nodes because it's the same with one less pointer
-    //We make sure a bucket can at least contain one RID
-    if(sizeof(IX_BucketHeader)+sizeof(RID)>PF_PAGE_SIZE){
-        return IX_PAGELIMIT;
-    }
-
-    //Allocates page for the header
-    PF_PageHandle pageHandle;
-    if( (rc = fileHandle.AllocatePage(pageHandle)) ) return rc;
-    char * pData;
-    if( (rc = pageHandle.GetData(pData)) ) return rc;
-
-    //And writes fileHeader to it
-    memcpy(pData, &fileHeader, sizeof(IX_FileHeader));
-    PageNum nb;
-    if( (rc = pageHandle.GetPageNum(nb)) || (rc = fileHandle.MarkDirty(nb))
-            || (rc = fileHandle.UnpinPage(nb)) || (rc = fileHandle.ForcePages()) ) return rc;
-
-    return pfManager->CloseFile(fileHandle);
+// 
+// IX_Manager
+//
+// Desc: Constructor
+//
+IX_Manager::IX_Manager(PF_Manager &pfm)
+{
+   // Set the associated PF_Manager object
+   pPfm = &pfm;
 }
 
-// Destroy and Index
-RC IX_Manager::DestroyIndex(const char *fileName, int indexNo) {
-
-    //Sanity check: fileName must not be NULL
-    if(fileName==NULL){
-        return IX_NULLPOINTER;
-    }
-
-    //The filename
-    stringstream fileNameForPF;
-    fileNameForPF << fileName << "." << indexNo;
-
-    //Calls DestroyFile in PF
-    return pfManager->DestroyFile(fileNameForPF.str().c_str());
+//
+// ~IX_Manager
+// 
+// Desc: Destructor
+//
+IX_Manager::~IX_Manager()
+{
+   // Clear the associated PF_Manager object
+   pPfm = NULL;
 }
 
-// Open an Index
+//
+// CreateIndex
+//
+// Desc: 
+// In:   fileName -
+//       indexNo - 
+//       attrType - 
+//       attrLength -
+// Ret:  IX_INVALIDINDEXNO or PF return code
+//
+RC IX_Manager::CreateIndex(const char *fileName, int indexNo,
+                           AttrType attrType, int attrLength)
+{
+   RC rc;
+   char *fileNameIndexNo;
+   PF_FileHandle pfFileHandle;
+   PF_PageHandle pageHandle;
+   char* pNode;
+
+   // Sanity Check: fileName
+   if (fileName == NULL)
+      // Test: Null fileName
+      return (IX_NULLPOINTER);
+
+   // Sanity Check: indexNo should be non-negative
+   // Note that PF_Manager::CreateFile() will take care of fileName
+   if (indexNo < 0)
+      // Test: invalid index number
+      return (IX_INVALIDINDEXNO);
+
+   // Sanity Check: attrType, attrLength
+   switch (attrType) {
+   case INT:
+   case FLOAT:
+      if (attrLength != 4)
+         // Test: wrong attrLength
+         return (IX_INVALIDATTR);
+      break;
+
+   case STRING:
+      if (attrLength < 1 || attrLength > MAXSTRINGLEN)
+         // Test: wrong attrLength
+         return (IX_INVALIDATTR);
+      break;
+
+   default:
+      // Test: wrong attrType
+      return (IX_INVALIDATTR);
+   }
+
+   // Allocate memory for "fileName.indexNo"
+   if ((fileNameIndexNo = new char[strlen(fileName) + 16]) == NULL)
+      return (IX_NOMEM);
+
+   sprintf(fileNameIndexNo, "%s.%u", fileName, indexNo);
+
+   // Call PF_Manager::CreateFile()
+   if (rc = pPfm->CreateFile(fileNameIndexNo))
+      // Test: existing fileName, wrong permission
+      goto err_return;
+
+   // Call PF_Manager::OpenFile()
+   if (rc = pPfm->OpenFile(fileNameIndexNo, pfFileHandle))
+      // Should not happen
+      goto err_destroy;
+
+   // Allocate the root page (pageNum must be 0)
+   if (rc = pfFileHandle.AllocatePage(pageHandle))
+      // Should not happen
+      goto err_close;
+
+   // Get a pointer where header information will be written
+   if (rc = pageHandle.GetData(pNode))
+      // Should not happen
+      goto err_unpin;
+
+   // Write the root node
+   ((IX_PageHdr *)pNode)->flags = IX_LEAF_NODE;
+   ((IX_PageHdr *)pNode)->numKeys = 0;
+   ((IX_PageHdr *)pNode)->prevNode = attrType;
+   ((IX_PageHdr *)pNode)->nextNode = attrLength;
+
+   // Mark the header page as dirty
+   if (rc = pfFileHandle.MarkDirty(0))
+      // Should not happen
+      goto err_unpin;
+   
+   // Unpin the header page
+   if (rc = pfFileHandle.UnpinPage(0))
+      // Should not happen
+      goto err_close;
+   
+   // Call PF_Manager::CloseFile()
+   if (rc = pPfm->CloseFile(pfFileHandle))
+      // Should not happen
+      goto err_destroy;
+
+   // Deallocate memory for "fileName.indexNo"
+   delete [] fileNameIndexNo;
+
+   // Return ok
+   return (0);
+
+   // Recover from inconsistent state due to unexpected error
+err_unpin:
+   pfFileHandle.UnpinPage(0);
+err_close:
+   pPfm->CloseFile(pfFileHandle);
+err_destroy:
+   pPfm->DestroyFile(fileNameIndexNo);
+err_return:
+   delete [] fileNameIndexNo;
+   // Return error
+   return (rc);
+}
+
+//
+// DestroyIndex
+//
+// Desc: 
+// In:   fileName - 
+//       indexNo - 
+// Ret:  IX_INVALIDINDEXNO or PF return code
+//
+RC IX_Manager::DestroyIndex(const char *fileName, int indexNo)
+{
+   RC rc;
+   char *fileNameIndexNo;
+
+   // Sanity Check: fileName
+   if (fileName == NULL)
+      // Test: Null fileName
+      return (IX_NULLPOINTER);
+
+   // Sanity Check: indexNo should be non-negative
+   // Note that PF_Manager::CreateFile() will take care of fileName
+   if (indexNo < 0)
+      // Test: invalid index number
+      return (IX_INVALIDINDEXNO);
+
+   // Allocate memory for "fileName.indexNo"
+   if ((fileNameIndexNo = new char[strlen(fileName) + 16]) == NULL)
+      return (IX_NOMEM);
+
+   sprintf(fileNameIndexNo, "%s.%u", fileName, indexNo);
+
+   // Call PF_Manager::DestroyFile()
+   if (rc = pPfm->DestroyFile(fileNameIndexNo))
+      // Test: non-existing fileName, wrong permission
+      goto err_return;
+
+   // Deallocate memory for "fileName.indexNo"
+   delete [] fileNameIndexNo;
+
+   // Return ok
+   return (0);
+
+   // Recover from inconsistent state due to unexpected error
+err_return:
+   delete [] fileNameIndexNo;
+   // Return error
+   return (rc);
+}
+
+//
+// OpenIndex
+//
+// Desc: 
+// In:   fileName - 
+//       indexNo - 
+// Out:  indexHandle - 
+// Ret:  IX_INVALIDINDEXNO or PF return code
+//
 RC IX_Manager::OpenIndex(const char *fileName, int indexNo,
-		IX_IndexHandle &indexHandle) {
-    RC rc = 0;
+                         IX_IndexHandle &indexHandle)
+{
+   RC rc;
+   char *fileNameIndexNo;
+   PF_PageHandle pageHandle;
+   char* pNode;
 
-    //Sanity check: fileName must not be NULL
-    if(fileName==NULL){
-        return IX_NULLPOINTER;
-    }
+   // Sanity Check: fileName
+   if (fileName == NULL)
+      // Test: Null fileName
+      return (IX_NULLPOINTER);
 
-    //The filename
-    stringstream fileNameForPF;
-    fileNameForPF << fileName << "." << indexNo;
+   // Sanity Check: indexNo should be non-negative
+   // Note that PF_Manager::CreateFile() will take care of fileName
+   if (indexNo < 0)
+      // Test: invalid index number
+      return (IX_INVALIDINDEXNO);
 
-    //Checks not already open
-    if(indexHandle.bFileOpen) return IX_INDEXOPEN;
+   // Allocate memory for "fileName.indexNo"
+   if ((fileNameIndexNo = new char[strlen(fileName) + 16]) == NULL)
+      return (IX_NOMEM);
 
-    //Opens in PF
-    PF_FileHandle fileHandle;
-    if( (rc = pfManager->OpenFile(fileNameForPF.str().c_str(), fileHandle)) ) return rc;
+   sprintf(fileNameIndexNo, "%s.%u", fileName, indexNo);
 
-    //Marks open
-    indexHandle.bFileOpen = true;
-    indexHandle.filehandle = new PF_FileHandle(fileHandle);
+   // Call PF_Manager::OpenFile()
+   if (rc = pPfm->OpenFile(fileNameIndexNo, indexHandle.pfFileHandle))
+      // Test: non-existing fileName, opened indexHandle
+      goto err_return;
 
-    //Instanciate fileHeader
-    PF_PageHandle pageHandle;
-    if( (rc = fileHandle.GetThisPage(0, pageHandle)) || (rc = fileHandle.UnpinPage(0)) ) return rc;
-    char* pData;
-    if( (rc = pageHandle.GetData(pData)) ) return rc;
-    memcpy( &(indexHandle.fh), pData, sizeof(IX_FileHeader)); //Copies from memory
+   // Get the root node
+   if (rc = indexHandle.pfFileHandle.GetFirstPage(pageHandle))
+      // Test: invalid file
+      goto err_close;
 
-    return 0;
+   // Get a data pointer
+   if (rc = pageHandle.GetData(pNode))
+      // Should not happen
+      goto err_unpin;
+
+   // Read the common header
+   indexHandle.attrType   = (AttrType)((IX_PageHdr *)pNode)->prevNode;
+   indexHandle.attrLength = ((IX_PageHdr *)pNode)->nextNode;
+
+   // Unpin the header page
+   if (rc = indexHandle.pfFileHandle.UnpinPage(0))
+      // Should not happen
+      goto err_close;
+
+   // Deallocate memory for "fileName.indexNo"
+   delete [] fileNameIndexNo;
+
+   // Return ok
+   return (0);
+
+   // Recover from inconsistent state due to unexpected error
+err_unpin:
+   indexHandle.pfFileHandle.UnpinPage(0);
+err_close:
+   pPfm->CloseFile(indexHandle.pfFileHandle);
+err_return:
+   delete [] fileNameIndexNo;
+   // Return error
+   return (rc);
 }
 
-// Close an Index
-RC IX_Manager::CloseIndex(IX_IndexHandle &indexHandle) {
-    RC rc = 0;
-    //Already closed?
-    if(!indexHandle.bFileOpen) return IX_CLOSEDFILE;
+//
+// CloseIndex
+// 
+// Desc: 
+// In:   indexHandle - 
+// Ret:  PF return code
+//
+RC IX_Manager::CloseIndex(IX_IndexHandle &indexHandle)
+{
+   RC rc;
 
-    //We have to write the file header back
-    char * pData ;
-    PF_PageHandle pageHandle;
-    if( (rc = indexHandle.filehandle->GetThisPage(0, pageHandle)) ) return rc;
-    if( (rc = pageHandle.GetData(pData)) ) return rc;
+   // Call PF_Manager::CloseFile()
+   if (rc = pPfm->CloseFile(indexHandle.pfFileHandle))
+      // Test: unopened(closed) indexHandle
+      goto err_return;
 
-    memcpy( pData, &(indexHandle.fh), sizeof(IX_FileHeader)); //Copies to memory
+   // Reset member variables
+   indexHandle.attrType = INT;
+   indexHandle.attrLength = 0;
 
-    if( (rc = indexHandle.filehandle->MarkDirty(0))
-            || (rc = indexHandle.filehandle->UnpinPage(0))
-            || (rc = indexHandle.filehandle->ForcePages(0))
-            || (rc = this->pfManager->CloseFile(*(indexHandle.filehandle))) ) return rc;
+   // Return ok
+   return (0);
 
-    indexHandle.bFileOpen = false;
-
-    return 0;
+err_return:
+   // Return error
+   return (rc);
 }
+

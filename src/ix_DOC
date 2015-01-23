@@ -1,494 +1,92 @@
-**Documentation for the Indexing (IX) component**
-
-----------------------
-Implementation choices
-----------------------
-We implemented the indexing component using a B+ tree. Each node or leaf is
-represented with a page in the file associated with our index. Thus, in all our
-methods we can refer to a node by its **Page Number** (i.e. PageNum variable).
-
-The tree is made of node and each node is made of a several things:
-
-    - A header (containing some useful information about the node such as its
-    parent, the previous node, etc.)
-    - Keys (values used to navigate through the tree). Thus keys can be INT,
-    FLOAT, or STRING according of the attrtype our index will be used for.
-    - Pointers, i.e. the number of another PageNum
-
-There are three types of nodes:
-
-    - Thee root, i.e. the first node at the top of the tree
-    - Internal nodes
-    - Leaf nodes, i.e. nodes at the bottom of the tree
-
-There are also **buckets** (they are not nodes so to say though) which are pages
-containing the RIDs for a given value. Buckets are pointed from the leaf nodes,
-and if there is not enough space in a bucket to store all the RIDs associated
-with a given value we use **bucket chaining** (there is a nextBucket field in
-the header of a bucket).
-
-
-----------------
-Nodes structures
-----------------
-We have three structures for headers:
-
-    - **IX_FileHeader** is the global header for the file, it is always stored in
-    the first page of the file i.e. page 0. It contains the PageNum for the root
-    (or -1 if there is no root yet), the attrType of the index (i.e. INT, FLOAT
-    or STRING) and the size of the keys in the tree, which is the same as the
-    size of the attribute.
-    The fileHeader also contains the order of the tree. The nodes of the tree
-    will have up to 2*order keys in it (plus the -1 pointer for internal nodes).
-    We put the order value at 5 for tests purposes (when initializing the tree
-    the program makes sure the value is small enough so the nodes can be
-    contained in a file page though).
-
-    - **IX_NodeHeader** is the header struct for nodes. It's used for all the
-    kinds of nodes: root, internal nodes and leaf nodes. It includes the type of
-    the node (-1 for root, 0 for internal node and 1 for leaf node), the number
-    of keys currently stored in the node, the maximum possible number of keys
-    storable in it, and Page Numbers for the node's parent, previous node and
-    next node (set to -1 if there is no parent/prev/next node).
-
-    - **IX_BucketHeader** is the header for buckets. It just contains the number
-    of rids stored in it, the maximum number of rid storable and the PageNum
-    of the next bucket if bucket chaining is needed (-1 otherwise).
-
-The way pages are written in the file:
-
-    - Root and internal nodes are written this way:
-    *Header* *pointer-1* *key0* *pointer0* ... *keyN-1* *pointerN-1*
-    Where the number of keys in the node is N. Please note the presence of a
-    "-1 pointer" which is very important. Hence there are N+1 pointers but
-    only N keys.
-
-    - Leaf nodes are written this way:
-    *Header* *key0* *pointer0* ... *keyN-1* *pointerN-1*
-    In this nodes the way things work is simple, a key is a value and the
-    following pointer is the PageNum of the bucket where the RIDs for this
-    value are stored. There are N keys and N pointers.
-
-    - Buckets are written this way:
-    *Header* *RID0* *RID1* ... *RIDN-1*
-    Also very simple, we have N RIDs put the one after the other.
-
-
--------------------------------
-Insertion algorithm: the basics
--------------------------------
-When the tree is initialized there is no node and no bucket.
-
-In our examples each node can contain up to 2 keys (to keep it simple) plus the
--1 pointer if there is one and buckets can contain up to 2 rids (actual page size
-show bucket can contain up to around 500 rids so it's also very simplified).
-
-When the InsertEntry() method is called for the first time a root is created,
-but also a first leaf. Then we use a recursive call to InsertEntryToNode()
-with the root number as node number. After the first insertion the tree may
-look like this (let's say the inserted value is 13:
-
-======================Figure 1: Tree after first insertion======================
-
-                                  Root (n°1)
-                                (2)  __()  __()
-                                 |
-                                 |
-                          First Leaf (n°2)
-                             13(3)  __()
-                               |
-                               |
-                      First Bucket (n°3)
-                           RID1 __
-
-================================================================================
-
-Let's explain a little bit our notations. n°X means the node/bucket page number
-in the file is X. A value into brackets means it's a pointer, a key otherwise.
-For example in the first leaf, 13(3) means the key0 is 13 and the pointer0
-associated with it 3 (the page number of the first bucket). The (2) in the root
-node is the pointer-1 so it is perfectly normal it has no key associated with it.
-
-Then when we insert a new value, let's say 8, the method insertEntryToNode() will
-be called with 1 as first parameter (i.e. root nodeNumber). Since the root has
-only the -1 pointer it will call insertEntryToLeafNode(2, ...) to delegate the job
-to its leaf. The leaf is not full so it calls insertEntryToLeafNodeNoSplit(2,...)
-and this method insert the value at the right place (and offsets 13(3) to do so).
-We finally get something like this:
-
-======================Figure 2: Tree after second insertion=====================
-
-                                  Root (n°1)
-                                (2) __() __()
-                                 |
-                                 |
-                             Leaf (n°2)
-                             8(4)  13(3)
-                              /      \
-                             /        \
-                         B.(n°4)    B.(n°3)
-                         RID2 __    RID1 __
-
-================================================================================
-
-Of course a new bucket was allocated to store the second RID since the value is
-not the same as bucket n°3 (we will cover this later in this document).
-So at this point we have a root with an only leaf node child and two buckets
-associated with values.
-
-We can insert one more value again, let's say 17. But this time the leaf is full
-so insertEntryToLeafNode() will call insertEntryToLeafNodeSplit(). This method
-allocates a new page for the "split" leaf, copies the second half of the keys/
-pointers of the first leaf into the second leaf.
-
-Then the method use the first key of the second leaf as a "split key". In our
-case the splitKey is 13. Since our value - 17 - is higher than the split key,
-it will be inserted in the second leaf.
-
-insertEntryToLeafNodeSplit() will then call insertEntryToNode(1, ...) to insert
-our new leaf in the parent node of our first leaf (i.e. the root in our case).
-The key for the inserted pointer will be the splitKey. So we have:
-
-=========================Figure 3: Tree after leaf split========================
-
-                                      Root (n°1)
-                                   (2)  13(5)  __()
-                                   /      |
-                                  /       |
-                          Leaf (n°2)   Leaf (n°5)
-                          8(4) __()    13(3)  17(6)
-                          /              |      \
-                         /               |       \
-                    B.(n°4)           B.(n°3)  B.(n°6)
-                    RID2 __           RID1 __  RID3 __
-
-================================================================================
-
-So now according to the value of the next insertion we will just insert in the
-empty key/pointer couple of leaf N°2 or have to split leaf n°5 (if value is
-above 13). Let's say we insert 21 . The process is fairly the same as above,
-we get the following tree:
-
-=======================Figure 4: After another leaf split=======================
-
-                                      Root (n°1)
-                                   (2)  13(5)  17(7)
-                                   /      |        \
-                                  /       |         \
-                          Leaf (n°2)   Leaf (n°5)   Leaf (n°7)
-                          8(4) __()    13(3) __()   17(6) 21(8)
-                           |             |            |     \
-                           |             |            |      \
-                         B.(n°4)      B.(n°3)      B.(n°6)   B.(n°8)
-                         RID2 __      RID1 __      RID3 __   RID4 __
-
-================================================================================
-
-Also please note that when performing insertions we always take care of updating
-the headers. Let's examine a couple of headers in our example.
-Leaf n°2 header is:
-{level=1, maxKeyNb=2, nbKey=1, parentPage=1, prevPage=-1, nextPage=5}
-The root header is:
-{level=-1, maxKeyNb=2, nbKey=2, parentPage=-1, prevPage=-1, nextPage=-1}
-The number of keys in the root is 2 since the -1 pointer is not taken into
-account (it has no key associated with it anyway).
-
-Now let's come to the tricky part: insertion in an internal node with split.
-This is performed by the method InsertEntryToIntlNodeSplit() and is probably one
-of the hardest piece of code of our IX to understand. In our case the "internal
-node" to split is the root, but it makes no difference except that we have to
-create a new root for the tree.
-
-Let's say we want to add a rid with the key 18 to our tree. The root goes
-through all its keys and pointers and since 18>17 it makes a recursive call to
-insertEntryToLeafNode(7, ...). But the leaf n°7 is full so another call to
-insertEntryToLeafNodeSplit(7, ...) is made. A new leaf is created with the
-splitKey 21 (see above) and 18 is inserted to the leaf n°7 since 18<21.
-A call to insertEntryToIntlNode(1, ...) is made with the splitkey 21. Since 1
-is full it has to split.
-
-And we have three values to "place" in our two nodes: 13, 17 and 21. We take the
-median key - 17 - and "push" it above (in the new root created) by calling
-insertEntryToIntlNode(10, ...) because the number of the new root is 10 in our
-example.
-
-=======================Figure 5: After internal node split======================
-
-                                     Root (n°10)
-                                   (1)  17(11) __()
-                                  /         \
-                                 /           \
-                          Ex-Root (n°1)   Intl node (n°11)
-                        (2)  13(5) __()    (7)  21(9) __()
-                        /      |            |       \
-                       /       |            |        \
-               Leaf (n°2)  Leaf (n°5)   Leaf (n°7)    Leaf (n°9)
-               8(4) __()   13(3) __()   17(6) 18(12)  21(8) __()
-                |            |            |      |       \
-                |            |            |      |        \
-               B.(n°4)    B.(n°3)    B.(n°6)   B.(n°12)   B.(n°8)
-               RID2 __    RID1 __    RID3 __   RID5 __    RID4 __
-
-================================================================================
-
-And as you can see, node n°1 (the ex-root) has become the -1 pointer of the new
-root. This change is performed in the InsertEntryToIntlNodeSplit() method. And
-we forgot to make this change in the first place, which cost us hours of
-debugging...
-
-We didn't see quite all the cases in our examples above but is it probably enough
-to understand how the algorithm works globally. Some tricky cases can happen
-sometimes and we tried to make sure everyone is handled by our algorithm
-(see the testing section for more details).
-
-
---------------------------------
-Insertion with an existing value
---------------------------------
-
-In our examples above all the inserted values were distinct. But insertions can
-also be made on existing values. This case is actually quite simple. When the
-insertEntry() method is called we saw that recursive calls are used then to
-"go" to the leaf were the value should be inserted.
-
-In the insertEntryToLeafNode() method, we just perform a check on all the leaf
-entries to check if the value is an existing one. If it is, we just add the
-RID to the bucket associated with the leaf (we have a getPointer() method which
-gives us the pointer associated with a leaf key). And we don't forget to
-increment the number of rids stored in the bucket header.
-
-But what happens if the bucket is full? Well, as suggested in the IX project
-page, we used bucket chaining. It's fairly simple: there is a **next bucket**
-filed in IX_BucketHeader struct. Its value is set to -1 by default but if the
-bucket is full we just allocate a new bucket and put its PageNum instead of -1
-in the previous bucket. And there is no limit to the number of RID added since
-a "next" bucket can also have a "next" bucket and so on.
-
-============================Figure 6: Bucket Chaining===========================
-
-                    Leaf (n°2)
-                    8(4) __()
-                     |
-                     |
-                    B.(n°4)   ____  B.(n°12)   ____  B.(n°13)
-                    RID2 RID6       RID7 RID8        RID9 __
-
-================================================================================
-
-If we take back our example get could get something like the figure just above
-if several insertions were made with 8 as a key. Bucket n°4 has n°12 as a next
-bucket, bucket n°12 has n°13 as a next bucket and the **next bucket** field is
-just -1 for the last one.
-
-
------------------------------
-Performing a scan on the tree
------------------------------
-
-Now that we saw how insertion is working in our B+ tree we need to look at how
-we can retrieve RIDs, i.e. performing a scan (done with the IX_IndexScan class).
-
-The OpenScan() method is no big deal, really. It just copies the parameters as
-private attributes and performs a couple of checks. What we need to focus on is
-the getNextEntry() method. We had a first implementation that worked perfectly
-except for ongoing scan deletion (i.e. scanning and deleting entries retrieved
-by the scan while scaning). So we had to build a new one to solve this issue.
-It's this second implementation we explain here.
-
-The idea is this. When getNextEntry() is called for the first time since the
-scan was opened we go to the first "matching" bucket in the tree. Then, each
-time the method is called we just have to move in the bucket, or to the leaf
-on the left/right to get the next matching entry (very easy to do thanks to
-the prevPage and nextPage pointers in leafs headers).
-
-However, one very important point is that the "move" to the next entry is
-actually performed right after we copied the value of the entry in the rid.
-And also note that when retrieving RIDs from a bucket the retrieval is done
-starting at the end of the bucket. All these "implementation choices" were
-made to ensure ongoing scan deletion is possible. Let's take an example.
-
-=============================Figure 7: Scan example=============================
-
-                                     Root (n°10)
-                                   (1)  17(11) __()
-                                  /         \
-                                 /           \
-                          Ex-Root (n°1)   Intl node (n°11)
-                        (2)  13(5) __()    (7)  21(9) __()
-                        /      |            |       \
-                       /       |            |        \
-               Leaf (n°2)  Leaf (n°5)   Leaf (n°7)    Leaf (n°9)
-               8(4) __()   13(3) __()   17(6) 18(12)  21(8) __()
-                |            |            |      |       \
-                |            |            |      |        \
-               B.(n°4)    B.(n°3)    B.(n°6)   B.(n°12)   B.(n°8)
-               RID2 RID6  RID1 __    RID3 __   RID5 __    RID4 __
-                 \
-                  \
-                   B.(n°12)   ____  B.(n°13)
-                   RID7 RID8        RID9 __
-
-
-================================================================================
-
-This is the tree of our examples above, including the bucket chaining for the
-key 8. You should be get this tree by performing the following insertions in
-this order: 13,8,17,21,18,8,8,8,8.
-
-Let's say we opened a scan with the GE_OP and 7 value (this scan actually goes
-through the whole tree). When calling getNextEntry() for the first time, the
-method calls a private method, goToFirstBucket(). And goToFirstBucket() goes
-through the tree to find the place 7 is or should be. 7<17 so we go from the
-root to node n°1, then 7<13 so we go to node n°2. Node n°2 is a leaf so we stop,
-we scan the keys. 8>7 so the current key becomes 8 (materialized by a void*
-pointer called currentKey in our IX_IndexScan class). And the current bucket
-becomes 4. Then goToFirstBucket() calls getNextEntry() again.
-
-Since this is not the first call to getNextEntry(), it skips the call to
-goToFirstBucket() - otherwise we would have an infinite calling loop. It
-copies a rid, moves to the next one and returns 0. Then when getNextEntry() will
-be called again it will copies a rid and move to the next one and so on...
-
-The sequence of rids retrieved using the scan in our example is : RID6, RID2,
-RID8, RID7, RID9, RID1, RID3, RID5, RID4. As you can see in a given bucket the
-rids are given in reversal order, but we still start with the first bucket, not
-with the last one.
-
-We'll see later how the implementation choices for scan make ongoing deletion
-possible.
-
-
-----------------------------------
-Deletion algorithm (lazy deletion)
-----------------------------------
-
-We did not have quite enough time to implement a fully working, efficient
-deletion algorithm. So we stuck to lazy deletion, i.e. when an entry is deleted
-and a node is less than half full we do not rebalance the three.
-
-As usual the algorithm uses recursive calls. When DeleteEntry() is called it
-goes through the tree using the keys and the pointers to find the RID and the
-value in it. When it's done (i.e. we found the leaf and bucket where the rid is
-stored), we call DeleteEntryFromBucket() which actually removes the RID from the
-bucket (offsets the RIDs after it and decrements the nb of rids in the header of
-the bucket).
-Two cases are possible then:
-
-    - The bucket is not empty. Easy case, we just have to write it back and
-    nothing else happens.
-
-    - The bucket is empty. We have to remove the bucket, i.e. call the dispose()
-    method of PF_FileHandle. Then, the question is to know if the bucket is the
-    only one attached to its leaf (remember, bucket chaining).
-    We know if there is a bucket before thanks to the **nextBucket** Boolean
-    argument of the DeleteEntryFromBucket() method (true if the bucket is a
-    "next bucket" and false otherwise).
-    And of course we also know if there is another bucket next to our bucket
-    thanks to the **nextBucket** field in the bucket header.
-    If there is a bucket after or before our bucket we just update the headers
-    of the buckets and also the pointer in our leaf if needed. Otherwise, if
-    our bucket was the only one, we have to propagate the changes above in the
-    tree by calling DeleteBucketEntryFromLeafNode() with the leaf node and the
-    deleted bucket number as parameters.
-
-DeleteBucketEntryFromLeafNode() performs the same kind of things on the leaf. It
-removes the entry that was pointing to the deleted bucket. And then we have two
-cases again:
-
-    - The leaf is not empty. Nothing happens.
-
-    - The leaf is empty. We have to remove it and updates the headers of prev
-    and next leafs (if there is one) to keep the tree going. And then we call
-    DeleteEntryFromInternalNode() with the parent node of our leaf and the
-    leaf number as parameters.
-
-DeleteEntryFromInternalNode() works the same way again. It removes the pointer
-associated with the leaf, and the key if there was one (i.e. if the leaf was not
-the -1 pointer). And then two cases again, but slightly different:
-
-    - If the tree is empty (i.e. no key) AND the pointer we just removed before
-    was the -1 pointer, we remove the node and propagate above by calling
-    DeleteEntryFromInternalNode() again.
-
-    - Otherwise we have nothing to do.
-
-As you can see the changes propagates upper in the tree when needed. We didn't
-explain all the cases (there are extra crunches of code to handle cases such as
-when the node is the root, etc.) but the idea is there.
-
-
------------------------
-Deletion while scanning
------------------------
-
-We saw above how scan work and how the deletion algorithm works. So you should
-be able to understand how it possible to scan and delete on the go. Actually it
-is fairly simple, the trick is that in the scan we move to the next entry right
-after retrieving the previous one (as explained above).
-
-This way when a deletion is made on the entry just retrieved with the scan, if
-the leaf is deleted, that means the previous entry was the last one remaining on
-it so the scan already moved on to the next leaf and it's ok.
-
-The same for the buckets. If a bucket was deleted it means the RID on it was the
-last one so the scan already moved on to the next bucket or the next leaf.
-
-When the rid was not the last one, however, all the rids behind it in its bucket
-are offseted in the page, that's the reason why we go through a bucket starting
-with the end of it.
-
-======================Figure 8: Bucket Chaining & deletion======================
-
-                    Leaf (n°2)
-                    8(4) __()
-                     |
-                     |
-                    B.(n°4)   ____  B.(n°12)   ____  B.(n°13)
-                    RID2 RID6       RID7 RID8        RID9 __
-
-================================================================================
-
-Let's illustrate with our previous bucket chaining example. The scan retrieves
-the RID6 first. Then if RID6 is deleted the scan retrieves RID2 so there is no
-issue (while if we retrieved RID2 first and delete it, then RID6 would be moved
-to the first position in the bucket and the scan would then try to retrieve an
-empty RID...). Then if RID2 is deleted, the bucket n°4 is removed, and the leaf
-points to bucket n°12. The scan has already moved on to bucket n°12 so again
-everything works well.
-
-Making ongoing deletion work is also the reason why our currentKey attribute in
-IX_IndexScan is void* and not int. Indeed the position of a given value in the
-leaf can change due to deletion so we couldn't only keep it to remember where we
-are on the leaf, we need the value of the key.
-
----------------------
-Testing the algorithm
----------------------
-
-As you may have seen, the implementation of this IX Component turn out to be
-quite complex. We had to make sure the B+ tree, insertion, deletion and scan are
-working in all the possible cases. So in addition to the given tests, we created
-several randomized tests to make sure everything is ok.
-
-When won't go into details here, but the most efficient and helpful test we
-created is probably test11(). Test11 is very randomized. It basically chooses a
-random number of entries to insert, a random max value for the entries and
-performs the insertions. Then, it chooses a random value in our range of values
-and a random operator (in the 5 possible LT_OP, LE_OP, EQ_OP, GE_OP and GT_OP)
-to perform a scan with this value and this operator. Then we choose a random
-percentage of values to delete while doing the scan and we delete while doing
-the scan with this percentage as probability of deleting. While scanning we keep
-the count of the number of entries returned by the scan and make sure it's the
-good one. And finally when we are over when delete all the remaining entries
-using a scan again. The test repeats all the steps given before many times.
-
-This test allowed us to quickly track bugs such as oversights with bucket
-chaining, deletion and scans.
-
-Another tool which helped us a lot in our debugging process is the printTree()
-method in IX_IndexHandle. It's actually a lot easier to do troubleshooting with
-an overview of the current state of the tree. You can use it yourself when
-testing our IX implementation, just by calling the printTree() method. The
-display is very close of what we had as illustrations in this document (nodes
-are not connected with fancy lines though we just print a list of the nodes and
-their content).
+
+                           CS346 RedBase Part 2: IX
+
+                                                      05433063  Hyunjung Park
+                                                      <hyunjung@stanford.edu>
+
+*** Outline ***
+
+-Design
+-Testing
+-Etc.
+
+
+*** Design ***
+
+[Duplicates in B+ tree]
+Dealing with duplicated search key is an important issue. To reduce I/O counts, 
+I stored index entries (value/RID pairs) at leaf nodes themselves instead of 
+maintaining separate bucket pages. To allow multiple occurrences of the search
+key at the leaves, each key at internal nodes should be always the smallest key 
+of the subtree accessible from its associated pointer. For example, consider
+<ptr0 key1 ptr1 key2 ptr2>. key1 is the smallest key of the subtree accessible
+from ptr1, so all entries in the subtree are greater than or equal to key1.
+However, this doesn't imply that those entries are less than key2. They might
+have entries with key2. 
+(This design is able to accommodate any number of RIDs for a key value)
+
+[Search in B+ tree]
+With the above rule, search and insertion are quite straightforward and as 
+efficient as the typical B+ tree with no duplicates. Specifically, we can find
+the rightmost leaf node which should contain a specific value, and find all 
+entries (if any) by following the pointer to the previous leaf node.
+
+[Insertion in B+ tree]
+When inserting a new entry with existing key (and non-existing RID), the new 
+entry is inserted at the leftmost leaf node which contains at least one entry 
+with the same key and has a free entry slot. If there is no such slot, the 
+rightmost leaf node with the same key is splitted. 
+
+[Deletion in B+ tree]
+Deletion requires more work to maintain the consistency. For example, we need 
+to update an internal node when deleting the smallest value at a leaf node 
+(which must be the smallest value of a certain subtree). My implementation is
+lazy deletion described in the IX document.
+
+[File/Page layout of B+ Tree]
+Each node of a B+ tree is stored in one page of the PF file, and page 0 is
+always the root node. Each page has 12-byte header. 8 bytes are required to 
+maintain doubly linked list among all nodes at the same depth. Another 4 bytes
+contains the number of keys in the node and a flag indicating the node is 
+internal or leaf. Exploiting the fact that the root node doesn't need 8 bytes
+for doubly linked list, I stored attribute type and length instead. Thus, we
+don't need the index file header at all. If index attribute is 4 bytes, a leaf
+node can accomodate up to 340(=4080/12) index entries.
+
+[Index Scan]
+When opening a scan handle, we search the first entry to be retrieved. After
+that, index scan always return RIDs such that the corresponding attribute 
+values are in nondecreasing order. Every time index scan returns a RID, it also
+decide that the next entry in the same node satisfies the scan condition. If 
+not, the next call doesn't have to read the page and just returns IX_EOF. To 
+support a deletion scan, index scan keeps track of the last returned RID.
+
+
+*** Testing ***
+
+[Correctness]
+First of all, I carefully tested the insertion/deletion/scan algorithm by 
+creating certain index depending on the aspect I want to confirm. I was able to
+decrease fanout easily by changing IX_PAGEHDR_SIZE in ix_internal.h, which was
+essential during development and debugging.
+After that, I modified the provided tester so that I can inserted much more 
+entries and adjust the duplicates. Since I cannot verify a large B+ tree by 
+myself, I also implemented IX_IndexHandle::VerifyStructure() and VerifyOrder()
+functions which confirms the consistency.
+(Test5/6/7 in ix_test.cc are some example tests I wrote)
+
+[Robustness]
+Since the interface was almost same as the RM component, it was not difficult
+for me to take care of unexpected situations. I examined all possible error
+handlings, and one of the shared testers also tested many situations.
+
+
+*** Etc. ***
+
+-No known bugs.
+-Some of shared testers in /usr/class/cs346/redbase/testers/ was used in the
+testing process.
+
+
+*** Thank you ***
+

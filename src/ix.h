@@ -9,36 +9,9 @@
 
 // Please do not include any other files than the ones below in this file.
 
-#include "tinybase.h"  // Please don't change these lines
+#include "redbase.h"  // Please don't change these lines
 #include "rm_rid.h"  // Please don't change these lines
 #include "pf.h"
-
-// Structure for the file header
-typedef struct IX_FileHeader {
-    PageNum rootNb;
-    AttrType attrType;
-    int keySize;
-    int order; //The order of the tree, there will be up to 2*order keys per node
-    int sizePointer;
-} IX_FileHeader;
-
-// Structure for a node header
-typedef struct IX_NodeHeader {
-    int level; // -1 root, 0 middle node, 1 leaf node
-    int maxKeyNb;  //Max key number in the node (means max pointer number is maxKeyNb+1)
-    int nbKey;//Number of key in the node (means there are nbKey+1 pointers)
-    PageNum parentPage;
-    PageNum prevPage;
-    PageNum nextPage;
-
-} IX_NodeHeader;
-
-// Structure for a bucket header
-typedef struct IX_BucketHeader {
-    int nbRid; //Number of RID stored in the bucket
-    int nbRidMax; //Max number of RID storable
-    PageNum nextBucket; //PageNum of the next bucket, -1 if no next bucket
-} IX_BucketHeader;
 
 //
 // IX_IndexHandle: IX Index File interface
@@ -59,42 +32,53 @@ public:
     // Force index files to disk
     RC ForcePages();
 
-    // Debugging method
-    RC PrintTree();
-    RC PrintNode(PageNum nodeNb);
-    RC PrintBucket(PageNum bucketNb);
+#ifdef DEBUG_IX
+    RC PrintNode(const PageNum);
+    RC VerifyOrder(PageNum = 0);
+    RC VerifyStructure(const PageNum = 0);
+    RC GetSmallestKey(const PageNum, char *&);
+#endif
 
 private:
-    bool bFileOpen;
-    PF_FileHandle *filehandle;
-    IX_FileHeader fh; //Header for the file of the index
+    // Copy constructor
+    IX_IndexHandle(const IX_IndexHandle &indexHandle);
+    // Overloaded =
+    IX_IndexHandle& operator=(const IX_IndexHandle &indexHandle);
 
-    //Private insertion methods
-    RC InsertEntryToNode(const PageNum nodeNum, void *pData, const RID &rid);
-    RC InsertEntryToLeafNode(const PageNum nodeNum, void *pData, const RID &rid);
-    RC InsertEntryToLeafNodeNoSplit(const PageNum nodeNum, void *pData, const RID &rid);
-    RC InsertEntryToLeafNodeSplit(const PageNum nodeNum, void *pData, const RID &rid);
-    RC InsertEntryToIntlNode(const PageNum nodeNum, const PageNum childNodeNum, char *&splitKey, PageNum &splitNodeNum);
-    RC InsertEntryToIntlNodeNoSplit(const PageNum nodeNum, const PageNum childNodeNum, char *&splitKey,PageNum &splitNodeNum);
-    RC InsertEntryToIntlNodeSplit(const PageNum nodeNum, const PageNum childNodeNum, char *&splitKey,PageNum &splitNodeNum);
-    RC InsertEntryToBucket(const PageNum bucketNb, const RID &rid);
+    inline int InternalEntrySize(void);
+    inline char* InternalKey(char *, int);
+    inline char* InternalPtr(char *, int);
+    inline int LeafEntrySize(void);
+    inline char* LeafKey(char *, int);
+    inline char* LeafRID(char *, int);
+    float Compare(void *, char *);
 
-    //Private deletion methods
-    RC DeleteEntryFromBucket(const PageNum bucketNum, const RID &rid, const PageNum bucketParent, bool nextBucket);
-    RC DeleteBucketEntryFromLeafNode(const PageNum leafNum, const PageNum bucketNum);
-    RC DeleteEntryFromInternalNode(const PageNum nodeNum, const PageNum entryNum);
+    RC InsertEntryToNode(const PageNum, void *, const RID &,
+                         char *&, PageNum &);
+    RC InsertEntryToLeafNode(const PageNum, void *, const RID &,
+                             char *&, PageNum &, int = TRUE);
+    RC InsertEntryToLeafNodeSplit(const PageNum, void *, const RID &,
+                                  char *&, PageNum &);
+    RC InsertEntryToLeafNodeNoSplit(const PageNum, void *, const RID &,
+                                    char *&, PageNum &);
+    RC InsertEntryToIntlNode(const PageNum, const PageNum,
+                             char *&, PageNum &);
+    RC InsertEntryToIntlNodeSplit(const PageNum, const PageNum,
+                                  char *&, PageNum &);
+    RC InsertEntryToIntlNodeNoSplit(const PageNum, const PageNum,
+                                    char *&, PageNum &);
 
-    //Returns true if key number i greater than pData value
-    int IsKeyGreater(void *pData, PF_PageHandle &pageHandle, int i);
-    //For the keys in a given node (don't work for Bucket)
-    RC getKey(PF_PageHandle &pageHandle, int i, char *&pData);
-    RC setKey(PF_PageHandle &pageHandle, int i, char *pData);
-    RC getPointer(PF_PageHandle &pageHandle, int i, PageNum &pageNum);
-    RC setPointer(PF_PageHandle &pageHandle, int i, PageNum pageNum);
-    //Sets the previous node of a particular node
-    RC setPreviousNode(PageNum nodeNum, PageNum previousNode);
-    RC setNextNode(PageNum nodeNum, PageNum nextNode);
-    RC setParentNode(PageNum child, PageNum parent);
+    RC DeleteEntryAtNode(const PageNum, void *, const RID &,
+                         char *&, PageNum &);
+    RC DeleteEntryAtLeafNode(const PageNum, void *, const RID &,
+                             char *&, PageNum &);
+    RC DeleteEntryAtIntlNode(const PageNum, char *&, PageNum &);
+    RC LinkTwoNodesEachOther(const PageNum, const PageNum);
+    RC FindNewRootNode(const PageNum, PageNum &, char *&);
+
+    PF_FileHandle pfFileHandle;
+    AttrType attrType;
+    int attrLength;
 };
 
 //
@@ -106,8 +90,15 @@ public:
     ~IX_IndexScan();
 
     // Open index scan
-    RC OpenScan(const IX_IndexHandle &indexHandle, CompOp compOp, void *value,
-            ClientHint pinHint = NO_HINT);
+    RC OpenScan(const IX_IndexHandle &indexHandle,
+#ifdef IX_DEFAULT_COMPOP
+                void *value,
+                CompOp compOp = EQ_OP,
+#else
+                CompOp compOp,
+                void *value,
+#endif
+                ClientHint  pinHint = NO_HINT);
 
     // Get the next matching entry return IX_EOF if no more matching
     // entries.
@@ -115,23 +106,31 @@ public:
 
     // Close index scan
     RC CloseScan();
+
 private:
-    const int EndOfBucket = -2;
+    // Copy constructor
+    IX_IndexScan(const IX_IndexScan &fileScan);
+    // Overloaded =
+    IX_IndexScan& operator=(const IX_IndexScan &fileScan);
+
+    inline int InternalEntrySize(void);
+    inline char* InternalKey(char *, int);
+    inline char* InternalPtr(char *, int);
+    inline int LeafEntrySize(void);
+    inline char* LeafKey(char *, int);
+    inline char* LeafRID(char *, int);
+    float Compare(void *, char *);
+    RC FindEntryAtNode(PageNum);
+
     int bScanOpen;
-    IX_IndexHandle *indexHandle;
-    PageNum currentLeaf; //Current leaf for the scan
-    void* currentKey; //Current key in the leaf
-    PageNum currentBucket; //Current bucket we are scaning
-    int currentBucketPos; //Current position in the bucket
+    PageNum curNodeNum;
+    int curEntry;
+    RID lastRid;
+
+    IX_IndexHandle *pIndexHandle;
     CompOp compOp;
     void *value;
-    bool bIsEOF; //If true next GetNextEntry call will return IX_EOF
-    //Method to go to the first leaf, first bucket
-    RC goToFirstBucket(RID &rid);
-    //Method that updates the value of currentKeyNb using currentKey
-    RC getCurrentKeyNb(PF_PageHandle phLeaf, int &currentKeyNb);
-    //The opposite
-    RC saveCurrentKey(PF_PageHandle phLeaf, const int &currentKeyNb);
+    ClientHint pinHint;
 };
 
 //
@@ -143,23 +142,27 @@ public:
     ~IX_Manager();
 
     // Create a new Index
-    RC CreateIndex(const char *fileName, int indexNo, AttrType attrType,
-            int attrLength);
+    RC CreateIndex(const char *fileName, int indexNo,
+                   AttrType attrType, int attrLength);
 
     // Destroy and Index
     RC DestroyIndex(const char *fileName, int indexNo);
 
     // Open an Index
     RC OpenIndex(const char *fileName, int indexNo,
-            IX_IndexHandle &indexHandle);
+                 IX_IndexHandle &indexHandle);
 
     // Close an Index
     RC CloseIndex(IX_IndexHandle &indexHandle);
 
 private:
-    PF_Manager *pfManager;
-};
+    // Copy constructor
+    IX_Manager(const IX_Manager &manager);
+    // Overloaded =
+    IX_Manager& operator=(const IX_Manager &manager);
 
+    PF_Manager *pPfm;
+};
 
 //
 // Print-error function
@@ -176,9 +179,7 @@ void IX_PrintError(RC rc);
 #define IX_ENTRYNOTFOUND   (START_IX_WARN + 7) // entry not found
 #define IX_ENTRYEXISTS     (START_IX_WARN + 8) // entry already exists
 #define IX_EOF             (START_IX_WARN + 9) // end of file
-#define IX_INDEXOPEN       (START_IX_WARN + 10)// index is already open
-#define IX_PAGELIMIT       (START_IX_WARN + 11)// size required exceeds PF_PAGE_SIZE
-#define IX_LASTWARN        IX_PAGELIMIT
+#define IX_LASTWARN        IX_EOF
 
 #define IX_NOMEM           (START_IX_ERR - 0)  // no memory
 #define IX_LASTERROR       IX_NOMEM
