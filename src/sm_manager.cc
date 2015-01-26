@@ -14,30 +14,108 @@
 using namespace std;
 
 SM_Manager::SM_Manager(IX_Manager &ixm, RM_Manager &rmm) {
+	this->rmm = rmm;
+	this->ixm = ixm;
 }
 
 SM_Manager::~SM_Manager() {
 }
 
+void SM_Manager::ToLowerCase(char *string) {
+	while (*string) {
+		*string = tolower(*string);
+		string++;
+	}
+}
+
+/**
+ * This method, along with method CloseDb, is called by the code implementing
+ * the redbase command line utility. This method should change to the directory
+ * for the database named *dbName (using system call chdir), then open the
+ * files containing the system catalogs for the database.
+ */
 RC SM_Manager::OpenDb(const char *dbName) {
-	return (0);
+	RC rc = 0;
+
+	// (try to) Move to the correct directory.
+	// TODO Assumes we're in the parent directory.
+	if (chdir(dbName) < 0) {
+		cerr << " chdir error to " << *dbName << "\n";
+		rc = -1; // TODO to be changed
+		return rc;
+	}
+
+	// Opening the files containing the system catalogs for the database.
+	if ((rc = rmm.OpenFile("relcat", relcatfh))) {
+		PrintError(rc);
+		return rc;
+	}
+	if ((rc = rmm.OpenFile("attrcat", attrcatfh))) {
+		PrintError(rc);
+		return rc;
+	}
+
+	return rc;
 }
 
+/**
+ *  This method should close all open files in the current database.
+ *  Closing the files will automatically cause all relevant buffers to be
+ *  flushed to disk.
+ */
 RC SM_Manager::CloseDb() {
-	return (0);
+	RC rc = 0;
+
+	// Closing all open files in the current database.
+	// TODO right now just two files have been opened (to be changed if need be).
+	if ((rc = rmm.CloseFile(relcatfh))) {
+		PrintError(rc);
+		return rc;
+	}
+	if ((rc = rmm.CloseFile(attrcatfh))) {
+		PrintError(rc);
+		return rc;
+	}
+
+	return rc;
 }
 
+/**
+ * TODO Warnning: not finished yet (je la garde).
+ */
 RC SM_Manager::CreateTable(const char *relName, int attrCount,
 		AttrInfo *attributes) {
-	cout << "CreateTable\n" << "   relName     =" << relName << "\n"
+	RC rc = 0;
+
+	char * lowerRelName = strcpy(lowerRelName, relName);
+	ToLowerCase((char *) lowerRelName);
+	if (1 > attrCount || attrCount > MAXATTRS) {
+		rc = -1; // TODO to be changed
+		return rc;
+	}
+
+	cout << "CreateTable\n" << "   relName     =" << lowerRelName << "\n"
 			<< "   attrCount   =" << attrCount << "\n";
-	for (int i = 0; i < attrCount; i++)
+
+	for (int i = 0; i < attrCount; i++) {
+		ToLowerCase(attributes[i].attrName);
 		cout << "   attributes[" << i << "].attrName=" << attributes[i].attrName
 				<< "   attrType="
 				<< (attributes[i].attrType == INT ? "INT" :
 					attributes[i].attrType == FLOAT ? "FLOAT" : "STRING")
 				<< "   attrLength=" << attributes[i].attrLength << "\n";
-	return (0);
+	}
+
+	// Add a tuple in relcat for the relation.
+	RM_FileHandle rmfh;
+	if ((rc = rmm.OpenFile("relcat", rmfh))) {
+		PrintError(rc);
+	}
+	RID rid;
+
+	// Add a tuple in attrcat for each attribute of the relation.
+
+	return rc;
 }
 
 RC SM_Manager::DropTable(const char *relName) {
