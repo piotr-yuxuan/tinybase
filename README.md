@@ -1,13 +1,14 @@
 tinybase
 ========
 
-![SM kit](http://www.sm-sim.com/uploads/6/4/6/6/6466686/458006.jgp)
+![SM kit](http://www.sm-sim.com/uploads/6/4/6/6/6466686/458006.jpg)
 
 ###Quelques précisions
 Quelques précisions concernant le code:
 * Pour tout ce qui est donné par l'utilisateur on fait le choix de **tout passer en minuscules** pour éviter les problèmes. Donc quand l'utilisateur input un truc on le transforme automatiquement en minuscules, et il ne peut pas y avoir deux tables appelées "voiTures" et "voitures" par exemple ou deux attributs "Couleur" et "couleur".
 * Dans la description du sm parfois ils disent **redbase** au lieu de **tinybase** (juste au cas où)
 * Et il y a peut être un problème aussi avec le fichier **redbase.h** ce devrait plutôt être **tinybase.h** Pierre est-ce que ça vient du setup 3? J'ai renommé `redbase.h` en `tinybase.h`. Quelques fichiers sont touchés. Je pense que c'est le prof qui n'a pas fait gaffe.
+* Je (@piort2b) me suis permis d'ajouter un type de retour à la fonction main de dbcreate, sinon Eclipse me dit qu'il y a une erreur de syntaxe.
 
 ### Composant SM
 On en est donc à la troisième partie, le composant SM. La deadline est fixée au **3 février** par le prof et la séance d'aide au 30 janvier. Cela dit, étant donné ce qui s'est passé pour les autres composants si on essaie de le faire pour la deadline ça va merder donc je vous propose que l'on se fixe que **tout doit être terminé pour le 29 au soir** de cette manière on pourra poser nos questions au prof le lendemain et l'on pourra débugguer tous ensemble sur le temps qu'il nous reste (croyez-moi il y en aura du débuggage). Si vraiment on est trop forts et que tout marche alors tant mieux on pourra profiter de notre dur labeur ou passer au composant suivant qui sera normalement très tendu à faire (théoriquement seulement 4 jours pour le faire d'après la page du prof).
