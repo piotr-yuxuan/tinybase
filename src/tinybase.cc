@@ -31,11 +31,32 @@ main(int argc, char *argv[])
         exit(1);
     }
 
-    // *********************************
-    //
-    // Fair amount to be filled in here!!
-    //
-    // *********************************
+    // The database name is the second argument
+    dbname = argv[1];
+
+    //Checks to subfolder for the database exists
+    if (chdir(dbname) < 0) {
+        cerr << argv[0] << " Database " << dbname << " not found\n";
+        exit(1);
+    }
+
+    // Initialize TinyBase components
+    PF_Manager pfm;
+    RM_Manager rmm(pfm);
+    IX_Manager ixm(pfm);
+    SM_Manager smm(ixm, rmm);
+    QL_Manager qlm(smm, ixm, rmm);
+
+    // open the database
+    rc = smm.OpenDb(dbname);
+    if(rc) PrintError(rc);
+
+    // call the parser
+    RBparse(pfm, smm, qlm);
+
+    // close the database
+    rc = smm.CloseDb();
+    if(rc) PrintError(rc);
 
     cout << "Bye.\n";
 }
