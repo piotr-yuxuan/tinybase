@@ -5,11 +5,12 @@
 //
 // This shell is provided for the student.
 
+#include "tinybase.h"
+
 #include <iostream>
 #include <cstdio>
 #include <cstring>
 #include <unistd.h>
-#include "redbase.h"
 #include "rm.h"
 #include "sm.h"
 
