@@ -17,6 +17,10 @@ static int get_id(char *s);   /* defined in scanhelp.c */
 static char *get_qstring(char *qstring, int len);
 
 %}
+
+%option noyywrap
+
+
 letter               [A-Za-z]
 digit                [0-9]
 num                  {digit}+
