@@ -50,6 +50,8 @@ RC SM_Manager::FormatName(char *string) {
  */
 RC SM_Manager::OpenDb(const char *dbName) {
 	RC rc = 0;
+    RM_FileHandle attrcatfh;
+    RM_FileHandle relcatfh;
 
 	// (try to) Move to the correct directory.
 	// TODO Assumes we're in the parent directory.
@@ -79,6 +81,8 @@ RC SM_Manager::OpenDb(const char *dbName) {
  */
 RC SM_Manager::CloseDb() {
 	RC rc = 0;
+    RM_FileHandle attrcatfh;
+    RM_FileHandle relcatfh;
 
 	// Closing all open files in the current database.
 	// TODO right now just two files have been opened (to be changed if need be).
