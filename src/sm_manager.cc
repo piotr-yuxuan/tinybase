@@ -10,12 +10,13 @@
 #include "sm.h"
 #include "ix.h"
 #include "rm.h"
+#include <unistd.h>
 
 using namespace std;
 
 SM_Manager::SM_Manager(IX_Manager &ixm, RM_Manager &rmm) {
-	this->rmm = rmm;
-	this->ixm = ixm;
+    this->rmm = &rmm;
+    this->ixm = &ixm;
 }
 
 SM_Manager::~SM_Manager() {
@@ -46,11 +47,11 @@ RC SM_Manager::OpenDb(const char *dbName) {
 	}
 
 	// Opening the files containing the system catalogs for the database.
-	if ((rc = rmm.OpenFile("relcat", relcatfh))) {
+    if ((rc = rmm->OpenFile("relcat", relcatfh))) {
 		PrintError(rc);
 		return rc;
 	}
-	if ((rc = rmm.OpenFile("attrcat", attrcatfh))) {
+    if ((rc = rmm->OpenFile("attrcat", attrcatfh))) {
 		PrintError(rc);
 		return rc;
 	}
@@ -68,11 +69,11 @@ RC SM_Manager::CloseDb() {
 
 	// Closing all open files in the current database.
 	// TODO right now just two files have been opened (to be changed if need be).
-	if ((rc = rmm.CloseFile(relcatfh))) {
+    if ((rc = rmm->CloseFile(relcatfh))) {
 		PrintError(rc);
 		return rc;
 	}
-	if ((rc = rmm.CloseFile(attrcatfh))) {
+    if ((rc = rmm->CloseFile(attrcatfh))) {
 		PrintError(rc);
 		return rc;
 	}
@@ -87,8 +88,11 @@ RC SM_Manager::CreateTable(const char *relName, int attrCount,
 		AttrInfo *attributes) {
 	RC rc = 0;
 
-	char * lowerRelName = strcpy(lowerRelName, relName);
+    //Converts to lowercase
+    char *lowerRelName = (char*) malloc(MAXNAME+1);
+    strcpy(lowerRelName, relName);
 	ToLowerCase((char *) lowerRelName);
+
 	if (1 > attrCount || attrCount > MAXATTRS) {
 		rc = -1; // TODO to be changed
 		return rc;
@@ -108,12 +112,16 @@ RC SM_Manager::CreateTable(const char *relName, int attrCount,
 
 	// Add a tuple in relcat for the relation.
 	RM_FileHandle rmfh;
-	if ((rc = rmm.OpenFile("relcat", rmfh))) {
+    if ((rc = rmm->OpenFile("relcat", rmfh))) {
 		PrintError(rc);
 	}
 	RID rid;
 
-	// Add a tuple in attrcat for each attribute of the relation.
+    // Add a tuple in attrcat for each attribute of the relation.
+
+
+    //Desallocates lower string
+    free(lowerRelName);
 
 	return rc;
 }

@@ -48,8 +48,8 @@ public:
 
 private:
     void ToLowerCase(char * string);
-    RM_Manager &rmm;
-    IX_Manager &ixm;
+    RM_Manager *rmm;
+    IX_Manager *ixm;
     RM_FileHandle relcatfh;
     RM_FileHandle attrcatfh;
 };
