@@ -68,7 +68,7 @@ int main(int argc, char *argv[])
     //Creates the attr catalog
     //Space for relName, attrName, offset, attrType, attrLength & indexNo
     int attrRecordSize = sizeof(char[MAXNAME+1])*2 + sizeof(int) + sizeof(AttrType) + sizeof(int)*2;
-    rc = rmm.CreateFile("attrCat", attrRecordSize);
+    rc = rmm.CreateFile("attrcat", attrRecordSize);
     if(rc) PrintError(rc);
 
     /*

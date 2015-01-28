@@ -39,6 +39,7 @@ main(int argc, char *argv[])
         cerr << argv[0] << " Database " << dbname << " not found\n";
         exit(1);
     }
+    chdir("..");
 
     // Remove the subdirectory of the database
     system(strcat(command, dbname));

@@ -41,6 +41,8 @@ main(int argc, char *argv[])
         cerr << argv[0] << " Database " << dbname << " not found\n";
         exit(1);
     }
+    //Goes back to directory
+    chdir("..");
 
     // Initialize TinyBase components
     PF_Manager pfm;
