@@ -15,18 +15,31 @@
 using namespace std;
 
 SM_Manager::SM_Manager(IX_Manager &ixm, RM_Manager &rmm) {
-    this->rmm = &rmm;
-    this->ixm = &ixm;
+	this->rmm = &rmm;
+	this->ixm = &ixm;
 }
 
 SM_Manager::~SM_Manager() {
 }
 
-void SM_Manager::ToLowerCase(char *string) {
+/*
+ * Format names of relations and attributes.
+ * Relation and attribute names are case-insensitive, limited to MAXNAME = 24 characters each
+ * and must begin with a letter.
+ */
+RC SM_Manager::FormatName(char *string) {
+	int length = 0;
+	if (tolower(*string) - 'a' < 0 && 'z' - tolower(*string) > 0) {
+		return RC(-1);
+	}
 	while (*string) {
 		*string = tolower(*string);
 		string++;
+		if (++length == MAXNAME) {
+			return RC(-1);
+		}
 	}
+	return RC(0);
 }
 
 /**
@@ -47,11 +60,11 @@ RC SM_Manager::OpenDb(const char *dbName) {
 	}
 
 	// Opening the files containing the system catalogs for the database.
-    if ((rc = rmm->OpenFile("relcat", relcatfh))) {
+	if ((rc = rmm->OpenFile("relcat", relcatfh))) {
 		PrintError(rc);
 		return rc;
 	}
-    if ((rc = rmm->OpenFile("attrcat", attrcatfh))) {
+	if ((rc = rmm->OpenFile("attrcat", attrcatfh))) {
 		PrintError(rc);
 		return rc;
 	}
@@ -69,11 +82,11 @@ RC SM_Manager::CloseDb() {
 
 	// Closing all open files in the current database.
 	// TODO right now just two files have been opened (to be changed if need be).
-    if ((rc = rmm->CloseFile(relcatfh))) {
+	if ((rc = rmm->CloseFile(relcatfh))) {
 		PrintError(rc);
 		return rc;
 	}
-    if ((rc = rmm->CloseFile(attrcatfh))) {
+	if ((rc = rmm->CloseFile(attrcatfh))) {
 		PrintError(rc);
 		return rc;
 	}
@@ -82,18 +95,39 @@ RC SM_Manager::CloseDb() {
 }
 
 /**
- * TODO Warnning: not finished yet (je la garde).
+ * Three parts:
+ * #1: we test entries and format them
+ * #2: working part which is two-fold:
+ * 	→ 2.1 We first update the system catalogs: a tuple for the new relation should
+ *  be added to a catalog relation called relcat, and a tuple for each
+ *  attribute should be added to a catalog relation called attrcat.
+ *  → 2.2 After updating the catalogs, method RM_Manager::CreateFile is called
+ * to create a file that will hold the tuples of the new relation.
+ * #3: cleaning part, we free the memory from transient objects.
+ *
+ * TODO: handle unicity.
+ * TODO: merge the parts altogether and reduce number of loops.
  */
 RC SM_Manager::CreateTable(const char *relName, int attrCount,
 		AttrInfo *attributes) {
 	RC rc = 0;
 
-    //Converts to lowercase
-    char *lowerRelName = (char*) malloc(MAXNAME+1);
-    strcpy(lowerRelName, relName);
-	ToLowerCase((char *) lowerRelName);
+	/*
+	 * Part 1:
+	 * → relation and attribute names are limited to MAXNAME = 24 characters each,
+	 * and must begin with a letter.
+	 * → within a given database every relation name must be unique, and within
+	 * a given relation every attribute name must be unique.
+	 */
 
-	if (1 > attrCount || attrCount > MAXATTRS) {
+	// Converts to lowercase. Methinks we have to do this trick because the argument is `const`.
+	char *lowerRelName = (char*) malloc(MAXNAME + 1);
+	strcpy(lowerRelName, relName);
+	FormatName((char *) lowerRelName);
+
+	int recordSize = 0;
+
+	if (1 < attrCount || attrCount > MAXATTRS) {
 		rc = -1; // TODO to be changed
 		return rc;
 	}
@@ -102,7 +136,29 @@ RC SM_Manager::CreateTable(const char *relName, int attrCount,
 			<< "   attrCount   =" << attrCount << "\n";
 
 	for (int i = 0; i < attrCount; i++) {
-		ToLowerCase(attributes[i].attrName);
+		AttrInfo a = attributes[i];
+		if ((rc = FormatName(a.attrName))) {
+			return rc;
+		}
+
+		switch (a.attrType) {
+		case STRING:
+			if (a.attrLength > 0 && a.attrLength < MAXSTRINGLEN) {
+				return RC(-1);
+			}
+			break;
+		case FLOAT:
+		case INT:
+			if (a.attrLength != 4) {
+				return RC(-1);
+			}
+			break;
+		default:
+			return RC(-1);
+		}
+
+		recordSize += a.attrLength;
+
 		cout << "   attributes[" << i << "].attrName=" << attributes[i].attrName
 				<< "   attrType="
 				<< (attributes[i].attrType == INT ? "INT" :
@@ -110,18 +166,37 @@ RC SM_Manager::CreateTable(const char *relName, int attrCount,
 				<< "   attrLength=" << attributes[i].attrLength << "\n";
 	}
 
+	/*
+	 * Part 2
+	 */
+
+	// 2.1: updates the system catalogs
 	// Add a tuple in relcat for the relation.
-	RM_FileHandle rmfh;
-    if ((rc = rmm->OpenFile("relcat", rmfh))) {
+	RM_FileHandle relcatfh;
+	if ((rc = rmm->OpenFile("relcat", relcatfh))) {
 		PrintError(rc);
 	}
 	RID rid;
 
-    // Add a tuple in attrcat for each attribute of the relation.
+	// Add a tuple in attrcat for each attribute of the relation.
+	RM_FileHandle attrcatfh;
+	if ((rc = rmm->OpenFile("attrcat", attrcatfh))) {
+		PrintError(rc);
+	}
+	for (int i = 0; i < attrCount; i++) {
 
+	}
 
-    //Desallocates lower string
-    free(lowerRelName);
+	// 2.2: create a file that will hold the tuples of the new relation.
+	if ((rc = rmm->CreateFile(lowerRelName, recordSize)))
+		return RC(-1);
+
+	/*
+	 * Part 3
+	 */
+
+	//Deallocates lower string
+	free(lowerRelName);
 
 	return rc;
 }
