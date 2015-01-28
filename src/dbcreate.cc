@@ -82,7 +82,7 @@ int main(int argc, char *argv[])
     RID rid;
 
     //We create a record for rel table entry
-    char * pDataRel = malloc(relRecordSize);
+    char * pDataRel = (char*) malloc(relRecordSize);
     //Values to insert
     char relRelName[MAXNAME+1] = "relcat";
     int relTupleLength = relRecordSize;
@@ -99,7 +99,7 @@ int main(int argc, char *argv[])
     free(pDataRel);
 
     //We create a record for attr table entry
-    char * pDataAttr = malloc(attrRecordSize);
+    char * pDataAttr = (char*) malloc(attrRecordSize);
     //Values to insert
     char attrRelName[MAXNAME+1] = "attrcat";
     int attrTupleLength = attrRecordSize;
@@ -134,8 +134,8 @@ int main(int argc, char *argv[])
 
     //First attribute : relName
     DataAttrInfo relNameAttr;
-    relNameAttr.relName = "relcat";
-    relNameAttr.attrName = "relname";
+    strcpy(relNameAttr.relName, "relcat");
+    strcpy(relNameAttr.attrName, "relname");
     relNameAttr.offset = 0;
     relNameAttr.attrType = STRING;
     relNameAttr.attrLength = MAXNAME+1;
@@ -145,8 +145,8 @@ int main(int argc, char *argv[])
 
     //Second attribute : tupleLength
     DataAttrInfo tupleLengthAttr;
-    tupleLengthAttr.relName = "relcat";
-    tupleLengthAttr.attrName = "tuplelength";
+    strcpy(relNameAttr.relName, "relcat");
+    strcpy(tupleLengthAttr.attrName, "tuplelength");
     tupleLengthAttr.offset = sizeof(char[MAXNAME+1]);
     tupleLengthAttr.attrType = INT;
     tupleLengthAttr.attrLength = sizeof(int);
@@ -156,8 +156,8 @@ int main(int argc, char *argv[])
 
     //Third attribute : attrcount
     DataAttrInfo attrCountAttr;
-    attrCountAttr.relName = "relcat";
-    attrCountAttr.attrName = "attrcount";
+    strcpy(attrCountAttr.relName, "relcat");
+    strcpy(attrCountAttr.attrName, "attrcount");
     attrCountAttr.offset = sizeof(char[MAXNAME+1])+sizeof(int);
     attrCountAttr.attrType = INT;
     attrCountAttr.attrLength = sizeof(int);
@@ -167,8 +167,8 @@ int main(int argc, char *argv[])
 
     //Fourth attribute : indexcount
     DataAttrInfo indexCountAttr;
-    indexCountAttr.relName = "relcat";
-    indexCountAttr.attrName = "indexcount";
+    strcpy(indexCountAttr.relName, "relcat");
+    strcpy(indexCountAttr.attrName, "indexcount");
     indexCountAttr.offset = sizeof(char[MAXNAME+1])+sizeof(int)*2;
     indexCountAttr.attrType = INT;
     indexCountAttr.attrLength = sizeof(int);
@@ -179,8 +179,8 @@ int main(int argc, char *argv[])
     //Inserts entries for the 6 attributes of attrcat
 
     //First attribute : relName
-    relNameAttr.relName = "attrcat";
-    relNameAttr.attrName = "relname";
+    strcpy(relNameAttr.relName, "attrcat");
+    strcpy(relNameAttr.attrName, "relname");
     relNameAttr.offset = 0;
     relNameAttr.attrType = STRING;
     relNameAttr.attrLength = MAXNAME+1;
@@ -190,8 +190,8 @@ int main(int argc, char *argv[])
 
     //Second attribute : attrname
     DataAttrInfo attrNameAttr;
-    attrNameAttr.relName = "attrcat";
-    attrNameAttr.attrName = "attrname";
+    strcpy(attrNameAttr.relName, "attrcat");
+    strcpy(attrNameAttr.attrName, "attrname");
     attrNameAttr.offset = sizeof(char[MAXNAME+1]);
     attrNameAttr.attrType = STRING;
     attrNameAttr.attrLength = MAXNAME+1;
@@ -201,8 +201,8 @@ int main(int argc, char *argv[])
 
     //Third attribute : offset
     DataAttrInfo offsetAttr;
-    offsetAttr.relName = "attrcat";
-    offsetAttr.attrName = "offset";
+    strcpy(offsetAttr.relName, "attrcat");
+    strcpy(offsetAttr.attrName, "offset");
     offsetAttr.offset = sizeof(char[MAXNAME+1])*2;
     offsetAttr.attrType = INT;
     offsetAttr.attrLength = sizeof(INT);
@@ -212,8 +212,8 @@ int main(int argc, char *argv[])
 
     //Fourth attribute : attrType
     DataAttrInfo attrTypeAttr;
-    attrTypeAttr.relName = "attrcat";
-    attrTypeAttr.attrName = "attrtype";
+    strcpy(attrTypeAttr.relName, "attrcat");
+    strcpy(attrTypeAttr.attrName, "attrtype");
     attrTypeAttr.offset = sizeof(char[MAXNAME+1])*2 + sizeof(int);
     attrTypeAttr.attrType = INT; //TODO not sure AttrType's attrtype is int
     attrTypeAttr.attrLength = sizeof(AttrType);
@@ -223,8 +223,8 @@ int main(int argc, char *argv[])
 
     //Fifth attribute : attrLength
     DataAttrInfo attrLengthAttr;
-    attrLengthAttr.relName = "attrcat";
-    attrLengthAttr.attrName = "attrlength";
+    strcpy(attrLengthAttr.relName, "attrcat");
+    strcpy(attrLengthAttr.attrName, "attrlength");
     attrLengthAttr.offset = sizeof(char[MAXNAME+1])*2 + sizeof(int) + sizeof(AttrType);
     attrLengthAttr.attrType = INT;
     attrLengthAttr.attrLength = sizeof(int);
@@ -234,8 +234,8 @@ int main(int argc, char *argv[])
 
     //Sixth attribute : indexNo
     DataAttrInfo indexNoAttr;
-    indexNoAttr.relName = "attrcat";
-    indexNoAttr.attrName = "indexno";
+    strcpy(indexNoAttr.relName, "attrcat");
+    strcpy(indexNoAttr.attrName, "indexno");
     indexNoAttr.offset = sizeof(char[MAXNAME+1])*2 + sizeof(int) + sizeof(AttrType) + sizeof(int);
     indexNoAttr.attrType = INT;
     indexNoAttr.attrLength = sizeof(int);

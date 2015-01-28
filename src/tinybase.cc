@@ -13,6 +13,7 @@
 #include <unistd.h>
 #include "rm.h"
 #include "sm.h"
+#include "ql.h"
 
 using namespace std;
 
