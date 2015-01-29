@@ -98,6 +98,10 @@ RC SM_Manager::CloseDb() {
 /**
  * Three parts:
  * #1: we test entries and format them
+ * → relation and attribute names are limited to MAXNAME = 24 characters each,
+ * and must begin with a letter.
+ * → within a given database every relation name must be unique, and within
+ * a given relation every attribute name must be unique.
  * #2: working part which is two-fold:
  * 	→ 2.1 We first update the system catalogs: a tuple for the new relation should
  *  be added to a catalog relation called relcat, and a tuple for each
@@ -105,28 +109,23 @@ RC SM_Manager::CloseDb() {
  *  → 2.2 After updating the catalogs, method RM_Manager::CreateFile is called
  * to create a file that will hold the tuples of the new relation.
  * #3: cleaning part, we free the memory from transient objects.
- *
- * TODO: handle unicity.
- * TODO: merge the parts altogether and reduce number of loops.
  */
 RC SM_Manager::CreateTable(const char *relName, int attrCount,
 		AttrInfo *attributes) {
 	RC rc = 0;
-
-	/*
-	 * Part 1:
-	 * → relation and attribute names are limited to MAXNAME = 24 characters each,
-	 * and must begin with a letter.
-	 * → within a given database every relation name must be unique, and within
-	 * a given relation every attribute name must be unique.
-	 */
 
 	// Converts to lowercase. Methinks we have to do this trick because the argument is `const`.
 	char *lowerRelName = (char*) malloc(MAXNAME + 1);
 	strcpy(lowerRelName, relName);
 	FormatName((char *) lowerRelName);
 
-	int recordSize = 0;
+	RM_FileHandle *fh;
+	if ((rc = rmm->OpenFile(lowerRelName, *fh))) {
+		// File already exists then another database is already named the same.
+		free(lowerRelName);
+		free(fh);
+		return RC(-1);
+	}
 
 	if (1 < attrCount || attrCount > MAXATTRS) {
 		rc = -1; // TODO to be changed
@@ -135,6 +134,14 @@ RC SM_Manager::CreateTable(const char *relName, int attrCount,
 
 	cout << "CreateTable\n" << "   relName     =" << lowerRelName << "\n"
 			<< "   attrCount   =" << attrCount << "\n";
+
+	RM_FileHandle acatalog;
+	if ((rc = rmm->OpenFile("attrcat", acatalog))) {
+		PrintError(rc);
+	}
+
+	int offset = 0;
+	AttributeTuple atuple = malloc(sizeof(AttributeTuple)); // atuple is overwritten each iteration.
 
 	for (int i = 0; i < attrCount; i++) {
 		AttrInfo a = attributes[i];
@@ -158,7 +165,20 @@ RC SM_Manager::CreateTable(const char *relName, int attrCount,
 			return RC(-1);
 		}
 
-		recordSize += a.attrLength;
+		atuple.attrLength = attributes[i].attrLength;
+		strcpy(atuple.attrName, attributes[i].attrName); // +1 pour '\0'
+		atuple.attrType = attributes[i].attrType;
+		atuple.indexNo; // Euh, que mettre ?
+		atuple.offset = offset;
+		strcpy(atuple.relName, lowerRelName); // +1 pour '\0'
+
+		// Add a tuple in attrcat for each attribute of the relation.
+		RID *rid; // vanish
+		if ((rc = acatalog.InsertRec((char *) atuple, *rid))) {
+			return RC(-1);
+		}
+
+		offset += a.attrLength;
 
 		cout << "   attributes[" << i << "].attrName=" << attributes[i].attrName
 				<< "   attrType="
@@ -167,14 +187,13 @@ RC SM_Manager::CreateTable(const char *relName, int attrCount,
 				<< "   attrLength=" << attributes[i].attrLength << "\n";
 	}
 
-	/*
-	 * Part 2
-	 */
+	// We've got the total width of a record so it should't be called
+	// offset anymore.
+	const int totalSize = offset;
 
-	// 2.1: updates the system catalogs
 	// Add a tuple in relcat for the relation.
-	RM_FileHandle relcatfh;
-	if ((rc = rmm->OpenFile("relcat", relcatfh))) {
+	RM_FileHandle rcatalog;
+	if ((rc = rmm->OpenFile("relcat", rcatalog))) {
 		PrintError(rc);
 	}
 
@@ -182,47 +201,32 @@ RC SM_Manager::CreateTable(const char *relName, int attrCount,
 	rtuple.attrCount = attrCount;
 	rtuple.indexCount = 0; // Let's consider we choose later which attributes
 	// we index but don't remember to keep that counter up to date.
-	memcpy(rtuple.relName, lowerRelName, MAXNAME + 1);
-	rtuple.tupleLength = recordSize;
+	strcpy(rtuple.relName, lowerRelName);
+	rtuple.tupleLength = totalSize;
 
 	RID *rid; // vanish
-	if ((rc = relcatfh.InsertRec((char *) rtuple, *rid))) {
+	if ((rc = rcatalog.InsertRec((char *) rtuple, *rid))) {
 		return RC(-1);
 	}
 
-	// Add a tuple in attrcat for each attribute of the relation.
-	RM_FileHandle attrcatfh;
-	if ((rc = rmm->OpenFile("attrcat", attrcatfh))) {
-		PrintError(rc);
-	}
-	int offset = 0;
-	AttributeTuple atuple = malloc(sizeof(AttributeTuple));
-	for (int i = 0; i < attrCount; i++) {
-		atuple.attrLength = attributes[i].attrLength;
-		memcpy(atuple.attrName, attributes[i].attrName, MAXNAME + 1); // +1 pour '\0'
-		atuple.attrType = attributes[i].attrType;
-		atuple.indexNo; // Euh, que mettre ?
-		atuple.offset = offset;
-		memcpy(atuple.relName, lowerRelName, MAXNAME + 1); // +1 pour '\0'
-
-		RID *rid; // vanish
-		if ((rc = attrcatfh.InsertRec((char *) atuple, *rid))) {
-			return RC(-1);
-		}
-
-		offset += attributes[i].attrLength;
-	}
-
-	// 2.2: create a file that will hold the tuples of the new relation.
-	if ((rc = rmm->CreateFile(lowerRelName, recordSize)))
+	if ((rc = rmm->CreateFile(lowerRelName, totalSize))) {
 		return RC(-1);
+	}
 
 	/*
-	 * Part 3
+	 * The catalogs are loaded when the database is opened and closed only
+	 * when the database is closed. Then, updates to the catalogs are not
+	 * reflected onto disk immediately and this can cause weird interface
+	 * behaviour. One solution to this problem is to force pages each time
+	 * a catalog is changed.
 	 */
+	if ((rc = acatalog.ForcePages()) || (rc = rcatalog.ForcePages())) {
+		return RC(-1);
+	}
 
-	//Deallocates space
 	free(lowerRelName);
+	atuple = NULL;
+	rtuple = NULL;
 
 	return rc;
 }
