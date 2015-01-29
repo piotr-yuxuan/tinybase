@@ -88,6 +88,7 @@ RC SM_Manager::CloseDb() {
 	}
 	if ((rc = rmm->CloseFile(attrcatfh))) {
 		PrintError(rc);
+
 		return rc;
 	}
 
@@ -176,15 +177,40 @@ RC SM_Manager::CreateTable(const char *relName, int attrCount,
 	if ((rc = rmm->OpenFile("relcat", relcatfh))) {
 		PrintError(rc);
 	}
-	RID rid;
+
+	RelationTuple rtuple;
+	rtuple.attrCount = attrCount;
+	rtuple.indexCount = 0; // Let's consider we choose later which attributes
+	// we index but don't remember to keep that counter up to date.
+	memcpy(rtuple.relName, lowerRelName, MAXNAME + 1);
+	rtuple.tupleLength = recordSize;
+
+	RID *rid; // vanish
+	if ((rc = relcatfh.InsertRec((char *) rtuple, *rid))) {
+		return RC(-1);
+	}
 
 	// Add a tuple in attrcat for each attribute of the relation.
 	RM_FileHandle attrcatfh;
 	if ((rc = rmm->OpenFile("attrcat", attrcatfh))) {
 		PrintError(rc);
 	}
+	int offset = 0;
+	AttributeTuple atuple = malloc(sizeof(AttributeTuple));
 	for (int i = 0; i < attrCount; i++) {
+		atuple.attrLength = attributes[i].attrLength;
+		memcpy(atuple.attrName, attributes[i].attrName, MAXNAME + 1); // +1 pour '\0'
+		atuple.attrType = attributes[i].attrType;
+		atuple.indexNo; // Euh, que mettre ?
+		atuple.offset = offset;
+		memcpy(atuple.relName, lowerRelName, MAXNAME + 1); // +1 pour '\0'
 
+		RID *rid; // vanish
+		if ((rc = attrcatfh.InsertRec((char *) atuple, *rid))) {
+			return RC(-1);
+		}
+
+		offset += attributes[i].attrLength;
 	}
 
 	// 2.2: create a file that will hold the tuples of the new relation.
@@ -195,7 +221,7 @@ RC SM_Manager::CreateTable(const char *relName, int attrCount,
 	 * Part 3
 	 */
 
-	//Deallocates lower string
+	//Deallocates space
 	free(lowerRelName);
 
 	return rc;

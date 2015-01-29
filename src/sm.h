@@ -15,6 +15,22 @@
 #include "rm.h"
 #include "ix.h"
 
+struct RelationTuple {
+	char * relName; 	/* relation name */
+	int tupleLength;	/* tuple length in bytes */
+	int attrCount;		/* number of attributes */
+	int indexCount; 	/* number of indexed attributes */
+};
+
+struct AttributeTuple {
+	char * relName; 	/* this attribute's relation */
+	char * attrName; 	/* attribute name */
+	int offset;			/* offset in bytes from beginning of tuple */
+	int attrType; 		/* attribute type */
+	int attrLength; 	/* attribute length */
+	int indexNo; 		/* index number, or -1 if not indexed */
+};
+
 //
 // SM_Manager: provides data management
 //
