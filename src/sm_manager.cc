@@ -109,6 +109,8 @@ RC SM_Manager::CloseDb() {
  *  → 2.2 After updating the catalogs, method RM_Manager::CreateFile is called
  * to create a file that will hold the tuples of the new relation.
  * #3: cleaning part, we free the memory from transient objects.
+ *
+ * TODO: error codes still to be implemented.
  */
 RC SM_Manager::CreateTable(const char *relName, int attrCount,
 		AttrInfo *attributes) {
