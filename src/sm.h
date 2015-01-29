@@ -50,6 +50,8 @@ private:
     RC FormatName(char * string);
     RM_Manager *rmm;
     IX_Manager *ixm;
+    RM_FileHandle attrcatfh;
+    RM_FileHandle relcatfh;
 };
 
 //
