@@ -291,12 +291,12 @@ RC SM_Manager::CreateIndex(const char *relName, const char *attrName) {
 
 	// Does it have an index already?
 	RM_Record arecord; // Record for atuple.
-	AttributeTuple atuple; // Its value is found then written in.
+	char * atuple; // Its value is found then written in.
 	while ((rc = fs.GetNextRec(arecord))) {
-		if ((rc = arecord.GetData((char *&) atuple))) {
+		if ((rc = arecord.GetData(atuple))) {
 			return RC(-1);
 		}
-		if (strcmp(atuple.relName, lrelName)) {
+		if (strcmp((DataAttrInfo) atuple.relName, lrelName)) {
 			// We've found the entry for given relation and attribute.
 			// Does it have an index already?
 			if (atuple.indexNo != -1) {
