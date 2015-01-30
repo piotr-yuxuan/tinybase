@@ -11,6 +11,8 @@
 #include "ix.h"
 #include "rm.h"
 #include <unistd.h>
+#include "printer.h"
+#include <fstream>
 
 using namespace std;
 
@@ -139,7 +141,7 @@ RC SM_Manager::CreateTable(const char *relName, int attrCount,
 	}
 
 	int offset = 0;
-	AttributeTuple atuple = malloc(sizeof(AttributeTuple)); // atuple is overwritten each iteration.
+    AttributeTuple atuple; // atuple is overwritten each iteration.
 
 	for (int i = 0; i < attrCount; i++) {
 		AttrInfo a = attributes[i];
@@ -171,8 +173,8 @@ RC SM_Manager::CreateTable(const char *relName, int attrCount,
 		strcpy(atuple.relName, lowerRelName); // +1 pour '\0'
 
 		// Add a tuple in attrcat for each attribute of the relation.
-		RID *rid; // vanish
-		if ((rc = attrcat.InsertRec((char *) atuple, *rid))) {
+        RID rid; // vanish
+        if ((rc = attrcat.InsertRec( (char * ) &atuple, rid))) { //TODO check
 			return RC(-1);
 		}
 
@@ -201,8 +203,8 @@ RC SM_Manager::CreateTable(const char *relName, int attrCount,
 	strcpy(rtuple.relName, lowerRelName);
 	rtuple.tupleLength = totalSize;
 
-	RID *rid; // vanish
-	if ((rc = relcat.InsertRec((char *) rtuple, *rid))) {
+    RID rid; // vanish
+    if ((rc = relcat.InsertRec((char *) &rtuple, rid))) {
 		return RC(-1);
 	}
 
@@ -222,8 +224,6 @@ RC SM_Manager::CreateTable(const char *relName, int attrCount,
 	}
 
 	free(lowerRelName);
-	atuple = NULL;
-	rtuple = NULL;
 
 	return rc;
 }
@@ -291,12 +291,14 @@ RC SM_Manager::CreateIndex(const char *relName, const char *attrName) {
 
 	// Does it have an index already?
 	RM_Record arecord; // Record for atuple.
-	char * atuple; // Its value is found then written in.
+    DataAttrInfo atuple; // Its value is found then written in.
+    char * pAtuple;
 	while ((rc = fs.GetNextRec(arecord))) {
-		if ((rc = arecord.GetData(atuple))) {
+        if ((rc = arecord.GetData(pAtuple))) {
 			return RC(-1);
 		}
-		if (strcmp((DataAttrInfo) atuple.relName, lrelName)) {
+        memcpy(&atuple, pAtuple, sizeof(DataAttrInfo));
+        if (strcmp(atuple.relName, lrelName)) {
 			// We've found the entry for given relation and attribute.
 			// Does it have an index already?
 			if (atuple.indexNo != -1) {
@@ -325,7 +327,6 @@ RC SM_Manager::CreateIndex(const char *relName, const char *attrName) {
 	/* Opens the relation file which is about to get indexed */
 	RM_FileHandle fh;
 	/* Instanciate a scanner to yield tuples */
-	RM_FileScan fs;
 	if ((rc = ixm->OpenIndex(lrelName, atuple.indexNo, ih))
 			|| (rc = rmm->OpenFile(lrelName, fh))
 			|| (rc = fs.OpenScan(fh, atuple.attrType, atuple.attrLength,
@@ -378,7 +379,7 @@ RC SM_Manager::Load(const char *relName,
     int tuplelength = 0;
     int attr_count = 0;
     //open scan of relcat
-    if((rc=filescan.OpenScan(relcatfh, INT, sizeof(int), 0, NO_OP , NULL))) return (rc);
+    if((rc=filescan.OpenScan(this->relcat, INT, sizeof(int), 0, NO_OP , NULL))) return (rc);
     
     //scan all the records in relcat
     char * data;
@@ -404,7 +405,7 @@ RC SM_Manager::Load(const char *relName,
     
     DataAttrInfo d_a[MAXATTRS];
     //open scan of attrcat
-    if((rc = filescan.OpenScan(attrcatfh,INT, sizeof(int), 0, NO_OP , NULL))) return (rc);
+    if((rc = filescan.OpenScan(this->relcat,INT, sizeof(int), 0, NO_OP , NULL))) return (rc);
     
     //scan all the records in attrcat
     while(rc != RM_EOF){
@@ -474,7 +475,7 @@ RC SM_Manager::Load(const char *relName,
                 case STRING:{
 
                     char *data_char;
-					data_char = (char *)malloc((d_a[i].attrLength+1)*sizeof(char);
+                    data_char = (char *)malloc((d_a[i].attrLength+1)*sizeof(char));
                     memcpy(data_char,token,d_a[i].attrLength);
                     memcpy(record_data+d_a[i].offset,data_char,d_a[i].attrLength);
                     break;
@@ -502,7 +503,7 @@ RC SM_Manager::Load(const char *relName,
                 
             case STRING:{
                 char *data_char;
-				data_char = (char *)malloc((d_a[i].attrLength+1)*sizeof(char);
+                data_char = (char *)malloc((d_a[i].attrLength+1)*sizeof(char));
                 memcpy(data_char,token,d_a[i].attrLength);
                 memcpy(record_data+d_a[i].offset,token,d_a[i].attrLength);
                 break;
