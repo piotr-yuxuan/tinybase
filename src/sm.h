@@ -75,4 +75,6 @@ private:
 //
 void SM_PrintError(RC rc);
 
+#define SM_INVALIDRELNAME      (START_SM_WARN + 0)  // invalid relation name
+#define SM_INVALIDATTRNAME     (START_SM_WARN + 1) // invalid attribute name
 #endif
