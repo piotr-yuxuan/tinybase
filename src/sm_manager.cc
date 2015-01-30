@@ -249,7 +249,9 @@ RC SM_Manager::CreateIndex(const char *relName, const char *attrName) {
 
 	// Format input
 	char *lrelName = (char*) malloc(MAXNAME + 1);
+	strcpy(lrelName, relName);
 	char *lattrName = (char*) malloc(MAXNAME + 1);
+	strcpy(lattrName, attrName);
 
 	if ((rc = FormatName((char *) lrelName))
 			|| (rc = FormatName((char *) lattrName))) {
