@@ -364,10 +364,187 @@ RC SM_Manager::DropIndex(const char *relName, const char *attrName) {
 	return (0);
 }
 
-RC SM_Manager::Load(const char *relName, const char *fileName) {
-	cout << "Load\n" << "   relName =" << relName << "\n" << "   fileName="
-			<< fileName << "\n";
-	return (0);
+RC SM_Manager::Load(const char *relName,
+                    const char *fileName)
+{
+    
+    RC rc;
+    RM_Record rec;
+    RM_FileScan filescan;
+    bool flag_exist = false;
+
+    //store the attrlength of each attribute in RelationTuple relName
+    int i=0;
+    int tuplelength = 0;
+    int attr_count = 0;
+    //open scan of relcat
+    if((rc=filescan.OpenScan(relcatfh, INT, sizeof(int), 0, NO_OP , NULL))) return (rc);
+    
+    //scan all the records in relcat
+    char * data;
+    while(rc != RM_EOF){
+        //get records until the end
+        rc = filescan.GetNextRec(rec);
+        if(rc != 0 && rc!= RM_EOF) return (rc);
+        if(rc != RM_EOF){
+            if((rc = rec.GetData(data))) return (rc);
+            if(!strcmp(((RelationTuple*)data)->relName,relName)) {
+                flag_exist = true;
+                //get tuplelength of relation
+                tuplelength = ((RelationTuple*)data)->tupleLength;
+                attr_count = ((RelationTuple*)data)->attrCount;
+            }
+        }
+    }
+    
+    if(!flag_exist) return (SM_INVALIDRELNAME);
+    
+    //close the scan
+    if((rc = filescan.CloseScan())) return (rc);
+    
+    DataAttrInfo d_a[MAXATTRS];
+    //open scan of attrcat
+    if((rc = filescan.OpenScan(attrcatfh,INT, sizeof(int), 0, NO_OP , NULL))) return (rc);
+    
+    //scan all the records in attrcat
+    while(rc != RM_EOF){
+        //get records until the end
+        rc = filescan.GetNextRec(rec);
+        if(rc != 0 && rc != RM_EOF) return (rc);
+        if(rc != RM_EOF){
+            if((rc = rec.GetData(data))) return (rc);
+            if(!strcmp(((DataAttrInfo*)data)->relName,relName)) {
+                
+                //memcpy(&d_a[i],data,sizeof(DataAttrInfo));
+                strcpy(d_a[i].relName,((DataAttrInfo*)data)->relName);
+                strcpy(d_a[i].attrName,((DataAttrInfo*)data)->attrName);
+                d_a[i].attrType = ((DataAttrInfo*)data)->attrType;
+                d_a[i].attrLength = ((DataAttrInfo*)data)->attrLength;
+                d_a[i].offset = ((DataAttrInfo*)data)->offset;
+                d_a[i].indexNo = ((DataAttrInfo*)data)->indexNo;
+
+                i++;
+            }
+        }
+    }
+    
+    //close the scan
+    if((rc = filescan.CloseScan())) return (rc);
+    
+    
+    // open data file named fileName
+    ifstream myfile (fileName);
+    
+    RM_FileHandle filehandle_r;
+    
+    // open relation file to store records read from file
+    if((rc = rmm->OpenFile(relName, filehandle_r))) return (rc);
+    
+    
+    //load the file
+    while(!myfile.eof()){
+        i = 0;
+        string str;
+        //read file line by line
+        getline(myfile, str);
+        if(str == "") break;
+        string delimiter = ",";
+        
+        size_t pos = 0;
+		char *record_data;
+		record_data = new char[((RelationTuple*)data)->tupleLength];
+        //seperate string by commas;
+        while ((pos = str.find(delimiter)) != string::npos) {
+            const char * token;
+            token = str.substr(0, pos).c_str();
+            str.erase(0, pos + delimiter.length());
+            switch (d_a[i].attrType) {
+                    
+                case INT:{
+                    int data_int = atoi(token);
+                    *((int*)(record_data + d_a[i].offset)) = data_int;
+                    break;
+                }
+                case FLOAT:{
+                    float data_float = atof(token);
+                    *((float*)(record_data+d_a[i].offset)) = data_float;
+                    break;
+                }
+                    
+                case STRING:{
+
+                    char *data_char;
+					data_char = (char *)malloc((d_a[i].attrLength+1)*sizeof(char);
+                    memcpy(data_char,token,d_a[i].attrLength);
+                    memcpy(record_data+d_a[i].offset,data_char,d_a[i].attrLength);
+                    break;
+                }
+                default:
+                    // Test: wrong _attrType
+                    return (SM_INVALIDATTRNAME);
+            }
+            i++;
+        }
+        const char * token;
+        token = str.c_str();
+        switch (d_a[i].attrType) {
+                
+            case INT:{
+                int data_int = atoi(token);
+                *((int*)(record_data+d_a[i].offset)) = data_int;
+                break;
+            }
+            case FLOAT:{
+                float data_float = atof(token);
+                *((float*)(record_data+d_a[i].offset)) = data_float;
+                break;
+            }
+                
+            case STRING:{
+                char *data_char;
+				data_char = (char *)malloc((d_a[i].attrLength+1)*sizeof(char);
+                memcpy(data_char,token,d_a[i].attrLength);
+                memcpy(record_data+d_a[i].offset,token,d_a[i].attrLength);
+                break;
+            }
+            default:
+                //wrong _attrType
+                return (SM_INVALIDATTRNAME);
+        }
+
+        RID rid;
+        //store the record to relation file
+        if((rc = filehandle_r.InsertRec(record_data, rid))) return (rc);
+        
+        //insert index if index file exists
+        for (int k = 0;k<attr_count;k++) {
+            if(d_a[k].indexNo != -1){
+                // Call IX_IndexHandle::OpenIndex to open the index file
+                IX_IndexHandle indexhandle;
+                if((rc = ixm->OpenIndex(relName, d_a[k].indexNo, indexhandle))) return (rc);
+                //char data_index[d_a[k].attrLength];
+                //memcpy(data_index,record_data+d_a[k].offset,d_a[k].attrLength);
+                if((rc = indexhandle.InsertEntry(data+d_a[k].offset, rid))) return (rc);
+                //close index file
+                if(ixm->CloseIndex(indexhandle)) return (rc);
+
+            }
+        }
+       // cout<<"record_data"<<record_data<<endl;
+        strcpy(record_data,"");
+    }
+
+    
+    //close the data file
+    myfile.close();
+    
+    //close the relation file
+    if((rc=rmm->CloseFile(filehandle_r))) return (rc);
+    
+    cout << "Load\n"
+    << "   relName =" << relName << "\n"
+    << "   fileName=" << fileName << "\n";
+    return (0);
 }
 
 RC SM_Manager::Print(const char *relName) {
