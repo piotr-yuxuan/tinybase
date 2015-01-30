@@ -560,8 +560,50 @@ RC SM_Manager::Set(const char *paramName, const char *value) {
 }
 
 RC SM_Manager::Help() {
-	cout << "Help\n";
-	return (0);
+	/* Je me suis inspirée du code donné pour DBCreate,
+	* histoire de comprendre la structure des fichiers
+	* relcat et attrcat. J'ai fait un schéma sur mso ppt.
+	*/
+
+	/* On définit les variables */
+	RC rc = 0;
+	RM_FileHandle rmfh;
+	RM_FileScan rmfs;
+	RM_Record rec;
+	RID rid;
+	char * _pdata;
+
+	/* On ouvre le fichier qui contient la table  relcat*/
+	RC rc = this.rmm.OpenFile("relcat", rmfh);
+	if (rc) PrintError(rc);
+
+	/*
+	* Pour définir le rid dont on a besoin pour la méthode getRecord,
+	* on ouvre un scan avec le RM_FileScan. Ensuite, on trouve le prochain record
+	* qui correspond et on récupère son RID.
+	*/
+	ClientHint _pinHint;
+	rc = rmfs.RM_FileScan::OpenScan(rmfh, STRING, 1 + MAXSTRINGLEN, 0, NO_OP, NULL, _pinHint);
+	if (rc != RM_SCANOPEN){
+		cout << "Erreur!";
+		PrintError(rc);
+	}
+	rmfs.GetNextRec(rec);
+	rec.GetRid(rid);
+	rmfh.RM_FileHandle::GetRec(rid, rec);
+	rec.GetData(_pdata);
+
+	DataAttrInfo relNameAttr;
+	relNameAttr.relName = _pData;
+	relNameAttr.attrName = "relname";
+	relNameAttr.offset = 0;
+	relNameAttr.attrType = STRING;
+	relNameAttr.attrLength = MAXNAME + 1;
+	relNameAttr.indexNo = -1;
+
+	Printer(_pData, 1);
+
+	return (rc);
 }
 
 RC SM_Manager::Help(const char *relName) {
