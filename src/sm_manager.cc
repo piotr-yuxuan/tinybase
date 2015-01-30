@@ -571,11 +571,11 @@ RC SM_Manager::Help() {
 	RM_FileScan rmfs;
 	RM_Record rec;
 	RID rid;
-	char * _pdata;
+    char * _pData;
 
 	/* On ouvre le fichier qui contient la table  relcat*/
-	RC rc = this.rmm.OpenFile("relcat", rmfh);
-	if (rc) PrintError(rc);
+    rc = this->rmm->OpenFile("relcat", rmfh);
+    if (rc) return rc;
 
 	/*
 	* Pour définir le rid dont on a besoin pour la méthode getRecord,
@@ -583,18 +583,20 @@ RC SM_Manager::Help() {
 	* qui correspond et on récupère son RID.
 	*/
 	ClientHint _pinHint;
-	rc = rmfs.RM_FileScan::OpenScan(rmfh, STRING, 1 + MAXSTRINGLEN, 0, NO_OP, NULL, _pinHint);
-	if (rc != RM_SCANOPEN){
-		cout << "Erreur!";
-		PrintError(rc);
-	}
-	rmfs.GetNextRec(rec);
-	rec.GetRid(rid);
-	rmfh.RM_FileHandle::GetRec(rid, rec);
-	rec.GetData(_pdata);
+    rc = rmfs.RM_FileScan::OpenScan(rmfh, STRING, 1 + MAXSTRINGLEN, 0, NO_OP, NULL, _pinHint);
+    if (rc) return rc;
+
+    rc = rmfs.GetNextRec(rec);
+    if (rc) return rc;
+    rc = rec.GetRid(rid);
+    if (rc) return rc;
+    rc = rmfh.RM_FileHandle::GetRec(rid, rec);
+    if (rc) return rc;
+    rc = rec.GetData(_pData);
+    if (rc) return rc;
 
 	DataAttrInfo relNameAttr;
-	relNameAttr.relName = _pData;
+    relNameAttr.relName = _pData;
 	relNameAttr.attrName = "relname";
 	relNameAttr.offset = 0;
 	relNameAttr.attrType = STRING;
@@ -603,7 +605,7 @@ RC SM_Manager::Help() {
 
 	Printer(_pData, 1);
 
-	return (rc);
+    return 0;
 }
 
 RC SM_Manager::Help(const char *relName) {
