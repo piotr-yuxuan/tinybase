@@ -26,7 +26,7 @@ struct AttributeTuple {
 	char * relName; 	/* this attribute's relation */
 	char * attrName; 	/* attribute name */
 	int offset;			/* offset in bytes from beginning of tuple */
-	int attrType; 		/* attribute type */
+	AttrType attrType;	/* attribute type */
 	int attrLength; 	/* attribute length */
 	int indexNo; 		/* index number, or -1 if not indexed */
 };
@@ -66,8 +66,8 @@ private:
     RC FormatName(char * string);
     RM_Manager *rmm;
     IX_Manager *ixm;
-    RM_FileHandle attrcatfh;
-    RM_FileHandle relcatfh;
+    RM_FileHandle attrcat;
+    RM_FileHandle relcat;
 };
 
 //

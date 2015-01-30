@@ -55,16 +55,15 @@ RC SM_Manager::OpenDb(const char *dbName) {
 	// TODO Assumes we're in the parent directory.
 	if (chdir(dbName) < 0) {
 		cerr << " chdir error to " << *dbName << "\n";
-		rc = -1; // TODO to be changed
-		return rc;
+		return RC(-1);
 	}
 
 	// Opening the files containing the system catalogs for the database.
-	if ((rc = rmm->OpenFile("relcat", relcatfh))) {
+	if ((rc = rmm->OpenFile("relcat", relcat))) {
 		PrintError(rc);
 		return rc;
 	}
-	if ((rc = rmm->OpenFile("attrcat", attrcatfh))) {
+	if ((rc = rmm->OpenFile("attrcat", attrcat))) {
 		PrintError(rc);
 		return rc;
 	}
@@ -82,13 +81,12 @@ RC SM_Manager::CloseDb() {
 
 	// Closing all open files in the current database.
 	// TODO right now just two files have been opened (to be changed if need be).
-	if ((rc = rmm->CloseFile(relcatfh))) {
+	if ((rc = rmm->CloseFile(relcat))) {
 		PrintError(rc);
 		return rc;
 	}
-	if ((rc = rmm->CloseFile(attrcatfh))) {
+	if ((rc = rmm->CloseFile(attrcat))) {
 		PrintError(rc);
-
 		return rc;
 	}
 
@@ -130,15 +128,13 @@ RC SM_Manager::CreateTable(const char *relName, int attrCount,
 	}
 
 	if (1 < attrCount || attrCount > MAXATTRS) {
-		rc = -1; // TODO to be changed
-		return rc;
+		return RC(-1);
 	}
 
 	cout << "CreateTable\n" << "   relName     =" << lowerRelName << "\n"
 			<< "   attrCount   =" << attrCount << "\n";
 
-	RM_FileHandle acatalog;
-	if ((rc = rmm->OpenFile("attrcat", acatalog))) {
+	if ((rc = rmm->OpenFile("attrcat", attrcat))) {
 		PrintError(rc);
 	}
 
@@ -170,13 +166,13 @@ RC SM_Manager::CreateTable(const char *relName, int attrCount,
 		atuple.attrLength = attributes[i].attrLength;
 		strcpy(atuple.attrName, attributes[i].attrName); // +1 pour '\0'
 		atuple.attrType = attributes[i].attrType;
-		atuple.indexNo; // Euh, que mettre ?
+		atuple.indexNo = -1;
 		atuple.offset = offset;
 		strcpy(atuple.relName, lowerRelName); // +1 pour '\0'
 
 		// Add a tuple in attrcat for each attribute of the relation.
 		RID *rid; // vanish
-		if ((rc = acatalog.InsertRec((char *) atuple, *rid))) {
+		if ((rc = attrcat.InsertRec((char *) atuple, *rid))) {
 			return RC(-1);
 		}
 
@@ -194,20 +190,19 @@ RC SM_Manager::CreateTable(const char *relName, int attrCount,
 	const int totalSize = offset;
 
 	// Add a tuple in relcat for the relation.
-	RM_FileHandle rcatalog;
-	if ((rc = rmm->OpenFile("relcat", rcatalog))) {
+	if ((rc = rmm->OpenFile("relcat", relcat))) {
 		PrintError(rc);
 	}
 
 	RelationTuple rtuple;
 	rtuple.attrCount = attrCount;
-	rtuple.indexCount = 0; // Let's consider we choose later which attributes
-	// we index but don't remember to keep that counter up to date.
+	rtuple.indexCount = 0; // we choose later which attributes we index but
+	// remember to keep that counter up to date.
 	strcpy(rtuple.relName, lowerRelName);
 	rtuple.tupleLength = totalSize;
 
 	RID *rid; // vanish
-	if ((rc = rcatalog.InsertRec((char *) rtuple, *rid))) {
+	if ((rc = relcat.InsertRec((char *) rtuple, *rid))) {
 		return RC(-1);
 	}
 
@@ -222,7 +217,7 @@ RC SM_Manager::CreateTable(const char *relName, int attrCount,
 	 * behaviour. One solution to this problem is to force pages each time
 	 * a catalog is changed.
 	 */
-	if ((rc = acatalog.ForcePages()) || (rc = rcatalog.ForcePages())) {
+	if ((rc = attrcat.ForcePages()) || (rc = relcat.ForcePages())) {
 		return RC(-1);
 	}
 
@@ -238,10 +233,127 @@ RC SM_Manager::DropTable(const char *relName) {
 	return (0);
 }
 
+/*
+ * Three parts:
+ * #1 First we check arguments and preconditions. Only one index may be created
+ * for each attribute of a relation.
+ * #2 Then we update attrcat to reflect the new index, we create it and we
+ * build it:
+ * 	2.1 opening the index;
+ * 	2.2 using RM component methods to scan through the records to be indexed;
+ *  2.3 closing the index.
+ * #3 Finally we clean all and reduce the memory print.
+ */
 RC SM_Manager::CreateIndex(const char *relName, const char *attrName) {
+	RC rc = 0;
+
+	// Format input
+	char *lrelName = (char*) malloc(MAXNAME + 1);
+	char *lattrName = (char*) malloc(MAXNAME + 1);
+
+	if ((rc = FormatName((char *) lrelName))
+			|| (rc = FormatName((char *) lattrName))) {
+		return RC(-1);
+	}
+
+	RM_FileScan fs;
+	RM_Record rec; // This field is about to get overwritten a couple of time.
+	RM_Record rrecord; // Record for rtuple.
+	RelationTuple rtuple;
+	// → Does such a relation exist?
+	if ((rc = fs.OpenScan(relcat, // we look for the given relation
+			STRING, // looking for its name
+			MAXNAME + 1, // the former mayn't be wider than this
+			0, // null offset because we search on the column relname
+			EQ_OP, // we look for *this* relation precisely
+			lrelName // name of the relation
+			)) || (rc = fs.GetNextRec(rrecord)) // Should be exactly one.
+			) {
+		return RC(-1);
+	}
+	if ((rc = rec.GetData((char *&) rtuple))) {
+		return RC(-1);
+	}
+
+	// → Has this attribute been indexed already? It has to be none (-1) or we
+	// issue an non-zero return code.
+	if ((rc = fs.OpenScan(attrcat, // we look for the given relation
+			STRING, // looking for its name
+			MAXNAME + 1, // the former mayn't be wider than this
+			0, // null offset because we search on the column relname
+			EQ_OP, // we look for *this* relation precisely
+			lrelName // name of the relation
+			))) {
+		return RC(-1);
+	}
+
+	// Does it have an index already?
+	RM_Record arecord; // Record for atuple.
+	AttributeTuple atuple; // Its value is found then written in.
+	while ((rc = fs.GetNextRec(arecord))) {
+		if ((rc = arecord.GetData((char *&) atuple))) {
+			return RC(-1);
+		}
+		if (strcmp(atuple.relName, lrelName)) {
+			// We've found the entry for given relation and attribute.
+			// Does it have an index already?
+			if (atuple.indexNo != -1) {
+				return RC(-1); // Has an index already.
+			} else {
+				break; // Exit the loop
+			}
+		}
+	}
+
+	// Index creation
+	if ((rc = ixm->CreateIndex(atuple.relName, rtuple.indexCount,
+			atuple.attrType, atuple.attrLength))) {
+		return RC(-1);
+	}
+
+	// Update index data.
+	atuple.indexNo = rtuple.indexCount++;
+	if ((rc = relcat.UpdateRec(rrecord)) || (rc = attrcat.UpdateRec(arecord))
+			|| (rc = relcat.ForcePages() || (rc = attrcat.ForcePages()))) {
+		return RC(-1);
+	}
+
+	/* Opens the index so we'll close it later.*/
+	IX_IndexHandle ih;
+	/* Opens the relation file which is about to get indexed */
+	RM_FileHandle fh;
+	/* Instanciate a scanner to yield tuples */
+	RM_FileScan fs;
+	if ((rc = ixm->OpenIndex(lrelName, atuple.indexNo, ih))
+			|| (rc = rmm->OpenFile(lrelName, fh))
+			|| (rc = fs.OpenScan(fh, atuple.attrType, atuple.attrLength,
+					atuple.offset, NO_OP, NULL))) {
+		return RC(-1);
+	}
+
+	// Walk throughout the records and insert each of them into the index.
+	while ((rc = fs.GetNextRec(rec))) {
+		char *pData;
+		RID rid;
+		// Retrieve the record.
+		// Insert it into the index.
+		if ((rc = rec.GetData(pData) || (rc = rec.GetRid(rid)))
+				|| (rc = ih.InsertEntry(pData + atuple.offset, rid))) {
+			return RC(-1);
+		}
+	}
+
 	cout << "CreateIndex\n" << "   relName =" << relName << "\n"
 			<< "   attrName=" << attrName << "\n";
-	return (0);
+
+	if ((rc = fs.CloseScan()) || (rc = rmm->CloseFile(fh))
+			|| (rc = ixm->CloseIndex(ih))) {
+		return RC(-1);
+	}
+
+	// TODO Any free() to do here?
+
+	return rc;
 }
 
 RC SM_Manager::DropIndex(const char *relName, const char *attrName) {
