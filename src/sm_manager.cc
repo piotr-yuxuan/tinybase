@@ -323,7 +323,7 @@ RC SM_Manager::CreateIndex(const char *relName, const char *attrName) {
 	/* Opens the index so we'll close it later.*/
 	IX_IndexHandle ih;
 	/* Opens the relation file which is about to get indexed */
-	RM_FileHandle fh;
+	RM_FileHandle fh; 
 	/* Instanciate a scanner to yield tuples */
 	RM_FileScan fs;
 	if ((rc = ixm->OpenIndex(lrelName, atuple.indexNo, ih))
@@ -548,6 +548,10 @@ RC SM_Manager::Load(const char *relName,
 }
 
 RC SM_Manager::Print(const char *relName) {
+	/*
+	 * Il faut imprimer toute la relation nommée relName, et compter le nombre de tuples
+	 */
+
 	cout << "Print\n" << "   relName=" << relName << "\n";
 	return (0);
 }
@@ -570,43 +574,104 @@ RC SM_Manager::Help() {
 	RM_FileScan rmfs;
 	RM_Record rec;
 	RID rid;
-	char * _pdata;
+	char * _pData;
 
 	/* On ouvre le fichier qui contient la table  relcat*/
-	RC rc = this.rmm.OpenFile("relcat", rmfh);
-	if (rc) PrintError(rc);
+	rc = this->rmm->OpenFile("relcat", rmfh);
+	if (rc) return rc;
 
 	/*
 	* Pour définir le rid dont on a besoin pour la méthode getRecord,
 	* on ouvre un scan avec le RM_FileScan. Ensuite, on trouve le prochain record
 	* qui correspond et on récupère son RID.
 	*/
-	ClientHint _pinHint;
-	rc = rmfs.RM_FileScan::OpenScan(rmfh, STRING, 1 + MAXSTRINGLEN, 0, NO_OP, NULL, _pinHint);
-	if (rc != RM_SCANOPEN){
-		cout << "Erreur!";
-		PrintError(rc);
-	}
-	rmfs.GetNextRec(rec);
-	rec.GetRid(rid);
-	rmfh.RM_FileHandle::GetRec(rid, rec);
-	rec.GetData(_pdata);
+	
+	rc = rmfs.RM_FileScan::OpenScan(rmfh, STRING, 1 + MAXSTRINGLEN, 0, NO_OP, NULL);
+	if (rc) return rc;
+
+	/*rc = rmfs.GetNextRec(rec);
+	if (rc) return rc;
+	rc = rec.GetRid(rid);
+	if (rc) return rc;
+	rc = rmfh.RM_FileHandle::GetRec(rid, rec);
+	if (rc) return rc;
+	rc = rec.GetData(_pData);
+	if (rc) return rc;
 
 	DataAttrInfo relNameAttr;
 	relNameAttr.relName = _pData;
 	relNameAttr.attrName = "relname";
-	relNameAttr.offset = 0;
+	relNameAttr.offset = 0;   
 	relNameAttr.attrType = STRING;
 	relNameAttr.attrLength = MAXNAME + 1;
 	relNameAttr.indexNo = -1;
+	*/
+	while ((rc = rmfs.GetNextRec(rec))) {
+		
+		/* 
+		 * On parcourt les lignes de relcat!
+		 * Je me suis inspirée du code de la méthode CreateIndex()
+		 */
 
-	Printer(_pData, 1);
+		if ((rc = rec.GetData(_pData) || (rc = rec.GetRid(rid)))) {
+			return RC(-1);
+		}
+		/*
+		 * On a maintenant le contenu entier du record exploré dans pData.
+		 * Il faudrait donc le couper pour en sortir le nom de la relation
+		 * qui est la donnée interessante pour cette méthode. Il suffit d'utiliser la structure
+		 * DataAttrInfo
+		 */
 
-	return (rc);
+		Printer((DataAttrInfo)_pData, 1);
+	}
+
+	if ((rc = rmfs.CloseScan()) || (rc = rmm->CloseFile(fh))) {
+		return RC(-1);
+	}
+
+	return 0;
+}
+
 }
 
 RC SM_Manager::Help(const char *relName) {
-	cout << "Help\n" << "   relName=" << relName << "\n";
+	/* On définit les variables */
+	RC rc = 0;
+	RM_FileHandle rmfh;
+	RM_FileScan rmfs;
+	RM_Record rec;
+	RID rid;
+	char * _pData;
+
+	/* On ouvre le fichier qui contient la table  attrcat*/
+	rc = this->rmm->OpenFile("attrcat", rmfh);
+	if (rc) return rc;
+	
+	if ((rc = fs.OpenScan(rmfh, STRING, MAXNAME + 1, 0, EQ_OP, relName)) || (rc = fs.GetNextRec(rec))) {
+		return RC(-1);
+	}
+
+	while ((rc = rmfs.GetNextRec(rec))) {
+
+		if ((rc = rec.GetData(_pData) || (rc = rec.GetRid(rid)))) {
+			return RC(-1);
+		}
+		
+		/*
+		 * On suppose que les attributs sont comptés à partir de 0
+		 */
+		Printer((DataAttrInfo)_pData, 0);
+		Printer((DataAttrInfo)_pData, 1);
+		Printer((DataAttrInfo)_pData, 2);
+		Printer((DataAttrInfo)_pData, 3);
+	}
+	//scan all the records in relcat
+	if ((rc = rmfs.CloseScan()) || (rc = rmm->CloseFile(fh))) {
+		return RC(-1);
+	}
+
+
 	return (0);
 }
 
