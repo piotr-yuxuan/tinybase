@@ -552,6 +552,40 @@ RC SM_Manager::Print(const char *relName) {
 	/*
 	 * Il faut imprimer toute la relation nommée relName, et compter le nombre de tuples
 	 */
+	RC rc = 0;
+	RM_FileHandle *rmfh;
+	RM_FileScan rmfs;
+	RM_Record rec;
+	char * _pData;
+
+	/* On met le nom de la relation en petits caractères*/
+	char *lowerRelName = (char*)malloc(MAXNAME + 1);
+	strcpy(lowerRelName, relName);
+	FormatName((char *)lowerRelName);
+
+	rc = this->rmm->OpenFile(lowerRelName, rmfh);
+	if (rc) return rc;
+
+		/* 
+		 * Si le fichier correspondant à la relation demandée existe bien,
+		 * on imprime TOUT !
+		 * On commence par le scanner, puis on printera tous ses records!
+		 */
+	rc = rmfs.RM_FileScan::OpenScan(rmfh, STRING, 1 + MAXSTRINGLEN, 0, NO_OP, NULL);
+	if (rc) return rc;
+
+	while ((rc = rmfs.GetNextRec(rec))) {
+
+		rc = rec.GetData(_pData);
+		if (rc) return rc;
+
+		Print(rmfh, _pData);
+	}
+
+	if ((rc = rmfs.CloseScan()) || (rc = rmm->CloseFile(fh))) {
+		return RC(-1);
+	}
+
 
 	cout << "Print\n" << "   relName=" << relName << "\n";
 	return (0);
@@ -667,7 +701,7 @@ RC SM_Manager::Help(const char *relName) {
 		Printer((DataAttrInfo)_pData, 2);
 		Printer((DataAttrInfo)_pData, 3);
 	}
-	//scan all the records in relcat
+	
 	if ((rc = rmfs.CloseScan()) || (rc = rmm->CloseFile(fh))) {
 		return RC(-1);
 	}
