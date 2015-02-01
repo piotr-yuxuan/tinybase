@@ -251,7 +251,7 @@ RC SM_Manager::CreateIndex(const char *relName, const char *attrName) {
 
 	if ((rc = FormatName((char *) lrelName))
 			|| (rc = FormatName((char *) lattrName))) {
-		return RC(-1);
+        return rc;
 	}
 
 	RM_FileScan fs;
@@ -267,10 +267,10 @@ RC SM_Manager::CreateIndex(const char *relName, const char *attrName) {
 			lrelName // name of the relation
 			)) || (rc = fs.GetNextRec(rrecord)) // Should be exactly one.
 			) {
-		return RC(-1);
+        return rc;
 	}
-	if ((rc = rec.GetData((char *&) rtuple))) {
-		return RC(-1);
+    if ((rc = rrecord.GetData((char *) &rtuple))) {
+        return rc;
 	}
 
 	// → Has this attribute been indexed already? It has to be none (-1) or we
@@ -282,37 +282,38 @@ RC SM_Manager::CreateIndex(const char *relName, const char *attrName) {
 			EQ_OP, // we look for *this* relation precisely
 			lrelName // name of the relation
 			))) {
-		return RC(-1);
+        return rc;
 	}
 
 	// Does it have an index already?
 	RM_Record arecord; // Record for atuple.
     DataAttrInfo atuple; // Its value is found then written in.
     char * pAtuple;
-	while ((rc = fs.GetNextRec(arecord))) {
+    while ((rc = fs.GetNextRec(arecord))!=RM_EOF) {
+        //Gets the data for the tuple
         if ((rc = arecord.GetData(pAtuple))) {
-			return RC(-1);
+            return rc;
 		}
+        //Copies it into atuple
         memcpy(&atuple, pAtuple, sizeof(DataAttrInfo));
-        if (strcmp(atuple.relName, lrelName)) {
+        if (strcmp(atuple.relName, lrelName)==0) {
 			// We've found the entry for given relation and attribute.
 			// Does it have an index already?
 			if (atuple.indexNo != -1) {
 				return RC(-1); // Has an index already.
-			} else {
-				break; // Exit the loop
-			}
+            }
+            break; // Exit the loop
 		}
 	}
 
 	// Index creation
 	if ((rc = ixm->CreateIndex(atuple.relName, rtuple.indexCount,
 			atuple.attrType, atuple.attrLength))) {
-		return RC(-1);
+        return rc;
 	}
 
 	// Update index data.
-	atuple.indexNo = rtuple.indexCount++;
+    atuple.indexNo = rtuple.indexCount++;
 	if ((rc = relcat.UpdateRec(rrecord)) || (rc = attrcat.UpdateRec(arecord))
 			|| (rc = relcat.ForcePages() || (rc = attrcat.ForcePages()))) {
 		return RC(-1);
@@ -327,18 +328,18 @@ RC SM_Manager::CreateIndex(const char *relName, const char *attrName) {
 			|| (rc = rmm->OpenFile(lrelName, fh))
 			|| (rc = fs.OpenScan(fh, atuple.attrType, atuple.attrLength,
 					atuple.offset, NO_OP, NULL))) {
-		return RC(-1);
+        return rc;
 	}
 
 	// Walk throughout the records and insert each of them into the index.
-	while ((rc = fs.GetNextRec(rec))) {
+    while ((rc = fs.GetNextRec(rec))!=RM_EOF) {
 		char *pData;
 		RID rid;
 		// Retrieve the record.
 		// Insert it into the index.
 		if ((rc = rec.GetData(pData) || (rc = rec.GetRid(rid)))
 				|| (rc = ih.InsertEntry(pData + atuple.offset, rid))) {
-			return RC(-1);
+            return rc;
 		}
 	}
 
@@ -347,12 +348,14 @@ RC SM_Manager::CreateIndex(const char *relName, const char *attrName) {
 
 	if ((rc = fs.CloseScan()) || (rc = rmm->CloseFile(fh))
 			|| (rc = ixm->CloseIndex(ih))) {
-		return RC(-1);
+        return rc;
 	}
 
-	// TODO Any free() to do here?
+    //Desallocates
+    free(lrelName);
+    free(lattrName);
 
-	return rc;
+    return 0;
 }
 
 RC SM_Manager::DropIndex(const char *relName, const char *attrName) {
