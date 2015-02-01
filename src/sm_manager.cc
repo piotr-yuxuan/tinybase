@@ -121,24 +121,19 @@ RC SM_Manager::CreateTable(const char *relName, int attrCount,
 	strcpy(lowerRelName, relName);
 	FormatName((char *) lowerRelName);
 
-	RM_FileHandle *fh;
-	if ((rc = rmm->OpenFile(lowerRelName, *fh))) {
+    RM_FileHandle fh;
+    if (!(rc = rmm->OpenFile(lowerRelName, fh))) {
 		// File already exists then another database is already named the same.
 		free(lowerRelName);
-		free(fh);
 		return RC(-1);
 	}
 
-	if (1 < attrCount || attrCount > MAXATTRS) {
+    if (attrCount < 1 || attrCount > MAXATTRS) {
 		return RC(-1);
 	}
 
 	cout << "CreateTable\n" << "   relName     =" << lowerRelName << "\n"
 			<< "   attrCount   =" << attrCount << "\n";
-
-	if ((rc = rmm->OpenFile("attrcat", attrcat))) {
-		PrintError(rc);
-	}
 
 	int offset = 0;
     AttributeTuple atuple; // atuple is overwritten each iteration.
@@ -149,15 +144,19 @@ RC SM_Manager::CreateTable(const char *relName, int attrCount,
 			return rc;
 		}
 
+        //Checks attribute's length
 		switch (a.attrType) {
 		case STRING:
-			if (a.attrLength > 0 && a.attrLength < MAXSTRINGLEN) {
+            if (a.attrLength <= 0 || a.attrLength > MAXSTRINGLEN) {
 				return RC(-1);
 			}
 			break;
 		case FLOAT:
+            if (a.attrLength != sizeof(float)) {
+                return RC(-1);
+            }
 		case INT:
-			if (a.attrLength != 4) {
+            if (a.attrLength != sizeof(int)) {
 				return RC(-1);
 			}
 			break;
@@ -175,7 +174,7 @@ RC SM_Manager::CreateTable(const char *relName, int attrCount,
 		// Add a tuple in attrcat for each attribute of the relation.
         RID rid; // vanish
         if ((rc = attrcat.InsertRec( (char * ) &atuple, rid))) { //TODO check
-			return RC(-1);
+            return rc;
 		}
 
 		offset += a.attrLength;
@@ -192,10 +191,6 @@ RC SM_Manager::CreateTable(const char *relName, int attrCount,
 	const int totalSize = offset;
 
 	// Add a tuple in relcat for the relation.
-	if ((rc = rmm->OpenFile("relcat", relcat))) {
-		PrintError(rc);
-	}
-
 	RelationTuple rtuple;
 	rtuple.attrCount = attrCount;
 	rtuple.indexCount = 0; // we choose later which attributes we index but
@@ -205,11 +200,11 @@ RC SM_Manager::CreateTable(const char *relName, int attrCount,
 
     RID rid; // vanish
     if ((rc = relcat.InsertRec((char *) &rtuple, rid))) {
-		return RC(-1);
+        return rc;
 	}
 
 	if ((rc = rmm->CreateFile(lowerRelName, totalSize))) {
-		return RC(-1);
+        return rc;
 	}
 
 	/*
@@ -220,12 +215,13 @@ RC SM_Manager::CreateTable(const char *relName, int attrCount,
 	 * a catalog is changed.
 	 */
 	if ((rc = attrcat.ForcePages()) || (rc = relcat.ForcePages())) {
-		return RC(-1);
+        return rc;
 	}
 
+    //Desallocates lowerRelName
 	free(lowerRelName);
 
-	return rc;
+    return 0;
 }
 
 RC SM_Manager::DropTable(const char *relName) {
