@@ -699,39 +699,59 @@ RC SM_Manager::Help() {
 RC SM_Manager::Help(const char *relName) {
 	/* On définit les variables */
 	RC rc = 0;
-	RM_FileHandle rmfh;
 	RM_FileScan rmfs;
 	RM_Record rec;
 	RID rid;
 	char * _pData;
 
-	/* On ouvre le fichier qui contient la table  attrcat*/
-	rc = this->rmm->OpenFile("attrcat", rmfh);
-	if (rc) return rc;
-	
-	if ((rc = fs.OpenScan(rmfh, STRING, MAXNAME + 1, 0, EQ_OP, relName)) || (rc = fs.GetNextRec(rec))) {
-		return RC(-1);
+    /*
+     *Creates the printer with the six DatAttrInfo for attributes of ATTRCAT table
+     */
+    DataAttrInfo attributes[6]; //There are exactly 6 attributes in attrCat table
+
+    RM_FileScan attrFs;
+    RM_Record attrRec;
+    if((rc = attrFs.OpenScan(attrcat, STRING, MAXNAME+1, 0, EQ_OP, (void*) "attrcat"))){
+        return rc;
+    }
+    int i=0;
+    while(attrFs.GetNextRec(attrRec)!=RM_EOF){
+        char* pDataAttrRec;
+        if((rc = attrRec.GetData(pDataAttrRec))){
+            return rc;
+        }
+        memcpy(&attributes[i], pDataAttrRec, sizeof(DataAttrInfo));
+        i++;
+    }
+    if(i!=6){
+        return -1;
+    }
+    if((rc = attrFs.CloseScan())){
+        return rc;
+    }
+    Printer printer = Printer(attributes, 6);
+
+    /*
+     *Scans ATTRCAT table once angain, to find the attributes of relName table and print them
+     */
+    if ((rc = fs.OpenScan(attrcat, STRING, MAXNAME + 1, 0, EQ_OP, relName))) {
+        return rc;
 	}
 
 	while ((rc = rmfs.GetNextRec(rec))) {
 
-		if ((rc = rec.GetData(_pData) || (rc = rec.GetRid(rid)))) {
-			return RC(-1);
+        if ((rc = rec.GetData(_pData))) {
+            return rc;
 		}
-		
-		/*
-		 * On suppose que les attributs sont comptés à partir de 0
-		 */
-		Printer((DataAttrInfo)_pData, 0);
-		Printer((DataAttrInfo)_pData, 1);
-		Printer((DataAttrInfo)_pData, 2);
-		Printer((DataAttrInfo)_pData, 3);
+        //Prints
+        if((rc = printer.Print(cout, _pData))){
+            return rc;
+        }
 	}
 	
-	if ((rc = rmfs.CloseScan()) || (rc = rmm->CloseFile(fh))) {
-		return RC(-1);
+    if ((rc = rmfs.CloseScan())) {
+        return rc;
 	}
-
 
 	return (0);
 }
