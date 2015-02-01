@@ -651,15 +651,10 @@ RC SM_Manager::Help() {
 
 	/* On définit les variables */
 	RC rc = 0;
-	RM_FileHandle rmfh;
 	RM_FileScan rmfs;
 	RM_Record rec;
 	RID rid;
     char * _pData;
-
-	/* On ouvre le fichier qui contient la table  relcat*/
-    rc = this->rmm->OpenFile("relcat", rmfh);
-    if (rc) return rc;
 
 	/*
 	* Pour définir le rid dont on a besoin pour la méthode getRecord,
@@ -667,27 +662,20 @@ RC SM_Manager::Help() {
 	* qui correspond et on récupère son RID.
 	*/
 	
-	rc = rmfs.RM_FileScan::OpenScan(rmfh, STRING, 1 + MAXSTRINGLEN, 0, NO_OP, NULL);
+    rc = rmfs.RM_FileScan::OpenScan(relcat, STRING, MAXNAME+1, 0, NO_OP, NULL);
 	if (rc) return rc;
 
-	/*rc = rmfs.GetNextRec(rec);
-	if (rc) return rc;
-	rc = rec.GetRid(rid);
-	if (rc) return rc;
-	rc = rmfh.RM_FileHandle::GetRec(rid, rec);
-	if (rc) return rc;
-	rc = rec.GetData(_pData);
-	if (rc) return rc;
+    //Creates Printer object for the relname attribute only
+    DataAttrInfo attributes[1];
+    attributes[0].attrLength = MAXNAME+1;
+    attributes[0].attrName = "relname";
+    attributes[0].attrType = STRING;
+    attributes[0].indexNo = -1;
+    attributes[0].offset = 0;
+    attributes[0].relName = "relcat";
+    Printer printer = Printer(attributes, 1);
 
-	DataAttrInfo relNameAttr;
-	relNameAttr.relName = _pData;
-	relNameAttr.attrName = "relname";
-	relNameAttr.offset = 0;
-	relNameAttr.attrType = STRING;
-	relNameAttr.attrLength = MAXNAME + 1;
-	relNameAttr.indexNo = -1;
-	*/
-	while ((rc = rmfs.GetNextRec(rec))) {
+    while ((rc = rmfs.GetNextRec(rec))!=RM_EOF) {
 		
 		/* 
 		 * On parcourt les lignes de relcat!
@@ -695,25 +683,17 @@ RC SM_Manager::Help() {
 		 */
 
 		if ((rc = rec.GetData(_pData) || (rc = rec.GetRid(rid)))) {
-			return RC(-1);
+            return rc;
 		}
-		/*
-		 * On a maintenant le contenu entier du record exploré dans pData.
-		 * Il faudrait donc le couper pour en sortir le nom de la relation
-		 * qui est la donnée interessante pour cette méthode. Il suffit d'utiliser la structure
-		 * DataAttrInfo
-		 */
-
-        Printer((DataAttrInfo)_pData, 1);
+        //We just print the beginning of the tuple i.e. relname
+        printer.Print(cout, _pData);
 	}
 
-	if ((rc = rmfs.CloseScan()) || (rc = rmm->CloseFile(fh))) {
-		return RC(-1);
-}
+    if ((rc = rmfs.CloseScan())) {
+        return rc;
+    }
 
 	return 0;
-}
-
 }
 
 RC SM_Manager::Help(const char *relName) {
