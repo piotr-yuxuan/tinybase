@@ -552,7 +552,7 @@ RC SM_Manager::Print(const char *relName) {
 	 * Il faut imprimer toute la relation nommée relName, et compter le nombre de tuples
 	 */
 	RC rc = 0;
-	RM_FileHandle *rmfh;
+    RM_FileHandle rmfh;
 	RM_FileScan rmfs;
 	RM_Record rec;
 	char * _pData;
@@ -570,19 +570,66 @@ RC SM_Manager::Print(const char *relName) {
 		 * on imprime TOUT !
 		 * On commence par le scanner, puis on printera tous ses records!
 		 */
-	rc = rmfs.RM_FileScan::OpenScan(rmfh, STRING, 1 + MAXSTRINGLEN, 0, NO_OP, NULL);
+
+    //Finds the number of of attributes using a scan
+    int attrCount;
+    RM_FileScan relcatFs;
+    RM_Record relRec;
+    if((rc = relcatFs.OpenScan(relcat, STRING, MAXNAME+1, 0, EQ_OP, relName))){
+        return rc;
+    }
+    if((rc = relcatFs.GetNextRec(relRec))){
+        return rc;
+    }
+    char* pDataRelRec;
+    if((rc = relRec.GetData(pDataRelRec))){
+        return rc;
+    }
+    //Second param in emcpy is the offset of attrCount in the relcat table
+    memcpy(&attrCount, pDataRelRec+MAXNAME+1+sizeof(int), sizeof(int));
+    if((rc = relcatFs.CloseScan())){
+        return rc;
+    }
+    //Fills an array with the attributes of our table
+    DataAttrInfo attributes[attrCount];
+    RM_FileScan attrcatFs;
+    RM_Record attrcatRec;
+    if((rc = attrcatFs.OpenScan(attrcat, STRING, MAXNAME+1, 0, EQ_OP, relName))){
+        return rc;
+    }
+    int i=0; //i is used to check that the nb of Rec retrieved is actually attrCount
+    while(attrcatFs.GetNextRec(attrcatRec)!=RM_EOF){
+        char* pDataAttrRec;
+        if((rc = attrcatRec.GetData(pDataAttrRec))){
+            return rc;
+        }
+        //Fills the array
+        memcpy(&attributes[i], pDataAttrRec, sizeof(DataAttrInfo));
+        i++;
+    }
+    if((rc = attrcatFs.CloseScan())){
+        return rc;
+    }
+    if(i!=attrCount){
+        return -1;
+    }
+    //Creates the printer object
+    Printer printer(attributes, attrCount);
+
+    //Now for each tuple of the relation we can print it with the printer object (scan with the first attr for instance)
+    rc = rmfs.OpenScan(rmfh, attributes[0].attrType, attributes[0].attrLength, attributes[0].offset, NO_OP, NULL);
 	if (rc) return rc;
 
-	while ((rc = rmfs.GetNextRec(rec))) {
+    while ((rc = rmfs.GetNextRec(rec))!=RM_EOF) {
 
 		rc = rec.GetData(_pData);
 		if (rc) return rc;
 
-		Print(rmfh, _pData);
+        printer.Print(cout, _pData);
 	}
-
-	if ((rc = rmfs.CloseScan()) || (rc = rmm->CloseFile(fh))) {
-		return RC(-1);
+    //Closes scan & file
+    if ((rc = rmfs.CloseScan()) || (rc = rmm->CloseFile(rmfh))) {
+        return rc;
 	}
 
 
@@ -657,7 +704,7 @@ RC SM_Manager::Help() {
 		 * DataAttrInfo
 		 */
 
-		Printer((DataAttrInfo)_pData, 1);
+        Printer((DataAttrInfo)_pData, 1);
 	}
 
 	if ((rc = rmfs.CloseScan()) || (rc = rmm->CloseFile(fh))) {
