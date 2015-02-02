@@ -50,20 +50,17 @@ RC SM_Manager::FormatName(char *string) {
  * code could be avoided but it looks better to tweak the code each time
  * for a specific use.
  *
- * A more generic function, returning a RM_Record, may be more accurate but
- * would still create then destroy a filescan.
- *
  * There is no need to format input for this function is private. Input from
  * the user has been formatted yet.
  *
  * TODO: je ne comprends pas du tout, le compilateur me parle d'une errreur de
  * signature mais pourtant c'est bon, n'est-ce pas ?
  */
-RC SM_Manager::AttrFromRA(char * relName, char * attrName, DataAttrInfo * dai) {
+RC SM_Manager::AttrRecFromRA(char * relName, char * attrName, RM_Record * rec) {
 	RC rc = 0;
 	RM_FileScan relfs;
 	DataAttrInfo * pData = NULL;
-	RM_Record rec; // Record for rtuple.
+	RM_Record tmprec; // Record for rtuple.
 
 	if ((rc = relfs.OpenScan(relcat, // we look for the given relation
 			STRING, // looking for its name
@@ -74,15 +71,13 @@ RC SM_Manager::AttrFromRA(char * relName, char * attrName, DataAttrInfo * dai) {
 			))) {
 	}
 
-	while ((rc = relfs.GetNextRec(rec))) {
-		if ((rc = rec.GetData((char *&) pData))) {
-			return rc;
-		}
+	while ((rc = relfs.GetNextRec(tmprec))) {
+
 		// Test is necessary to avoid the pointer dai to change to inaccurate
 		// value which could be returned if nothing is found at the end of
 		// the loop.
 		if (strcmp(pData->attrName, attrName)) {
-			*dai = *pData;
+			rec = &tmprec;
 			return rc;
 		}
 	}
@@ -93,10 +88,10 @@ RC SM_Manager::AttrFromRA(char * relName, char * attrName, DataAttrInfo * dai) {
 /*
  * See documentation for AttrFromRA.
  */
-RC SM_Manager::RelFromR(char * relName, DataRelInfo * dri) {
+RC SM_Manager::RelFromR(char * relName, RM_Record * rec) {
 	RC rc = 0;
 	RM_FileScan fs;
-	RM_Record rec; // Record for rtuple.
+	RM_Record tmprec; // Record for rtuple.
 
 	if ((rc = fs.OpenScan(relcat, // we look for the given relation
 			STRING, // looking for its name
@@ -108,13 +103,11 @@ RC SM_Manager::RelFromR(char * relName, DataRelInfo * dri) {
 		return RC(-1);
 	}
 	// Should be exactly one.
-	if ((rc = fs.GetNextRec(rec))) {
+	if ((rc = fs.GetNextRec(tmprec))) {
 		return RC(-1);
 	}
 	// Set the pointer
-	if ((rc = rec.GetData((char *&) dri))) {
-		return RC(-1);
-	}
+	rec = &tmprec;
 
 	return rc;
 }
@@ -389,6 +382,17 @@ RC SM_Manager::DropTable(const char *relName) {
 	// reduces memory print
 	free(lrelName);
 
+	/*
+	 * The catalogs are loaded when the database is opened and closed only
+	 * when the database is closed. Then, updates to the catalogs are not
+	 * reflected onto disk immediately and this can cause weird interface
+	 * behaviour. One solution to this problem is to force pages each time
+	 * a catalog is changed.
+	 */
+	if ((rc = attrcat.ForcePages()) || (rc = relcat.ForcePages())) {
+		return rc;
+	}
+
 	// Finally prints succes
 	cout << "DropTable\n   relName=" << lrelName << "\n";
 	return rc;
@@ -524,8 +528,58 @@ RC SM_Manager::CreateIndex(const char *relName, const char *attrName) {
 }
 
 RC SM_Manager::DropIndex(const char *relName, const char *attrName) {
+
+	RC rc = 0;
+
+	// Format input
+	char *lrelName = (char*) malloc(MAXNAME + 1);
+	strcpy(lrelName, relName);
+	char *lattrName = (char*) malloc(MAXNAME + 1);
+	strcpy(lattrName, attrName);
+
+	if ((rc = FormatName((char *) lrelName))
+			|| (rc = FormatName((char *) lattrName))) {
+		return rc;
+	}
+
+	RM_Record arec, rrec;
+	DataAttrInfo dai;
+	DataRelInfo dri;
+
+	AttrRecFromRA(lrelName, lattrName, &arec);
+	if ((rc = arec.GetData((char *&) dai))) {
+		return rc;
+	}
+
+	RelFromR(lrelName, &rrec);
+	if ((rc = rrec.GetData((char *&) dri))) {
+		return rc;
+	}
+	dri.indexCount--;
+
+	// TODO NO_INDEX
+	if (dai.indexNo == -1) {
+		return RC(-1);
+	} else {
+		dai.indexNo = -1;
+	}
+
+	/*
+	 * The catalogs are loaded when the database is opened and closed only
+	 * when the database is closed. Then, updates to the catalogs are not
+	 * reflected onto disk immediately and this can cause weird interface
+	 * behaviour. One solution to this problem is to force pages each time
+	 * a catalog is changed.
+	 */
+	// Update index data.
+	if ((rc = attrcat.UpdateRec(arec)) || (rc = relcat.UpdateRec(rrec))
+			|| (rc = relcat.ForcePages() || (rc = attrcat.ForcePages()))) {
+		return RC(-1);
+	}
+
 	cout << "DropIndex\n" << "   relName =" << relName << "\n" << "   attrName="
 			<< attrName << "\n";
+
 	return (0);
 }
 

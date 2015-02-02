@@ -63,11 +63,11 @@ private:
      * Retrieve DataAttrInfo From Relation And Attribute
      * OUT : dai
      */
-    RC AttrFromRA(char * relName, char * attrName, DataAttrInfo * dai);
+    RC AttrRecFromRA(char * relName, char * attrName, RM_Record * record);
     /*
      * Retrieve DataRelInfo From Relation
      */
-    RC RelFromR(char * relName, DataRelInfo * dri);
+    RC RelFromR(char * relName, RM_Record * record);
 };
 
 //
