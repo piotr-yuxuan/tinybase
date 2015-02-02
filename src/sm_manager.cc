@@ -6,13 +6,14 @@
 
 #include <cstdio>
 #include <iostream>
+#include <fstream>
 #include "tinybase.h"
 #include "sm.h"
 #include "ix.h"
 #include "rm.h"
 #include <unistd.h>
 #include "printer.h"
-#include <fstream>
+
 
 using namespace std;
 
