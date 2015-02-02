@@ -44,6 +44,81 @@ RC SM_Manager::FormatName(char *string) {
 	return RC(0);
 }
 
+/*
+ * This function, alongst with RelFromR, is not widely used here for
+ * performance concerns. It's true a lot of almost-duplicated, very similar
+ * code could be avoided but it looks better to tweak the code each time
+ * for a specific use.
+ *
+ * A more generic function, returning a RM_Record, may be more accurate but
+ * would still create then destroy a filescan.
+ *
+ * There is no need to format input for this function is private. Input from
+ * the user has been formatted yet.
+ *
+ * TODO: je ne comprends pas du tout, le compilateur me parle d'une errreur de
+ * signature mais pourtant c'est bon, n'est-ce pas ?
+ */
+RC SM_Manager::AttrFromRA(char * relName, char * attrName, DataAttrInfo * dai) {
+	RC rc = 0;
+	RM_FileScan relfs;
+	DataAttrInfo * pData = NULL;
+	RM_Record rec; // Record for rtuple.
+
+	if ((rc = relfs.OpenScan(relcat, // we look for the given relation
+			STRING, // looking for its name
+			MAXNAME + 1, // the former mayn't be wider than this
+			0, // null offset because we search on the column relname
+			EQ_OP, // we look for *this* relation precisely
+			relName // name of the relation
+			))) {
+	}
+
+	while ((rc = relfs.GetNextRec(rec))) {
+		if ((rc = rec.GetData((char *&) pData))) {
+			return rc;
+		}
+		// Test is necessary to avoid the pointer dai to change to inaccurate
+		// value which could be returned if nothing is found at the end of
+		// the loop.
+		if (strcmp(pData->attrName, attrName)) {
+			*dai = *pData;
+			return rc;
+		}
+	}
+
+	return RC(-1); // TODO no such attributes for given relation.
+}
+
+/*
+ * See documentation for AttrFromRA.
+ */
+RC SM_Manager::RelFromR(char * relName, DataRelInfo * dri) {
+	RC rc = 0;
+	RM_FileScan fs;
+	RM_Record rec; // Record for rtuple.
+
+	if ((rc = fs.OpenScan(relcat, // we look for the given relation
+			STRING, // looking for its name
+			MAXNAME + 1, // the former mayn't be wider than this
+			0, // null offset because we search on the column relname
+			EQ_OP, // we look for *this* relation precisely
+			relName // name of the relation
+			))) {
+		return RC(-1);
+	}
+	// Should be exactly one.
+	if ((rc = fs.GetNextRec(rec))) {
+		return RC(-1);
+	}
+	// Set the pointer
+	if ((rc = rec.GetData((char *&) dri))) {
+		return RC(-1);
+	}
+
+	return rc;
+}
+
 /**
  * This method, along with method CloseDb, is called by the code implementing
  * the redbase command line utility. This method should change to the directory
@@ -219,15 +294,104 @@ RC SM_Manager::CreateTable(const char *relName, int attrCount,
 		return rc;
 	}
 
-	//Desallocates lowerRelName
+	// reduces memory print
 	free(lowerRelName);
 
 	return 0;
 }
 
+/*
+ * The drop table command destroys relation relName, along with all indexes on
+ * the relation.
+ *
+ * This method should destroy the relation named *relName and all indexes on
+ * that relation. The indexes are found by accessing catalog attrcat, and the
+ * index files are destroyed by calling method IX_Manager::DestroyIndex. The
+ * file for the relation itself is destroyed by calling method
+ * RM_Manager::DestroyFile. Information about the destroyed relation should
+ * be deleted from catalogs relcat and attrcat.
+ *
+ * Three parts:
+ * #1 Format input and check whether the relation actually exists
+ * #2 Erasing data from relcat, attrcat. Deleting index and relation files.
+ * #3 Clean and refresh
+ */
 RC SM_Manager::DropTable(const char *relName) {
-	cout << "DropTable\n   relName=" << relName << "\n";
-	return (0);
+
+	RC rc = 0;
+
+	// format input
+	char *lrelName = (char*) malloc(MAXNAME + 1);
+	strcpy(lrelName, relName);
+
+	RM_FileScan fs;
+	RM_Record rec;
+	RID rid;
+
+	// Relation table
+
+	if ((rc = fs.OpenScan(relcat, // we look for the given relation
+			STRING, // looking for its name
+			MAXNAME + 1, // the former mayn't be wider than this
+			0, // null offset because we search on the column relname
+			EQ_OP, // we look for *this* relation precisely
+			lrelName // name of the relation
+			))) {
+		return RC(-1);
+	}
+
+	if (!(rc = fs.GetNextRec(rec))) {
+		return RC(-1);
+	}
+
+	if ((rc = rec.GetRid(rid))) {
+		return RC(-1);
+	}
+
+	if ((rc = relcat.DeleteRec(rid))) {
+		return RC(-1);
+	}
+
+	// Attribute table and index
+
+	if ((rc = fs.OpenScan(attrcat, // we look for the given relation
+			STRING, // looking for its name
+			MAXNAME + 1, // the former mayn't be wider than this
+			0, // null offset because we search on the column relname
+			EQ_OP, // we look for *this* relation precisely
+			lrelName // name of the relation
+			))) {
+		return RC(-1);
+	}
+
+	while ((rc = fs.GetNextRec(rec))) {
+		DataAttrInfo atuple;
+		rec.GetData((char *&) atuple);
+		if (atuple.indexNo == -1) { // TODO Define NO_INDEX
+			if ((rc = DropIndex(relName, atuple.attrName))) {
+				return RC(-1);
+			}
+		}
+
+		if ((rc = rec.GetRid(rid))) {
+			return RC(-1);
+		}
+
+		if ((rc = attrcat.DeleteRec(rid))) {
+			return RC(-1);
+		}
+	}
+
+	// This file is unknown by now and everything about its enclosed data
+	// has been erased so we can destroy it.
+	rmm->DestroyFile(lrelName);
+
+	// reduces memory print
+	free(lrelName);
+
+	// Finally prints succes
+	cout << "DropTable\n   relName=" << lrelName << "\n";
+	return rc;
 }
 
 /*
@@ -359,17 +523,6 @@ RC SM_Manager::CreateIndex(const char *relName, const char *attrName) {
 	return 0;
 }
 
-/*
- * The drop table command destroys relation relName, along with all indexes on
- * the relation.
- *
- * This method should destroy the relation named *relName and all indexes on
- * that relation. The indexes are found by accessing catalog attrcat, and the
- * index files are destroyed by calling method IX_Manager::DestroyIndex. The
- * file for the relation itself is destroyed by calling method
- * RM_Manager::DestroyFile. Information about the destroyed relation should
- * be deleted from catalogs relcat and attrcat.
- */
 RC SM_Manager::DropIndex(const char *relName, const char *attrName) {
 	cout << "DropIndex\n" << "   relName =" << relName << "\n" << "   attrName="
 			<< attrName << "\n";
