@@ -14,7 +14,6 @@
 #include <unistd.h>
 #include "printer.h"
 
-
 using namespace std;
 
 SM_Manager::SM_Manager(IX_Manager &ixm, RM_Manager &rmm) {
@@ -235,11 +234,11 @@ RC SM_Manager::CreateTable(const char *relName, int attrCount,
 		}
 
 		atuple.attrLength = attributes[i].attrLength;
-		strcpy(atuple.attrName, attributes[i].attrName); // +1 pour '\0'
+		strcpy((char *) &atuple.attrName, attributes[i].attrName); // +1 pour '\0'
 		atuple.attrType = attributes[i].attrType;
 		atuple.indexNo = -1;
 		atuple.offset = offset;
-		strcpy(atuple.relName, lowerRelName); // +1 pour '\0'
+		strcpy((char *) &atuple.relName, lowerRelName); // +1 pour '\0'
 
 		// Add a tuple in attrcat for each attribute of the relation.
 		RID rid; // vanish
@@ -265,6 +264,7 @@ RC SM_Manager::CreateTable(const char *relName, int attrCount,
 	rtuple.attrCount = attrCount;
 	rtuple.indexCount = 0; // we choose later which attributes we index but
 	// remember to keep that counter up to date.
+	cout << "\n out \n";
 	strcpy(rtuple.relName, lowerRelName);
 	rtuple.tupleLength = totalSize;
 
