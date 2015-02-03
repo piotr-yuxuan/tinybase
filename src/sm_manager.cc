@@ -264,7 +264,6 @@ RC SM_Manager::CreateTable(const char *relName, int attrCount,
 	rtuple.attrCount = attrCount;
 	rtuple.indexCount = 0; // we choose later which attributes we index but
 	// remember to keep that counter up to date.
-	cout << "\n out \n";
 	strcpy(rtuple.relName, lowerRelName);
 	rtuple.tupleLength = totalSize;
 
