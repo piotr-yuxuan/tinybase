@@ -94,4 +94,19 @@ void SM_PrintError(RC rc);
 
 #define SM_INVALIDRELNAME      (START_SM_WARN + 0)  // invalid relation name
 #define SM_INVALIDATTRNAME     (START_SM_WARN + 1) // invalid attribute name
+#define SM_INVALIDDB         (START_SM_WARN + 2) // invalid database
+#define SM_COULDNTCLOSECAT   (START_SM_WARN + 3) // couldn't close catalog
+#define SM_DBALREADYEXISTS   (START_SM_WARN + 4) // database already exists
+#define SM_INVALIDATTRCOUNT  (START_SM_WARN + 5) // invalid attribute count
+#define SM_INVALIDATTR       (START_SM_WARN + 6) // invalid attribute
+#define SM_INVALIDATTRLENGTH (START_SM_WARN + 7) // invalid attribute length
+#define SM_INVALIDATTRTYPE   (START_SM_WARN + 8) // invalid attribute type
+#define SM_CATERROR          (START_SM_WARN + 9) // catalog error
+#define SM_COULDNTCREATEFILE (START_SM_WARN + 10) // couldn't create the file
+#define SM_COULDNTDESTROYFILE (START_SM_WARN + 11) // couldn't destroy the file
+#define SM_INDEXERROR        (START_SM_WARN + 12)// index error
+#define SM_COULDNTOPENFILE   (START_SM_WARN + 13) // couldn't open the file
+#define SM_LASTWARN        SM_COULDNTOPENFILE
+
+
 #endif

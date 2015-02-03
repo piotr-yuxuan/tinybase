@@ -125,18 +125,18 @@ RC SM_Manager::OpenDb(const char *dbName) {
 	// TODO Assumes we're in the parent directory.
 	if (chdir(dbName) < 0) {
 		cerr << " chdir error to " << *dbName << "\n";
-		return RC(-1);
+        return SM_INVALIDDB;
 	}
 
 	// Opening the files containing the system catalogs for the database.
 	if ((rc = rmm->OpenFile("relcat", relcat))) {
-		return rc;
+        return SM_INVALIDDB;
 	}
 	if ((rc = rmm->OpenFile("attrcat", attrcat))) {
-		PrintError(rc);
+        return SM_INVALIDDB;
 	}
 
-	return rc;
+    return 0;
 }
 
 /**
@@ -146,19 +146,15 @@ RC SM_Manager::OpenDb(const char *dbName) {
  */
 RC SM_Manager::CloseDb() {
 	RC rc = 0;
-
 	// Closing all open files in the current database.
 	// TODO right now just two files have been opened (to be changed if need be).
 	if ((rc = rmm->CloseFile(relcat))) {
-		PrintError(rc);
-		return rc;
+        return SM_COULDNTCLOSECAT;
 	}
 	if ((rc = rmm->CloseFile(attrcat))) {
-		PrintError(rc);
-		return rc;
+        return SM_COULDNTCLOSECAT;
 	}
-
-	return rc;
+    return 0;
 }
 
 /**
@@ -192,11 +188,11 @@ RC SM_Manager::CreateTable(const char *relName, int attrCount,
 	if (!(rc = rmm->OpenFile(lowerRelName, fh))) {
 		// File already exists then another database is already named the same.
 		free(lowerRelName);
-		return RC(-1);
+        return SM_DBALREADYEXISTS;
 	}
 
 	if (attrCount < 1 || attrCount > MAXATTRS) {
-		return RC(-1);
+        return SM_INVALIDATTRCOUNT;
 	}
 
 	cout << "CreateTable\n" << "   relName     =" << lowerRelName << "\n"
@@ -208,28 +204,28 @@ RC SM_Manager::CreateTable(const char *relName, int attrCount,
 	for (int i = 0; i < attrCount; i++) {
 		AttrInfo a = attributes[i];
 		if ((rc = FormatName(a.attrName))) {
-			return rc;
+            return SM_INVALIDATTR;
 		}
 
 		//Checks attribute's length
 		switch (a.attrType) {
 		case STRING:
 			if (a.attrLength <= 0 || a.attrLength > MAXSTRINGLEN) {
-				return RC(-1);
+                return SM_INVALIDATTRLENGTH;
 			}
 			break;
 		case FLOAT:
 			if (a.attrLength != sizeof(float)) {
-				return RC(-1);
+                return SM_INVALIDATTRLENGTH;
 			}
 			break;
 		case INT:
 			if (a.attrLength != sizeof(int)) {
-				return RC(-1);
+                return SM_INVALIDATTRLENGTH;
 			}
 			break;
 		default:
-			return RC(-1);
+            return SM_INVALIDATTRTYPE;
 		}
 
 		atuple.attrLength = attributes[i].attrLength;
@@ -242,7 +238,7 @@ RC SM_Manager::CreateTable(const char *relName, int attrCount,
 		// Add a tuple in attrcat for each attribute of the relation.
 		RID rid; // vanish
 		if ((rc = attrcat.InsertRec((char *) &atuple, rid))) { //TODO check
-			return rc;
+            return SM_CATERROR;
 		}
 
 		offset += a.attrLength;
@@ -273,11 +269,11 @@ RC SM_Manager::CreateTable(const char *relName, int attrCount,
 
 	RID rid; // vanish
 	if ((rc = relcat.InsertRec(rtuple, rid))) {
-		return rc;
+        return SM_CATERROR;
 	}
 
 	if ((rc = rmm->CreateFile(lowerRelName, totalSize))) {
-		return rc;
+        return SM_COULDNTCREATEFILE;
 	}
 
 	/*
@@ -289,7 +285,7 @@ RC SM_Manager::CreateTable(const char *relName, int attrCount,
 	 */
 
     if((rc = this->ForceToDisk())){
-        return rc;
+        return SM_CATERROR;
     }
 
 	// reduces memory print
@@ -337,19 +333,19 @@ RC SM_Manager::DropTable(const char *relName) {
 			EQ_OP, // we look for *this* relation precisely
 			lrelName // name of the relation
 			))) {
-		return RC(-1);
+        return SM_CATERROR;
 	}
 
 	if (!(rc = fs.GetNextRec(rec))) {
-		return RC(-1);
+        return SM_CATERROR;
 	}
 
 	if ((rc = rec.GetRid(rid))) {
-		return RC(-1);
+        return SM_CATERROR;
 	}
 
 	if ((rc = relcat.DeleteRec(rid))) {
-		return RC(-1);
+        return SM_CATERROR;
 	}
 
 	// Attribute table and index
@@ -361,7 +357,7 @@ RC SM_Manager::DropTable(const char *relName) {
 			EQ_OP, // we look for *this* relation precisely
 			lrelName // name of the relation
 			))) {
-		return RC(-1);
+        return SM_CATERROR;
 	}
 
 	while ((rc = fs.GetNextRec(rec))) {
@@ -369,22 +365,24 @@ RC SM_Manager::DropTable(const char *relName) {
 		rec.GetData((char *&) atuple);
 		if (atuple.indexNo == -1) { // TODO Define NO_INDEX
 			if ((rc = DropIndex(relName, atuple.attrName))) {
-				return RC(-1);
+                return SM_CATERROR;
 			}
 		}
 
 		if ((rc = rec.GetRid(rid))) {
-			return RC(-1);
+            return SM_CATERROR;
 		}
 
 		if ((rc = attrcat.DeleteRec(rid))) {
-			return RC(-1);
+            return SM_CATERROR;
 		}
 	}
 
 	// This file is unknown by now and everything about its enclosed data
 	// has been erased so we can destroy it.
-	rmm->DestroyFile(lrelName);
+    if((rc = rmm->DestroyFile(lrelName))){
+        return SM_COULDNTDESTROYFILE;
+    }
 
 	// reduces memory print
 	free(lrelName);
@@ -397,11 +395,11 @@ RC SM_Manager::DropTable(const char *relName) {
 	 * a catalog is changed.
 	 */
     if((rc = this->ForceToDisk())){
-        return rc;
+        return SM_CATERROR;
     }
 	// Finally prints succes
 	cout << "DropTable\n   relName=" << lrelName << "\n";
-	return rc;
+    return 0;
 }
 
 /*
@@ -428,7 +426,7 @@ RC SM_Manager::CreateIndex(const char *relName, const char *attrName) {
 
 	if ((rc = FormatName((char *) lrelName))
 			|| (rc = FormatName((char *) lattrName))) {
-		return rc;
+        return SM_CATERROR;
 	}
 
 	RM_FileScan fs;
@@ -444,10 +442,10 @@ RC SM_Manager::CreateIndex(const char *relName, const char *attrName) {
 			lrelName // name of the relation
 			)) || (rc = fs.GetNextRec(rrecord)) // Should be exactly one.
 			) {
-		return rc;
+        return SM_CATERROR;
 	}
 	if ((rc = rrecord.GetData((char *&) rtuple))) {
-		return rc;
+        return SM_CATERROR;
 	}
 
 	// → Has this attribute been indexed already? It has to be none (-1) or we
@@ -459,7 +457,7 @@ RC SM_Manager::CreateIndex(const char *relName, const char *attrName) {
 			EQ_OP, // we look for *this* relation precisely
 			lrelName // name of the relation
 			))) {
-		return rc;
+        return SM_CATERROR;
 	}
 
 	// Does it have an index already?
@@ -469,7 +467,7 @@ RC SM_Manager::CreateIndex(const char *relName, const char *attrName) {
 	while ((rc = fs.GetNextRec(arecord)) != RM_EOF) {
 		//Gets the data for the tuple
 		if ((rc = arecord.GetData(pAtuple))) {
-			return rc;
+            return SM_CATERROR;
 		}
 		//Copies it into atuple
 		memcpy(&atuple, pAtuple, sizeof(DataAttrInfo));
@@ -477,7 +475,7 @@ RC SM_Manager::CreateIndex(const char *relName, const char *attrName) {
 			// We've found the entry for given relation and attribute.
 			// Does it have an index already?
 			if (atuple.indexNo != -1) {
-				return RC(-1); // Has an index already.
+                return SM_CATERROR; // Has an index already.
 			}
 			break; // Exit the loop
 		}
@@ -486,14 +484,14 @@ RC SM_Manager::CreateIndex(const char *relName, const char *attrName) {
 	// Index creation
 	if ((rc = ixm->CreateIndex(atuple.relName, rtuple.indexCount,
 			atuple.attrType, atuple.attrLength))) {
-		return rc;
+        return SM_INDEXERROR;
 	}
 
 	// Update index data.
 	atuple.indexNo = rtuple.indexCount++;
 	if ((rc = relcat.UpdateRec(rrecord)) || (rc = attrcat.UpdateRec(arecord))
 			|| (rc = relcat.ForcePages() || (rc = attrcat.ForcePages()))) {
-		return RC(-1);
+        return SM_INDEXERROR;
 	}
 
 	/* Opens the index so we'll close it later.*/
@@ -505,7 +503,7 @@ RC SM_Manager::CreateIndex(const char *relName, const char *attrName) {
 			|| (rc = rmm->OpenFile(lrelName, fh))
 			|| (rc = fs.OpenScan(fh, atuple.attrType, atuple.attrLength,
 					atuple.offset, NO_OP, NULL))) {
-		return rc;
+        return SM_INDEXERROR;
 	}
 
 	// Walk throughout the records and insert each of them into the index.
@@ -516,7 +514,7 @@ RC SM_Manager::CreateIndex(const char *relName, const char *attrName) {
 		// Insert it into the index.
 		if ((rc = rec.GetData(pData) || (rc = rec.GetRid(rid)))
 				|| (rc = ih.InsertEntry(pData + atuple.offset, rid))) {
-			return rc;
+            return SM_INDEXERROR;
 		}
 	}
 
@@ -525,7 +523,7 @@ RC SM_Manager::CreateIndex(const char *relName, const char *attrName) {
 
 	if ((rc = fs.CloseScan()) || (rc = rmm->CloseFile(fh))
 			|| (rc = ixm->CloseIndex(ih))) {
-		return rc;
+        return SM_INDEXERROR;
 	}
 
 	//Desallocates
@@ -549,7 +547,7 @@ RC SM_Manager::DropIndex(const char *relName, const char *attrName) {
 
 	if ((rc = FormatName((char *) lrelName))
 			|| (rc = FormatName((char *) lattrName))) {
-		return rc;
+        return SM_INDEXERROR;
 	}
 
 	RM_Record arec, rrec;
@@ -558,12 +556,12 @@ RC SM_Manager::DropIndex(const char *relName, const char *attrName) {
 
 	AttrRecFromRA(lrelName, lattrName, &arec);
 	if ((rc = arec.GetData((char *&) dai))) {
-		return rc;
+        return SM_INDEXERROR;
 	}
 
 	RelFromR(lrelName, &rrec);
 	if ((rc = rrec.GetData((char *&) dri))) {
-		return rc;
+        return SM_INDEXERROR;
 	}
 	dri.indexCount--;
 
@@ -806,7 +804,7 @@ RC SM_Manager::Print(const char *relName) {
 
 	rc = this->rmm->OpenFile(lowerRelName, rmfh);
 	if (rc)
-		return rc;
+        return SM_COULDNTOPENFILE;
 
 	/*
 	 * Si le fichier correspondant à la relation demandée existe bien,
@@ -833,7 +831,7 @@ RC SM_Manager::Print(const char *relName) {
 	//Second param in emcpy is the offset of attrCount in the relcat table
 	memcpy(&attrCount, pDataRelRec + MAXNAME + 1 + sizeof(int), sizeof(int));
 	if ((rc = relcatFs.CloseScan())) {
-		return rc;
+        return SM_CATERROR;
 	}
 	//Fills an array with the attributes of our table
 	DataAttrInfo attributes[attrCount];
@@ -841,23 +839,23 @@ RC SM_Manager::Print(const char *relName) {
 	RM_Record attrcatRec;
 	if ((rc = attrcatFs.OpenScan(attrcat, STRING, MAXNAME + 1, 0, EQ_OP,
             (void *) lowerRelName))) {
-		return rc;
+        return SM_CATERROR;
 	}
 	int i = 0; //i is used to check that the nb of Rec retrieved is actually attrCount
 	while (attrcatFs.GetNextRec(attrcatRec) != RM_EOF) {
 		char* pDataAttrRec;
 		if ((rc = attrcatRec.GetData(pDataAttrRec))) {
-			return rc;
+            return SM_CATERROR;
 		}
 		//Fills the array
 		memcpy(&attributes[i], pDataAttrRec, sizeof(DataAttrInfo));
 		i++;
 	}
 	if ((rc = attrcatFs.CloseScan())) {
-		return rc;
+        return SM_CATERROR;
 	}
 	if (i != attrCount) {
-		return -1;
+        return SM_CATERROR;
 	}
 	//Creates the printer object
 	Printer printer(attributes, attrCount);
@@ -866,19 +864,19 @@ RC SM_Manager::Print(const char *relName) {
 	rc = rmfs.OpenScan(rmfh, attributes[0].attrType, attributes[0].attrLength,
 			attributes[0].offset, NO_OP, NULL);
 	if (rc)
-		return rc;
+        return SM_CATERROR;
 
 	while ((rc = rmfs.GetNextRec(rec)) != RM_EOF) {
 
 		rc = rec.GetData(_pData);
 		if (rc)
-			return rc;
+            return SM_CATERROR;
 
 		printer.Print(cout, _pData);
 	}
 	//Closes scan & file
 	if ((rc = rmfs.CloseScan()) || (rc = rmm->CloseFile(rmfh))) {
-		return rc;
+        return SM_CATERROR;
 	}
 
 	cout << "Print\n" << "   relName=" << relName << "\n";
@@ -913,7 +911,7 @@ RC SM_Manager::Help() {
 	rc = rmfs.RM_FileScan::OpenScan(relcat, STRING, MAXNAME + 1, 0, NO_OP,
 	NULL);
 	if (rc)
-		return rc;
+        return SM_CATERROR;
 
 	//Creates Printer object for the relname attribute only
 	DataAttrInfo attributes[1];
@@ -933,14 +931,14 @@ RC SM_Manager::Help() {
 		 */
 
 		if ((rc = rec.GetData(_pData) || (rc = rec.GetRid(rid)))) {
-			return rc;
+            return SM_CATERROR;
 		}
 		//We just print the beginning of the tuple i.e. relname
 		printer.Print(cout, _pData);
 	}
 
 	if ((rc = rmfs.CloseScan())) {
-		return rc;
+        return SM_CATERROR;
 	}
 
 	return 0;
@@ -966,7 +964,7 @@ RC SM_Manager::Help(const char *relName) {
         strcpy(attrFsValue, "attrcat");
 	if ((rc = attrFs.OpenScan(attrcat, STRING, MAXNAME + 1, 0, EQ_OP,
                         (void*) attrFsValue))) {
-		return rc;
+        return SM_CATERROR;
 	}
 	int i = 0;
 	while (attrFs.GetNextRec(attrRec) != RM_EOF) {
@@ -981,7 +979,7 @@ RC SM_Manager::Help(const char *relName) {
 		return -1;
 	}
 	if ((rc = attrFs.CloseScan())) {
-		return rc;
+        return SM_CATERROR;
 	}
 	Printer printer = Printer(attributes, 6);
 
@@ -990,19 +988,19 @@ RC SM_Manager::Help(const char *relName) {
 	 */
 	if ((rc = rmfs.OpenScan(attrcat, STRING, MAXNAME + 1, 0, EQ_OP,
 			(void *) relName))) {
-		return rc;
+        return SM_CATERROR;
 	}
 
         while (rmfs.GetNextRec(rec)!=RM_EOF) {
 
 		if ((rc = rec.GetData(_pData))) {
-			return rc;
+            return SM_CATERROR;
 		}
                 printer.Print(cout, _pData);
 	}
 
 	if ((rc = rmfs.CloseScan())) {
-		return rc;
+        return SM_CATERROR;
 	}
 
         free(attrFsValue);

@@ -38,7 +38,7 @@ PF_SOURCES     = pf_buffermgr.cc pf_error.cc pf_filehandle.cc \
                  pf_statistics.cc statistics.cc
 RM_SOURCES     = rm_rid.cc rm_record.cc rm_manager.cc rm_filescan.cc rm_filehandle.cc rm_error.cc
 IX_SOURCES     = ix_manager.cc ix_indexscan.cc ix_indexhandle.cc ix_error.cc
-SM_SOURCES     = sm_manager.cc printer.cc
+SM_SOURCES     = sm_manager.cc printer.cc sm_error.cc
 QL_SOURCES     = ql_manager_stub.cc
 UTILS_SOURCES  = dbcreate.cc dbdestroy.cc tinybase.cc
 PARSER_SOURCES = scan.cc parse.cc nodes.cc interp.cc
