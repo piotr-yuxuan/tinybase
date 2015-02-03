@@ -791,8 +791,9 @@ RC SM_Manager::Print(const char *relName) {
 
 	/* On met le nom de la relation en petits caractères*/
 	char *lowerRelName = (char*) malloc(MAXNAME + 1);
+        memset(lowerRelName, 0, MAXNAME + 1);
 	strcpy(lowerRelName, relName);
-	FormatName((char *) lowerRelName);
+        //FormatName((char *) lowerRelName);
 
 	rc = this->rmm->OpenFile(lowerRelName, rmfh);
 	if (rc)
@@ -810,7 +811,7 @@ RC SM_Manager::Print(const char *relName) {
 	RM_Record relRec;
 
 	if ((rc = relcatFs.OpenScan(relcat, STRING, MAXNAME + 1, 0, EQ_OP,
-			(void *) relName))) {
+                        (void *) lowerRelName))) {
 		return rc;
 	}
 	if ((rc = relcatFs.GetNextRec(relRec))) {

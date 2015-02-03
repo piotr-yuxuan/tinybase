@@ -90,7 +90,7 @@ int main(int argc, char *argv[])
     int relIndexCount = 0;
     //Copies them to our data pointer
     memcpy(pDataRel, &relRelName, sizeof(char[MAXNAME+1]));
-    memcpy(pDataRel+sizeof(char[MAXNAME]), &relTupleLength, sizeof(int));
+    memcpy(pDataRel+sizeof(char[MAXNAME+1]), &relTupleLength, sizeof(int));
     memcpy(pDataRel+sizeof(char[MAXNAME+1])+sizeof(int), &relAttrCount, sizeof(int));
     memcpy(pDataRel+sizeof(char[MAXNAME+1])+sizeof(int)*2, &relIndexCount, sizeof(int));
     //Inserts the record
