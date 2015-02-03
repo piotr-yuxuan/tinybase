@@ -130,12 +130,10 @@ RC SM_Manager::OpenDb(const char *dbName) {
 
 	// Opening the files containing the system catalogs for the database.
 	if ((rc = rmm->OpenFile("relcat", relcat))) {
-		PrintError(rc);
 		return rc;
 	}
 	if ((rc = rmm->OpenFile("attrcat", attrcat))) {
 		PrintError(rc);
-		return rc;
 	}
 
 	return rc;
@@ -289,9 +287,10 @@ RC SM_Manager::CreateTable(const char *relName, int attrCount,
 	 * behaviour. One solution to this problem is to force pages each time
 	 * a catalog is changed.
 	 */
-	if ((rc = attrcat.ForcePages()) || (rc = relcat.ForcePages())) {
-		return rc;
-	}
+
+    if((rc = this->ForceToDisk())){
+        return rc;
+    }
 
 	// reduces memory print
 	free(lowerRelName);
@@ -397,10 +396,9 @@ RC SM_Manager::DropTable(const char *relName) {
 	 * behaviour. One solution to this problem is to force pages each time
 	 * a catalog is changed.
 	 */
-	if ((rc = attrcat.ForcePages()) || (rc = relcat.ForcePages())) {
-		return rc;
-	}
-
+    if((rc = this->ForceToDisk())){
+        return rc;
+    }
 	// Finally prints succes
 	cout << "DropTable\n   relName=" << lrelName << "\n";
 	return rc;
@@ -842,7 +840,7 @@ RC SM_Manager::Print(const char *relName) {
 	RM_FileScan attrcatFs;
 	RM_Record attrcatRec;
 	if ((rc = attrcatFs.OpenScan(attrcat, STRING, MAXNAME + 1, 0, EQ_OP,
-			(void *) relName))) {
+            (void *) lowerRelName))) {
 		return rc;
 	}
 	int i = 0; //i is used to check that the nb of Rec retrieved is actually attrCount
@@ -1016,3 +1014,22 @@ void SM_PrintError(RC rc) {
 	cout << "SM_PrintError\n   rc=" << rc << "\n";
 }
 
+RC SM_Manager::ForceToDisk(){
+    //Forces all content to disk and closes, reopens the attrcat and relcat
+    RC rc = 0;
+    if ((rc = attrcat.ForcePages()) || (rc = relcat.ForcePages())) {
+        return rc;
+    }
+    if ((rc = (rmm->CloseFile(relcat))) || (rc = rmm->CloseFile(attrcat))) {
+        return rc;
+    }
+    if ((rc = rmm->OpenFile("relcat", relcat))) {
+        PrintError(rc);
+        return rc;
+    }
+    if ((rc = rmm->OpenFile("attrcat", attrcat))) {
+        PrintError(rc);
+        return rc;
+    }
+    return 0;
+}

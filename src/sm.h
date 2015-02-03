@@ -71,6 +71,7 @@ public:
 
 private:
 	RC FormatName(char * string);
+    RC ForceToDisk();
 	RM_Manager *rmm;
 	IX_Manager *ixm;
 	RM_FileHandle attrcat;
