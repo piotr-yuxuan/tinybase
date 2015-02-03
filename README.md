@@ -1,7 +1,11 @@
 tinybase
 ========
 
-![SM kit](http://www.sm-sim.com/uploads/6/4/6/6/6466686/458006.jpg)
+L'état du SM à quelques heures du rendu:
+
+![Sinking Tynibase](http://images.elephantjournal.com/wp-content/uploads/2012/03/Sinking_Ship.jpg)
+
+Tant pis le SM ne marchera pas... Mettez tous vos trucs dans la doc et j'envoie le tout ce soir. J'ai quand même fait les codes d'erreurs mais ça n'a pa grand intérêt.
 
 ###Quelques précisions
 Quelques précisions concernant le code:
