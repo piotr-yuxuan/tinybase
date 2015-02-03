@@ -19,3 +19,23 @@ tables, etc.).
 
 **dbdestroy**
 //TODO expliquer comment marche le programme
+
+**sm_manager**
+
+ + Help()
+ In this method, the sm_manager prints the list of the relations in the existing base. Therefore, the sm_manager's 
+ method Help() is supposed to enter the relcat catalog. After opening the files, it goes through the lines thanks to
+ a FileScan instance and reads the first entry of the tables' line.
+ Then, it prints the name of the relation thanks to the Printer Class (we have to create an instance of it in the
+ method) and its print() method.
+ 
+ + Help(const char* relname)
+ In this method, we are given the name of a table or relation. We have to print the attributes of this relation.
+ Therefore, we use the attrcat catalog to find them. In fact, the attrcat catalog owns each relation attributes.
+ We scan the catalog with an option to find exactly the relation matching the given relname.
+ Then, we instanciate a Printer for the attributes, and print them.
+ 
+ + Print(const char* relname)
+ There, we are given a relname and we are supposed to print all the tuples of this relation. We create a table of
+ DataAttrInfo. This table we fill with a FileScan going through the tuples. Then, we instanciate a Printer and this 
+ Printer prints the tuples by going through the DataAttrInfo table.
