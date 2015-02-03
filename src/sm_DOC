@@ -80,12 +80,25 @@ the relation by calling method RM_Manager::DestroyFile. Information about the
 destroyed relation is deleted from catalogs relcat and attrcat.
 
 **CreateIndex(const char *relName, const char *attrName)**
+This creates an index on attribute attrName of relation relName and builds the
+index for the current tuples in the relation. Only one index may be created for
+each attribute of a relation.
+It first formats string input from the user then checks there is not already
+an index on the specified attribute.
+This brand new index is then added to catalog attrcat, then method
+IX_Manager::CreateIndex eventually creates the index. Building the index is
+three-fold: open the index; using RM component methods to scan through the
+records to be indexed; close the index.
+Finally we clean all and reduce the memory print.
 
 **DropIndex(const char *relName, const char *attrName)**
+This function destroys the index on attribute attrName of relation relName. It
+first format input strings then checks that the index exists. Finally catalog
+attrcat is updated, and method IX_Manager::DestroyIndex called to destroy the
+index.
 
 **Load(const char*relName, const char*filename)**
-
-this method is used to insert all the tuples in the file of ‘*fileName’ into the
+This method is used to insert all the tuples in the file of ‘*fileName’ into the
 relation ‘*relName’.To fulfill this, first we scan all the records in relcat and
 attract , and we use two structures Relationtuple and DataAttrInfo to store all
 the information about the relation and the attributes, like its length and type.
