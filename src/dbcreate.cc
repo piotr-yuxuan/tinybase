@@ -67,7 +67,7 @@ int main(int argc, char *argv[])
 
     //Creates the attr catalog
     //Space for relName, attrName, offset, attrType, attrLength & indexNo
-    int attrRecordSize = sizeof(DataAttrInfo);
+    int attrRecordSize = sizeof(char[MAXNAME+1])*2 + sizeof(int) + sizeof(AttrType) + sizeof(int)*2;
     rc = rmm.CreateFile("attrcat", attrRecordSize);
     if(rc) PrintError(rc);
 
@@ -84,15 +84,13 @@ int main(int argc, char *argv[])
     //We create a record for rel table entry
     char * pDataRel = (char*) malloc(relRecordSize);
     //Values to insert
-    char relRelName[MAXNAME+1];
-    memset(relRelName, 0, MAXNAME + 1);
-    strcpy(relRelName, "relcat");
+    char relRelName[MAXNAME+1] = "relcat";
     int relTupleLength = relRecordSize;
     int relAttrCount = 4;
     int relIndexCount = 0;
     //Copies them to our data pointer
     memcpy(pDataRel, &relRelName, sizeof(char[MAXNAME+1]));
-    memcpy(pDataRel+sizeof(char[MAXNAME+1]), &relTupleLength, sizeof(int));
+    memcpy(pDataRel+sizeof(char[MAXNAME]), &relTupleLength, sizeof(int));
     memcpy(pDataRel+sizeof(char[MAXNAME+1])+sizeof(int), &relAttrCount, sizeof(int));
     memcpy(pDataRel+sizeof(char[MAXNAME+1])+sizeof(int)*2, &relIndexCount, sizeof(int));
     //Inserts the record
@@ -103,9 +101,7 @@ int main(int argc, char *argv[])
     //We create a record for attr table entry
     char * pDataAttr = (char*) malloc(attrRecordSize);
     //Values to insert
-    char attrRelName[MAXNAME+1];
-    memset(attrRelName, 0, MAXNAME + 1);
-    strcpy(attrRelName, "attrcat");
+    char attrRelName[MAXNAME+1] = "attrcat";
     int attrTupleLength = attrRecordSize;
     int attrAttrCount = 6;
     int attrIndexCount = 0;
@@ -149,7 +145,7 @@ int main(int argc, char *argv[])
 
     //Second attribute : tupleLength
     DataAttrInfo tupleLengthAttr;
-    strcpy(tupleLengthAttr.relName, "relcat");
+    strcpy(relNameAttr.relName, "relcat");
     strcpy(tupleLengthAttr.attrName, "tuplelength");
     tupleLengthAttr.offset = sizeof(char[MAXNAME+1]);
     tupleLengthAttr.attrType = INT;
@@ -203,14 +199,11 @@ int main(int argc, char *argv[])
     rc = rmfh.InsertRec((char*) &attrNameAttr, rid);
     if(rc) PrintError(rc);
 
-    //TODO Find a more elgant way to solve the compiler offset issue
-    int comOffset = 2;
-
     //Third attribute : offset
     DataAttrInfo offsetAttr;
     strcpy(offsetAttr.relName, "attrcat");
     strcpy(offsetAttr.attrName, "offset");
-    offsetAttr.offset = sizeof(char[MAXNAME+1])*2+comOffset;
+    offsetAttr.offset = sizeof(char[MAXNAME+1])*2;
     offsetAttr.attrType = INT;
     offsetAttr.attrLength = sizeof(INT);
     offsetAttr.indexNo = -1;
@@ -221,7 +214,7 @@ int main(int argc, char *argv[])
     DataAttrInfo attrTypeAttr;
     strcpy(attrTypeAttr.relName, "attrcat");
     strcpy(attrTypeAttr.attrName, "attrtype");
-    attrTypeAttr.offset = sizeof(char[MAXNAME+1])*2 + sizeof(int) +comOffset;
+    attrTypeAttr.offset = sizeof(char[MAXNAME+1])*2 + sizeof(int);
     attrTypeAttr.attrType = INT; //TODO not sure AttrType's attrtype is int
     attrTypeAttr.attrLength = sizeof(AttrType);
     attrTypeAttr.indexNo = -1;
@@ -232,7 +225,7 @@ int main(int argc, char *argv[])
     DataAttrInfo attrLengthAttr;
     strcpy(attrLengthAttr.relName, "attrcat");
     strcpy(attrLengthAttr.attrName, "attrlength");
-    attrLengthAttr.offset = sizeof(char[MAXNAME+1])*2 + sizeof(int) + sizeof(AttrType) + comOffset;
+    attrLengthAttr.offset = sizeof(char[MAXNAME+1])*2 + sizeof(int) + sizeof(AttrType);
     attrLengthAttr.attrType = INT;
     attrLengthAttr.attrLength = sizeof(int);
     attrLengthAttr.indexNo = -1;
@@ -243,7 +236,7 @@ int main(int argc, char *argv[])
     DataAttrInfo indexNoAttr;
     strcpy(indexNoAttr.relName, "attrcat");
     strcpy(indexNoAttr.attrName, "indexno");
-    indexNoAttr.offset = sizeof(char[MAXNAME+1])*2 + sizeof(int) + sizeof(AttrType) + sizeof(int) + comOffset;
+    indexNoAttr.offset = sizeof(char[MAXNAME+1])*2 + sizeof(int) + sizeof(AttrType) + sizeof(int);
     indexNoAttr.attrType = INT;
     indexNoAttr.attrLength = sizeof(int);
     indexNoAttr.indexNo = -1;

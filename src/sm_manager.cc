@@ -951,9 +951,8 @@ RC SM_Manager::Help(const char *relName) {
 
 	RM_FileScan attrFs;
 	RM_Record attrRec;
-    char * attrFsValue = (char*) malloc(MAXNAME+1);
-    strcpy(attrFsValue, "attrcat");
-    if ((rc = attrFs.OpenScan(attrcat, STRING, MAXNAME + 1, 0, EQ_OP, (void *) attrFsValue))) {
+	if ((rc = attrFs.OpenScan(attrcat, STRING, MAXNAME + 1, 0, EQ_OP,
+			(void*) "attrcat"))) {
 		return rc;
 	}
 	int i = 0;
@@ -981,19 +980,21 @@ RC SM_Manager::Help(const char *relName) {
 		return rc;
 	}
 
-    while (rmfs.GetNextRec(rec)!=RM_EOF) {
+	while ((rc = rmfs.GetNextRec(rec))) {
 
 		if ((rc = rec.GetData(_pData))) {
 			return rc;
 		}
-        printer.Print(cout, _pData);
+		//Prints
+//		if ((rc = printer.Print(cout, _pData))) {
+//			return rc;
+//		}
+		printer.Print(cout, _pData); // returns null, how could we get rc?
 	}
 
 	if ((rc = rmfs.CloseScan())) {
 		return rc;
 	}
-
-    free(attrFsValue);
 
 	return (0);
 }
