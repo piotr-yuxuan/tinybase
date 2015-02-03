@@ -186,6 +186,7 @@ RC SM_Manager::CreateTable(const char *relName, int attrCount,
 
 	// Converts to lowercase. Methinks we have to do this trick because the argument is `const`.
 	char *lowerRelName = (char*) malloc(MAXNAME + 1);
+        memset(lowerRelName, 0, MAXNAME + 1);
 	strcpy(lowerRelName, relName);
 	FormatName((char *) lowerRelName);
 
@@ -260,15 +261,20 @@ RC SM_Manager::CreateTable(const char *relName, int attrCount,
 	const int totalSize = offset;
 
 	// Add a tuple in relcat for the relation.
-	DataRelInfo rtuple;
-	rtuple.attrCount = attrCount;
-	rtuple.indexCount = 0; // we choose later which attributes we index but
+        char * rtuple = (char*) malloc(MAXNAME+1 + 3*sizeof(int));
+        memset(rtuple, 0, MAXNAME+1 + 3*sizeof(int));
+        memcpy(rtuple+MAXNAME+1+sizeof(int), &attrCount, sizeof(int));
+        //Sets indexCount to 0
+        int zeroInt = 0;
+        memcpy(rtuple+MAXNAME+1+2*sizeof(int), &zeroInt, sizeof(int));
 	// remember to keep that counter up to date.
 	strcpy(rtuple.relName, lowerRelName);
 	rtuple.tupleLength = totalSize;
+    strcpy(rtuple, lowerRelName);
+    memcpy(rtuple+MAXNAME+1, &totalSize, sizeof(int));
 
 	RID rid; // vanish
-	if ((rc = relcat.InsertRec((char *) &rtuple, rid))) {
+	if ((rc = relcat.InsertRec(rtuple, rid))) {
 		return rc;
 	}
 
@@ -289,6 +295,7 @@ RC SM_Manager::CreateTable(const char *relName, int attrCount,
 
 	// reduces memory print
 	free(lowerRelName);
+    free(rtuple);
 
 	return 0;
 }
@@ -315,6 +322,7 @@ RC SM_Manager::DropTable(const char *relName) {
 
 	// format input
 	char *lrelName = (char*) malloc(MAXNAME + 1);
+    memset(lrelName, 0, MAXNAME + 1);
 	strcpy(lrelName, relName);
 
 	RM_FileScan fs;
@@ -414,8 +422,10 @@ RC SM_Manager::CreateIndex(const char *relName, const char *attrName) {
 
 	// Format input
 	char *lrelName = (char*) malloc(MAXNAME + 1);
-	strcpy(lrelName, relName);
+    memset(lrelName, 0, MAXNAME + 1);
+    strcpy(lrelName, relName);
 	char *lattrName = (char*) malloc(MAXNAME + 1);
+    memset(lattrName, 0, MAXNAME + 1);
 	strcpy(lattrName, attrName);
 
 	if ((rc = FormatName((char *) lrelName))
@@ -533,8 +543,10 @@ RC SM_Manager::DropIndex(const char *relName, const char *attrName) {
 
 	// Format input
 	char *lrelName = (char*) malloc(MAXNAME + 1);
+        memset(lrelName, 0, MAXNAME + 1);
 	strcpy(lrelName, relName);
 	char *lattrName = (char*) malloc(MAXNAME + 1);
+        memset(lattrName, 0, MAXNAME + 1);
 	strcpy(lattrName, attrName);
 
 	if ((rc = FormatName((char *) lrelName))
@@ -813,7 +825,7 @@ RC SM_Manager::Print(const char *relName) {
                         (void *) lowerRelName))) {
 		return rc;
 	}
-	if ((rc = relcatFs.GetNextRec(relRec))) {
+        if ((rc = relcatFs.GetNextRec(relRec))) {
 		return rc;
 	}
 	char* pDataRelRec;
