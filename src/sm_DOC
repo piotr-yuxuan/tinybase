@@ -40,18 +40,44 @@ SM_Manager
 Functions here are listed in the order they are in sm_manager.cc.
 
 **FormatName(char *string)**
+This auxiliary function format the string given as input into lower case. If the
+string is wider than `MAXNAME`, it returns a non-zero error code.
 
 **AttrRecFromRA(char * relName, char * attrName, RM_Record * rec)**
+The output parameter record of this auxiliary function is set to the record from
+attrcat corresponding to given relName relation name and attrName attribute
+name. This auxialiary function helps code to be factorized.
 
 **RelFromR(char * relName, RM_Record * rec)**
+The output parameter record of this auxiliary function is set to the record from
+relcat corresponding to given relName relation name and attrName attribute
+name. This auxialiary function helps code to be factorized.
 
 **OpenDb(const char *dbName)**
+This method, along with method CloseDb, change to the directory for the database
+named *dbName (using system call chdir), then open the files containing the
+system catalogs for the database. System catalogs are described below. 
 
 **CloseDb()**
+This method should close all open files in the current database. Closing the
+files automatically causes all relevant buffers to be flushed to disk.
 
 **CreateTable(const char *relName, int attrCount, AttrInfo *attributes)**
+This function is three fold: first input parameters are tested and formatted.
+First, relation and attribute names are limited to MAXNAME = 25 characters each
+and must begin with a letter. Every relation name must be unique within a
+database, and a given relation may have attributes named all different.
+Then is the working part and we first update the system catalogs: a tuple for
+the new relation should be added to a catalog relation called relcat and a tuple
+for each attribute should be added to a catalog relation called attrcat. After
+updating the catalogs, method RM_Manager::CreateFile is called to create a file
+that will hold the tuples of the new relation.
+Finally comes cleaning part, we free the memory from transient objects.
 
 **DropTable(const char *relName)**
+This function destroys relation relName, along with all indexes on
+the relation by calling method RM_Manager::DestroyFile. Information about the
+destroyed relation is deleted from catalogs relcat and attrcat.
 
 **CreateIndex(const char *relName, const char *attrName)**
 
