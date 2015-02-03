@@ -67,7 +67,7 @@ int main(int argc, char *argv[])
 
     //Creates the attr catalog
     //Space for relName, attrName, offset, attrType, attrLength & indexNo
-    int attrRecordSize = sizeof(char[MAXNAME+1])*2 + sizeof(int) + sizeof(AttrType) + sizeof(int)*2;
+    int attrRecordSize = sizeof(DataAttrInfo);
     rc = rmm.CreateFile("attrcat", attrRecordSize);
     if(rc) PrintError(rc);
 
@@ -145,7 +145,7 @@ int main(int argc, char *argv[])
 
     //Second attribute : tupleLength
     DataAttrInfo tupleLengthAttr;
-    strcpy(relNameAttr.relName, "relcat");
+    strcpy(tupleLengthAttr.relName, "relcat");
     strcpy(tupleLengthAttr.attrName, "tuplelength");
     tupleLengthAttr.offset = sizeof(char[MAXNAME+1]);
     tupleLengthAttr.attrType = INT;
@@ -199,11 +199,14 @@ int main(int argc, char *argv[])
     rc = rmfh.InsertRec((char*) &attrNameAttr, rid);
     if(rc) PrintError(rc);
 
+    //TODO find a more elegant way to solve the compiler offset issue
+    int cmpOffset = 2;
+
     //Third attribute : offset
     DataAttrInfo offsetAttr;
     strcpy(offsetAttr.relName, "attrcat");
     strcpy(offsetAttr.attrName, "offset");
-    offsetAttr.offset = sizeof(char[MAXNAME+1])*2;
+    offsetAttr.offset = sizeof(char[MAXNAME+1])*2 + cmpOffset;
     offsetAttr.attrType = INT;
     offsetAttr.attrLength = sizeof(INT);
     offsetAttr.indexNo = -1;
@@ -214,7 +217,7 @@ int main(int argc, char *argv[])
     DataAttrInfo attrTypeAttr;
     strcpy(attrTypeAttr.relName, "attrcat");
     strcpy(attrTypeAttr.attrName, "attrtype");
-    attrTypeAttr.offset = sizeof(char[MAXNAME+1])*2 + sizeof(int);
+    attrTypeAttr.offset = sizeof(char[MAXNAME+1])*2 + sizeof(int) + cmpOffset;
     attrTypeAttr.attrType = INT; //TODO not sure AttrType's attrtype is int
     attrTypeAttr.attrLength = sizeof(AttrType);
     attrTypeAttr.indexNo = -1;
@@ -225,7 +228,7 @@ int main(int argc, char *argv[])
     DataAttrInfo attrLengthAttr;
     strcpy(attrLengthAttr.relName, "attrcat");
     strcpy(attrLengthAttr.attrName, "attrlength");
-    attrLengthAttr.offset = sizeof(char[MAXNAME+1])*2 + sizeof(int) + sizeof(AttrType);
+    attrLengthAttr.offset = sizeof(char[MAXNAME+1])*2 + sizeof(int) + sizeof(AttrType) + cmpOffset;
     attrLengthAttr.attrType = INT;
     attrLengthAttr.attrLength = sizeof(int);
     attrLengthAttr.indexNo = -1;
@@ -236,7 +239,7 @@ int main(int argc, char *argv[])
     DataAttrInfo indexNoAttr;
     strcpy(indexNoAttr.relName, "attrcat");
     strcpy(indexNoAttr.attrName, "indexno");
-    indexNoAttr.offset = sizeof(char[MAXNAME+1])*2 + sizeof(int) + sizeof(AttrType) + sizeof(int);
+    indexNoAttr.offset = sizeof(char[MAXNAME+1])*2 + sizeof(int) + sizeof(AttrType) + sizeof(int) + cmpOffset;
     indexNoAttr.attrType = INT;
     indexNoAttr.attrLength = sizeof(int);
     indexNoAttr.indexNo = -1;
