@@ -1,0 +1,21 @@
+**Documentation for the System Management (SM) component**
+
+
+Main Idea
+---------
+//TODO A completer
+
+
+tinybase, dbcreate and dbdestroy utilities
+------------------------------------------
+The three utilities are used to set up the databases (creating folder, catalog
+tables, etc.).
+
+**dbcreate**
+//TODO expliquer comment marche le programme
+
+**tinybase**
+//TODO expliquer comment marche le programme
+
+**dbdestroy**
+//TODO expliquer comment marche le programme
