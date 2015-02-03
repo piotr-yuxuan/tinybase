@@ -1,50 +1,71 @@
 **Documentation for the System Management (SM) component**
 
 
-Main Idea
----------
-//TODO A completer
-
-
 tinybase, dbcreate and dbdestroy utilities
 ------------------------------------------
 The three utilities are used to set up the databases (creating folder, catalog
 tables, etc.).
 
 **dbcreate**
-//TODO expliquer comment marche le programme
+dbcreate first checks if the name given for the database doesn't already exists,
+and creates a folder for the new database. Then we create to files using a rm
+manager: relcat and attrcat. These two files represent the catalogs for the
+database. relcat contains the list of the tables of the database, and attrcat
+contains the list of the attributes for all the tables.
+
+Then we have to insert two new tuples in relcat: one for relcat itself, and one
+for attrcat. We also have to insert 4 tuples in attrcat for the attributes of
+relcat, and 6 other tuples in attrcat for the attributes of attrcat itself.
+To insert all these tuples, we cannot use the SM_Manager class since the
+SM_Manager precisely uses our relcat and attrcat tables to perform its
+insertions. We have to allocate memory for the tuples and fill them
+"manually", and then insert them using rm. When that is done, we just have to
+close the rm manager and we are done!
 
 **tinybase**
-//TODO expliquer comment marche le programme
+The tinybase program is the core of the sgbd. It creates a PF_Manager, a
+RM_Manager, a IX_Manager, a SM_Manager and a QL_Manager and calls the
+parser. Then the user prompts its commands. We make sure to close
+everything when the user is done.
 
 **dbdestroy**
-//TODO expliquer comment marche le programme
+dbdestroy just destroys the folder where the database files are located. Of
+course we perform a check before doing so to make sure the database exists.
 
-**sm_manager**
--------------------------------------------------------
-**RC Load(const char*relName, const char*filename)**
 
-this method is used to insert all the tuples in the file of ‘*fileName’ into the relation ‘*relName’.To fulfill this,
-first we scan all the records in relcat and attract , and we use two structures Relationtuple and DataAttrInfo to store 
-all the information about the relation and the attributes, like its length and type. For the loading, we load the file 
-line by line and find each attribute by the detection of commas. Here, according to the different type of attribute in 
-the relation, we convert the record in files from ‘string’ format to int, float or string. When a character string is too 
-long, we just choose to simply generate a nonzero return and stop loadiing.
---------------------------------------------------------
- + Help()
- In this method, the sm_manager prints the list of the relations in the existing base. Therefore, the sm_manager's 
- method Help() is supposed to enter the relcat catalog. After opening the files, it goes through the lines thanks to
- a FileScan instance and reads the first entry of the tables' line.
- Then, it prints the name of the relation thanks to the Printer Class (we have to create an instance of it in the
- method) and its print() method.
+
+SM_Manager
+----------
+
+**Load(const char*relName, const char*filename)**
+
+this method is used to insert all the tuples in the file of ‘*fileName’ into the
+relation ‘*relName’.To fulfill this, first we scan all the records in relcat and
+attract , and we use two structures Relationtuple and DataAttrInfo to store all
+the information about the relation and the attributes, like its length and type.
+For the loading, we load the file line by line and find each attribute by the
+detection of commas. Here, according to the different type of attribute in the
+relation, we convert the record in files from ‘string’ format to int, float or
+string. When a character string is too long, we just choose to simply generate
+a nonzero return and stop loadiing.
+
+**Help()**
+In this method, the sm_manager prints the list of the relations in the existing
+base. Therefore, the sm_manager's method Help() is supposed to enter the relcat
+catalog. After opening the files, it goes through the lines thanks to a FileScan
+instance and reads the first entry of the tables' line. Then, it prints the name
+of the relation thanks to the Printer Class (we have to create an instance of it
+in the method) and its print() method.
  
- + Help(const char* relname)
- In this method, we are given the name of a table or relation. We have to print the attributes of this relation.
- Therefore, we use the attrcat catalog to find them. In fact, the attrcat catalog owns each relation attributes.
- We scan the catalog with an option to find exactly the relation matching the given relname.
- Then, we instanciate a Printer for the attributes, and print them.
+**Help(const char* relname)**
+In this method, we are given the name of a table or relation. We have to print
+the attributes of this relation.Therefore, we use the attrcat catalog to find
+them. In fact, the attrcat catalog owns each relation attributes. We scan the
+catalog with an option to find exactly the relation matching the given relname.
+Then, we instanciate a Printer for the attributes, and print them.
  
- + Print(const char* relname)
- There, we are given a relname and we are supposed to print all the tuples of this relation. We create a table of
- DataAttrInfo. This table we fill with a FileScan going through the tuples. Then, we instanciate a Printer and this 
- Printer prints the tuples by going through the DataAttrInfo table.
+**Print(const char* relname)**
+There, we are given a relname and we are supposed to print all the tuples of
+this relation. We create a table of DataAttrInfo. This table we fill with a
+FileScan going through the tuples. Then, we instanciate a Printer and this
+Printer prints the tuples by going through the DataAttrInfo table.
