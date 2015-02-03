@@ -790,8 +790,9 @@ RC SM_Manager::Print(const char *relName) {
 
 	/* On met le nom de la relation en petits caractères*/
 	char *lowerRelName = (char*) malloc(MAXNAME + 1);
+        memset(lowerRelName, 0, MAXNAME + 1);
 	strcpy(lowerRelName, relName);
-	FormatName((char *) lowerRelName);
+        //FormatName((char *) lowerRelName);
 
 	rc = this->rmm->OpenFile(lowerRelName, rmfh);
 	if (rc)
@@ -809,7 +810,7 @@ RC SM_Manager::Print(const char *relName) {
 	RM_Record relRec;
 
 	if ((rc = relcatFs.OpenScan(relcat, STRING, MAXNAME + 1, 0, EQ_OP,
-			(void *) relName))) {
+                        (void *) lowerRelName))) {
 		return rc;
 	}
 	if ((rc = relcatFs.GetNextRec(relRec))) {
@@ -950,8 +951,11 @@ RC SM_Manager::Help(const char *relName) {
 
 	RM_FileScan attrFs;
 	RM_Record attrRec;
+        char* attrFsValue = (char*) malloc(MAXNAME+1);
+        memset(attrFsValue, 0, MAXNAME + 1);
+        strcpy(attrFsValue, "attrcat");
 	if ((rc = attrFs.OpenScan(attrcat, STRING, MAXNAME + 1, 0, EQ_OP,
-			(void*) "attrcat"))) {
+                        (void*) attrFsValue))) {
 		return rc;
 	}
 	int i = 0;
@@ -979,21 +983,19 @@ RC SM_Manager::Help(const char *relName) {
 		return rc;
 	}
 
-	while ((rc = rmfs.GetNextRec(rec))) {
+        while (rmfs.GetNextRec(rec)!=RM_EOF) {
 
 		if ((rc = rec.GetData(_pData))) {
 			return rc;
 		}
-		//Prints
-//		if ((rc = printer.Print(cout, _pData))) {
-//			return rc;
-//		}
-		printer.Print(cout, _pData); // returns null, how could we get rc?
+                printer.Print(cout, _pData);
 	}
 
 	if ((rc = rmfs.CloseScan())) {
 		return rc;
 	}
+
+        free(attrFsValue);
 
 	return (0);
 }
