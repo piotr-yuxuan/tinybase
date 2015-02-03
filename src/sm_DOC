@@ -37,6 +37,24 @@ course we perform a check before doing so to make sure the database exists.
 SM_Manager
 ----------
 
+**FormatName(char *string)**
+
+**AttrRecFromRA(char * relName, char * attrName, RM_Record * rec)**
+
+**RelFromR(char * relName, RM_Record * rec)**
+
+**OpenDb(const char *dbName)**
+
+**CloseDb()**
+
+**CreateTable(const char *relName, int attrCount, AttrInfo *attributes)**
+
+**DropTable(const char *relName)**
+
+**CreateIndex(const char *relName, const char *attrName)**
+
+**DropIndex(const char *relName, const char *attrName)**
+
 **Load(const char*relName, const char*filename)**
 
 this method is used to insert all the tuples in the file of ‘*fileName’ into the
