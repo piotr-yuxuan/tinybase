@@ -261,16 +261,16 @@ RC SM_Manager::CreateTable(const char *relName, int attrCount,
 	const int totalSize = offset;
 
 	// Add a tuple in relcat for the relation.
-        char * rtuple = (char*) malloc(MAXNAME+1 + 3*sizeof(int));
-        memset(rtuple, 0, MAXNAME+1 + 3*sizeof(int));
-        memcpy(rtuple+MAXNAME+1+sizeof(int), &attrCount, sizeof(int));
-        //Sets indexCount to 0
-        int zeroInt = 0;
-        memcpy(rtuple+MAXNAME+1+2*sizeof(int), &zeroInt, sizeof(int));
-	// remember to keep that counter up to date.
-	strcpy(rtuple.relName, lowerRelName);
-	rtuple.tupleLength = totalSize;
+    char * rtuple = (char*) malloc(MAXNAME+1 + 3*sizeof(int));
+    memset(rtuple, 0, MAXNAME+1 + 3*sizeof(int));
+    //Sets tuple.attrCount = attrCount
+    memcpy(rtuple+MAXNAME+1+sizeof(int), &attrCount, sizeof(int));
+    //Sets tuple.indexCount = 0
+    int zeroInt = 0;
+    memcpy(rtuple+MAXNAME+1+2*sizeof(int), &zeroInt, sizeof(int));
+    //Sets tuple.relName = lowerRelName
     strcpy(rtuple, lowerRelName);
+    //Sets tuple.tupleLength = totalsize
     memcpy(rtuple+MAXNAME+1, &totalSize, sizeof(int));
 
 	RID rid; // vanish
