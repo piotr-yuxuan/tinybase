@@ -37,6 +37,8 @@ course we perform a check before doing so to make sure the database exists.
 SM_Manager
 ----------
 
+Functions here are listed in the order they are in sm_manager.cc.
+
 **FormatName(char *string)**
 
 **AttrRecFromRA(char * relName, char * attrName, RM_Record * rec)**
