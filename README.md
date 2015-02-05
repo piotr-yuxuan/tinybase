@@ -5,6 +5,10 @@ L'état du SM à quelques heures du rendu:
 
 ![Sinking Tynibase](http://images.elephantjournal.com/wp-content/uploads/2012/03/Sinking_Ship.jpg)
 
+L'état du QL quelques temps après le début de la dernière partie :
+
+![](http://www.grund.fr/media/collections/Grund_Bisounours_Collection.jpg)
+
 Tant pis le SM ne marchera pas... Mettez tous vos trucs dans la doc et j'envoie le tout ce soir. J'ai quand même fait les codes d'erreurs mais ça n'a pa grand intérêt.
 
 ###Quelques précisions
