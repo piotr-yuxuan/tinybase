@@ -7,8 +7,8 @@
 
 #include <cstdio>
 #include <cstring>
-#include "printer.h"
 #include <stdlib.h>
+#include "printer.h"
 
 using namespace std;
 

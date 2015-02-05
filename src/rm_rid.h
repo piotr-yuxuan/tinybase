@@ -10,7 +10,7 @@
 // We separate the interface of RID from the rest of RM because some
 // components will require the use of RID but not the rest of RM.
 
-#include "tinybase.h"
+#include "redbase.h"
 
 //
 // PageNum: uniquely identifies a page in a file

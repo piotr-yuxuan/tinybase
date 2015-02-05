@@ -1,258 +1,226 @@
 //
-// dbcreate.cc
+// File:        dbcreate.cc
+// Description: dbcreate command line utility
+// Author:      Hyunjung Park (hyunjung@stanford.edu)
 //
-// Author: Jason McHugh (mchughj@cs.stanford.edu)
-//
-// This shell is provided for the student.
 
 #include <iostream>
-#include <cstdio>
 #include <cstring>
 #include <unistd.h>
+#include "redbase.h"
 #include "rm.h"
-#include "sm.h"
-#include "tinybase.h"
-
-#include "printer.h" //This includes allows us to use the DataAttrInfo struct
+#include "sm_internal.h"
 
 using namespace std;
+
+//
+// Global PF_Manager and RM_Manager variables
+//
+PF_Manager pfm;
+RM_Manager rmm(pfm);
+
+//
+// createRelcat
+//
+// Desc: Create the relation catalog
+//
+RC createRelcat(void)
+{
+   RC rc;
+   RM_FileHandle fh;
+   SM_RelcatRec relcatRec;
+   RID rid;
+
+   if (rc = rmm.CreateFile(RELCAT, sizeof(SM_RelcatRec)))
+      goto err_return;
+
+   if (rc = rmm.OpenFile(RELCAT, fh))
+      goto err_return;
+
+   SM_SetRelcatRec(relcatRec,
+                   RELCAT, sizeof(SM_RelcatRec), 4, 0);
+
+   if (rc = fh.InsertRec((char *)&relcatRec, rid))
+      goto err_close;
+
+   SM_SetRelcatRec(relcatRec,
+                   ATTRCAT, sizeof(SM_AttrcatRec), 6, 0);
+
+   if (rc = fh.InsertRec((char *)&relcatRec, rid))
+      goto err_close;
+
+   if (rc = rmm.CloseFile(fh))
+      goto err_return;
+
+   // Return ok
+   return (0);
+
+   // Return error
+err_close:
+   rmm.CloseFile(fh);
+err_return:
+   return (rc);
+}
+
+//
+// createAttrcat
+//
+// Desc: Create the attribute catalog
+//
+RC createAttrcat(void)
+{
+   RC rc;
+   RM_FileHandle fh;
+   SM_AttrcatRec attrcatRec;
+   RID rid;
+
+   if (rc = rmm.CreateFile(ATTRCAT, sizeof(SM_AttrcatRec)))
+      goto err_return;
+
+   if (rc = rmm.OpenFile(ATTRCAT, fh))
+      goto err_return;
+
+   SM_SetAttrcatRec(attrcatRec, 
+                    RELCAT, "relName", OFFSET(SM_RelcatRec, relName),
+                    STRING, MAXNAME, -1);
+
+   if (rc = fh.InsertRec((char *)&attrcatRec, rid))
+      goto err_close;
+
+   SM_SetAttrcatRec(attrcatRec, 
+                    RELCAT, "tupleLength", OFFSET(SM_RelcatRec, tupleLength),
+                    INT, sizeof(int), -1);
+
+   if (rc = fh.InsertRec((char *)&attrcatRec, rid))
+      goto err_close;
+
+   SM_SetAttrcatRec(attrcatRec, 
+                    RELCAT, "attrCount", OFFSET(SM_RelcatRec, attrCount),
+                    INT, sizeof(int), -1);
+
+   if (rc = fh.InsertRec((char *)&attrcatRec, rid))
+      goto err_close;
+
+   SM_SetAttrcatRec(attrcatRec, 
+                    RELCAT, "indexCount", OFFSET(SM_RelcatRec, indexCount),
+                    INT, sizeof(int), -1);
+
+   if (rc = fh.InsertRec((char *)&attrcatRec, rid))
+      goto err_close;
+
+   SM_SetAttrcatRec(attrcatRec, 
+                    ATTRCAT, "relName", OFFSET(SM_AttrcatRec, relName),
+                    STRING, MAXNAME, -1);
+
+   if (rc = fh.InsertRec((char *)&attrcatRec, rid))
+      goto err_close;
+
+   SM_SetAttrcatRec(attrcatRec, 
+                    ATTRCAT, "attrName", OFFSET(SM_AttrcatRec, attrName),
+                    STRING, MAXNAME, -1);
+
+   if (rc = fh.InsertRec((char *)&attrcatRec, rid))
+      goto err_close;
+
+   SM_SetAttrcatRec(attrcatRec, 
+                    ATTRCAT, "offset", OFFSET(SM_AttrcatRec, offset),
+                    INT, sizeof(int), -1);
+
+   if (rc = fh.InsertRec((char *)&attrcatRec, rid))
+      goto err_close;
+
+   SM_SetAttrcatRec(attrcatRec, 
+                    ATTRCAT, "attrType", OFFSET(SM_AttrcatRec, attrType),
+                    INT, sizeof(int), -1);
+
+   if (rc = fh.InsertRec((char *)&attrcatRec, rid))
+      goto err_close;
+
+   SM_SetAttrcatRec(attrcatRec, 
+                    ATTRCAT, "attrLength", OFFSET(SM_AttrcatRec, attrLength),
+                    INT, sizeof(int), -1);
+
+   if (rc = fh.InsertRec((char *)&attrcatRec, rid))
+      goto err_close;
+
+   SM_SetAttrcatRec(attrcatRec, 
+                    ATTRCAT, "indexNo", OFFSET(SM_AttrcatRec, indexNo),
+                    INT, sizeof(int), -1);
+
+   if (rc = fh.InsertRec((char *)&attrcatRec, rid))
+      goto err_close;
+
+   if (rc = rmm.CloseFile(fh))
+      goto err_return;
+ 
+   // Return ok
+   return (0);
+
+   // Return error
+err_close:
+   rmm.CloseFile(fh);
+err_return:
+   return (rc);
+}
 
 //
 // main
 //
 int main(int argc, char *argv[])
 {
-    char *dbname;
-    char command[255] = "mkdir ";
+   RC rc;         
+   char *dbname;
+   char command[8+MAXDBNAME] = "mkdir ";
 
-    // Look for 2 arguments. The first is always the name of the program
-    // that was executed, and the second should be the name of the
-    // database.
-    if (argc != 2) {
-        cerr << "Usage: " << argv[0] << " dbname \n";
-        exit(1);
-    }
+   // Look for 2 arguments. The first is always the name of the program
+   // that was executed, and the second should be the name of the
+   // database.
+   if (argc != 2) {
+      cerr << "Usage: " << argv[0] << " DBname\n";
+      goto err_exit;
+   }
 
-    // The database name is the second argument
-    dbname = argv[1];
+   // The database name is the second argument
+   dbname = argv[1];
 
-    //First we check the database name is not already taken
-    if (!(chdir(dbname) < 0)) {
-        cerr << argv[0] << " Database " << dbname << " already exists!\n";
-        exit(1);
-    }
+   // Sanity Check: Length of the argument should be less than MAXDBNAME
+   //               DBname cannot contain ' ' or '/' 
+   if (strlen(dbname) > MAXDBNAME
+       || strchr(dbname, ' ') || strchr(dbname, '/')) {
+      SM_PrintError(SM_INVALIDDBNAME);
+      goto err_exit;
+   }
 
-    // Create a subdirectory for the database
-    system (strcat(command,dbname));
+   // Create a subdirectory for the database
+   if (system(strcat(command, dbname)))
+      goto err_exit;
 
-    if (chdir(dbname) < 0) {
-        cerr << argv[0] << " chdir error to " << dbname << "\n";
-        exit(1);
-    }
+   // Change the working directory
+   if (chdir(dbname) < 0) {
+      SM_PrintError(SM_CHDIRFAILED);
+      goto err_rm;
+   }
 
-    /*
-     *Create the system catalogs...
-     */
+   // Create the relation catalog
+   if (rc = createRelcat()) {
+      PrintError(rc);
+      goto err_rm;
+   }
 
-    // Initialize components
-    PF_Manager pfm;
-    RM_Manager rmm(pfm);
-    RC rc = 0;
+   // Create the attributes catalog
+   if (rc = createAttrcat()) {
+      PrintError(rc);
+      goto err_rm;
+   }
 
-    //Creates the rel catalog
-    //Space for relName, tupleLength, attrCount, indexCount
-    int relRecordSize = sizeof(char[MAXNAME+1]) + sizeof(int)*3;
-    rc = rmm.CreateFile("relcat", relRecordSize);
-    if(rc) PrintError(rc);
+   // Return ok
+   return (0);
 
-    //Creates the attr catalog
-    //Space for relName, attrName, offset, attrType, attrLength & indexNo
-    int attrRecordSize = sizeof(DataAttrInfo);
-    rc = rmm.CreateFile("attrcat", attrRecordSize);
-    if(rc) PrintError(rc);
-
-    /*
-     *Now that the two catalogs are created we need to add them to relcat
-     */
-
-    //Opens the relcat file
-    RM_FileHandle rmfh;
-    rc = rmm.OpenFile("relcat", rmfh);
-    if(rc) PrintError(rc);
-    RID rid;
-
-    //We create a record for rel table entry
-    char * pDataRel = (char*) malloc(relRecordSize);
-    //Values to insert
-    char relRelName[MAXNAME+1] = "relcat";
-    int relTupleLength = relRecordSize;
-    int relAttrCount = 4;
-    int relIndexCount = 0;
-    //Copies them to our data pointer
-    memcpy(pDataRel, &relRelName, sizeof(char[MAXNAME+1]));
-    memcpy(pDataRel+sizeof(char[MAXNAME+1]), &relTupleLength, sizeof(int));
-    memcpy(pDataRel+sizeof(char[MAXNAME+1])+sizeof(int), &relAttrCount, sizeof(int));
-    memcpy(pDataRel+sizeof(char[MAXNAME+1])+sizeof(int)*2, &relIndexCount, sizeof(int));
-    //Inserts the record
-    rc = rmfh.InsertRec(pDataRel, rid);
-    if(rc) PrintError(rc);
-    free(pDataRel);
-
-    //We create a record for attr table entry
-    char * pDataAttr = (char*) malloc(attrRecordSize);
-    //Values to insert
-    char attrRelName[MAXNAME+1] = "attrcat";
-    int attrTupleLength = attrRecordSize;
-    int attrAttrCount = 6;
-    int attrIndexCount = 0;
-    //Copies them to our data pointer
-    memcpy(pDataAttr, &attrRelName, sizeof(char[MAXNAME+1]));
-    memcpy(pDataAttr+sizeof(char[MAXNAME+1]), &attrTupleLength, sizeof(int));
-    memcpy(pDataAttr+sizeof(char[MAXNAME+1])+sizeof(int), &attrAttrCount, sizeof(int));
-    memcpy(pDataAttr+sizeof(char[MAXNAME+1])+sizeof(int)*2, &attrIndexCount, sizeof(int));
-    //Inserts the record
-    rc = rmfh.InsertRec(pDataAttr, rid);
-    if(rc) PrintError(rc);
-    free(pDataAttr);
-
-    //Closes the relcat file
-    rc = rmm.CloseFile(rmfh);
-    if(rc) PrintError(rc);
-
-
-    /*
-     *At this point the tables for our catalogs are created and we inserted two entries
-     *in the relcat table for our catalogs.
-     *But we also need to insert several entries in attrcat for the attributes of our catalogs
-     */
-
-    //Opens the attrcat file
-    rc = rmm.OpenFile("attrcat", rmfh);
-    if(rc) PrintError(rc);
-
-    //Inserts entries for the 4 attributes of relcat
-
-    //First attribute : relName
-    DataAttrInfo relNameAttr;
-    strcpy(relNameAttr.relName, "relcat");
-    strcpy(relNameAttr.attrName, "relname");
-    relNameAttr.offset = 0;
-    relNameAttr.attrType = STRING;
-    relNameAttr.attrLength = MAXNAME+1;
-    relNameAttr.indexNo = -1;
-    rc = rmfh.InsertRec((char*) &relNameAttr, rid);
-    if(rc) PrintError(rc);
-
-    //Second attribute : tupleLength
-    DataAttrInfo tupleLengthAttr;
-    strcpy(tupleLengthAttr.relName, "relcat");
-    strcpy(tupleLengthAttr.attrName, "tuplelength");
-    tupleLengthAttr.offset = sizeof(char[MAXNAME+1]);
-    tupleLengthAttr.attrType = INT;
-    tupleLengthAttr.attrLength = sizeof(int);
-    tupleLengthAttr.indexNo = -1;
-    rc = rmfh.InsertRec((char*) &tupleLengthAttr, rid);
-    if(rc) PrintError(rc);
-
-    //Third attribute : attrcount
-    DataAttrInfo attrCountAttr;
-    strcpy(attrCountAttr.relName, "relcat");
-    strcpy(attrCountAttr.attrName, "attrcount");
-    attrCountAttr.offset = sizeof(char[MAXNAME+1])+sizeof(int);
-    attrCountAttr.attrType = INT;
-    attrCountAttr.attrLength = sizeof(int);
-    attrCountAttr.indexNo = -1;
-    rc = rmfh.InsertRec((char*) &attrCountAttr, rid);
-    if(rc) PrintError(rc);
-
-    //Fourth attribute : indexcount
-    DataAttrInfo indexCountAttr;
-    strcpy(indexCountAttr.relName, "relcat");
-    strcpy(indexCountAttr.attrName, "indexcount");
-    indexCountAttr.offset = sizeof(char[MAXNAME+1])+sizeof(int)*2;
-    indexCountAttr.attrType = INT;
-    indexCountAttr.attrLength = sizeof(int);
-    indexCountAttr.indexNo = -1;
-    rc = rmfh.InsertRec((char*) &indexCountAttr, rid);
-    if(rc) PrintError(rc);
-
-    //Inserts entries for the 6 attributes of attrcat
-
-    //First attribute : relName
-    strcpy(relNameAttr.relName, "attrcat");
-    strcpy(relNameAttr.attrName, "relname");
-    relNameAttr.offset = 0;
-    relNameAttr.attrType = STRING;
-    relNameAttr.attrLength = MAXNAME+1;
-    relNameAttr.indexNo = -1;
-    rc = rmfh.InsertRec((char*) &relNameAttr, rid);
-    if(rc) PrintError(rc);
-
-    //Second attribute : attrname
-    DataAttrInfo attrNameAttr;
-    strcpy(attrNameAttr.relName, "attrcat");
-    strcpy(attrNameAttr.attrName, "attrname");
-    attrNameAttr.offset = sizeof(char[MAXNAME+1]);
-    attrNameAttr.attrType = STRING;
-    attrNameAttr.attrLength = MAXNAME+1;
-    attrNameAttr.indexNo = -1;
-    rc = rmfh.InsertRec((char*) &attrNameAttr, rid);
-    if(rc) PrintError(rc);
-
-    //TODO find a more elegant way to solve the compiler offset issue
-    int cmpOffset = 2;
-
-    //Third attribute : offset
-    DataAttrInfo offsetAttr;
-    strcpy(offsetAttr.relName, "attrcat");
-    strcpy(offsetAttr.attrName, "offset");
-    offsetAttr.offset = sizeof(char[MAXNAME+1])*2 + cmpOffset;
-    offsetAttr.attrType = INT;
-    offsetAttr.attrLength = sizeof(INT);
-    offsetAttr.indexNo = -1;
-    rc = rmfh.InsertRec((char*) &offsetAttr, rid);
-    if(rc) PrintError(rc);
-
-    //Fourth attribute : attrType
-    DataAttrInfo attrTypeAttr;
-    strcpy(attrTypeAttr.relName, "attrcat");
-    strcpy(attrTypeAttr.attrName, "attrtype");
-    attrTypeAttr.offset = sizeof(char[MAXNAME+1])*2 + sizeof(int) + cmpOffset;
-    attrTypeAttr.attrType = INT; //TODO not sure AttrType's attrtype is int
-    attrTypeAttr.attrLength = sizeof(AttrType);
-    attrTypeAttr.indexNo = -1;
-    rc = rmfh.InsertRec((char*) &attrTypeAttr, rid);
-    if(rc) PrintError(rc);
-
-    //Fifth attribute : attrLength
-    DataAttrInfo attrLengthAttr;
-    strcpy(attrLengthAttr.relName, "attrcat");
-    strcpy(attrLengthAttr.attrName, "attrlength");
-    attrLengthAttr.offset = sizeof(char[MAXNAME+1])*2 + sizeof(int) + sizeof(AttrType) + cmpOffset;
-    attrLengthAttr.attrType = INT;
-    attrLengthAttr.attrLength = sizeof(int);
-    attrLengthAttr.indexNo = -1;
-    rc = rmfh.InsertRec((char*) &attrLengthAttr, rid);
-    if(rc) PrintError(rc);
-
-    //Sixth attribute : indexNo
-    DataAttrInfo indexNoAttr;
-    strcpy(indexNoAttr.relName, "attrcat");
-    strcpy(indexNoAttr.attrName, "indexno");
-    indexNoAttr.offset = sizeof(char[MAXNAME+1])*2 + sizeof(int) + sizeof(AttrType) + sizeof(int) + cmpOffset;
-    indexNoAttr.attrType = INT;
-    indexNoAttr.attrLength = sizeof(int);
-    indexNoAttr.indexNo = -1;
-    rc = rmfh.InsertRec((char*) &indexNoAttr, rid);
-    if(rc) PrintError(rc);
-
-    /*
-     *We inserted all the entries for the attributes of our cat tables in attrcat so
-     *we just have to close the file
-     */
-
-    rc = rmm.CloseFile(rmfh);
-    if(rc) PrintError(rc);
-
-    return(0);
+   // Return error
+err_rm:
+   strcpy(command, "rm -r ");
+   system(strcat(command, dbname));
+err_exit:
+   return (1);
 }
+

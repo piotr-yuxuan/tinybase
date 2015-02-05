@@ -1,0 +1,55 @@
+/* A sample script being distributed to the students.  */
+/* You should make more scripts and share them (via    */
+/* the mechanism outlined in class and in the          */
+/* handouts) with other students.                      */
+
+!ls
+create table student(no i, name c20, dept c4, GPA f, comment c3);
+create table soaps(soapid  i, sname  c28, network  c4, rating  f);
+create table stars(starid  i, stname  c20, plays  c12, soapid  i);
+load student("/home/assane/Documents/src-ql-submit-by-group-cyril/data/student.data");
+/* load tuples from ./tests/stars.data */
+load soaps("/home/assane/Documents/src-ql-submit-by-group-cyril/data/soaps.data");
+
+/* print out contents of soaps */
+print soaps;
+
+/* build some indices on stars */
+create index stars(starid);
+create index stars(stname);
+
+/* load tuples from ./tests/stars.data */
+load stars("/home/assane/Documents/src-ql-submit-by-group-cyril/data/stars.data");
+!ls
+select student.name from student where student.no = 1;
+select student.name from student where student.comment = "foo";
+print student;
+/*select * from student;*/
+select student.name, student.dept from student where student.no=1;
+
+
+
+
+
+/*test if tableScan without conditons work(projection work)*/
+select student.name from student;    
+	
+/*test if selection works*/
+select student.name from student where student.no = 1;
+	
+/*test if filter works*/
+select student.name from student where student.no = 1 AND student.name = "Adams";
+select student.no, student.name from student where student.comment = "foo" and student.dept = "MSAI";
+	
+/*test join, the first relation has no selection and filter*/
+ select stars.stname, soaps.sname from soaps, stars where soaps.soapid= stars.soapid;
+
+/*test join, the first relation has selection*/
+ select stars.stname, soaps.sname from soaps, stars where soaps.soapid= stars.soapid and soaps.network = "ABC";
+
+
+ select stars.stname, soaps.sname from soaps, stars where soaps.soapid= stars.soapid and soaps.network = "ABC" and stars.plays = "Opal";
+
+/*test join, the first relation has selection and filter*/
+ select stars.stname, soaps.sname from soaps, stars where soaps.soapid = stars.soapid and soaps.network = "ABC" AND soaps.name = "All My Children";
+

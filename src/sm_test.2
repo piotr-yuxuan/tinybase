@@ -1,0 +1,61 @@
+/*
+ * sm_test.2
+ */
+
+/* create: too many elements */
+create table test1(a01 i, a02 i, a03 i, a04 i, a05 i, a06 i, a07 i, a08 i, 
+a09 i, a10 i, a11 i, a12 i, a13 i, a14 i, a15 i, a16 i, a17 i, a18 i, a19 i, 
+a20 i, a21 i, a22 i, a23 i, a24 i, a25 i, a26 i, a27 i, a28 i, a29 i, a30 i, 
+a31 i, a32 i, a33 i, a34 i, a35 i, a36 i, a37 i, a38 i, a39 i, a40 i, a41 i);
+
+/* create: relation name or attribute name too long */
+create table test123456789012345678901(a01 i, a02 i, a03 i, a04 i, a05 i, a01 f);
+create table test4(a01 i, a02 i, a03 i, a04 i, a05 i, test123456789012345678901 i);
+
+/* create: invalid size for INTEGER attribute (should be 4) */
+create table test5(a01 i5);
+
+/* create: invalid length for string attribute */
+create table test6(a01 c0);
+create table test7(a01 c256);
+
+/* RM warning: invalid record size */
+create table test2(a01 c250, a02 c250, a03 c250, a04 c250, a05 c250, a06 c250, a07 c250, a08 c250, a09 c250, a10 c250, a11 c250, a12 c250, a13 c250, a14 c250, a15 c250, a16 c250, a17 c250);
+
+/* SM warning: duplicated attribute names */
+create table test3(a01 i, a02 i, a03 i, a04 i, a05 i, a01 f);
+
+/* SM warning: relation already exists */
+create table test8(name c16);
+create table test8(name c16);
+
+/* SM warning: relation not found */
+drop table test8;
+drop table test8;
+help test8;
+print test8;
+load test8("../soaps.data");
+
+/* SM warning: invalid relation name */
+drop table attrcat;
+drop table relcat;
+load relcat("../soaps.data");
+load attrcat("../soaps.data");
+
+/* SM warning: relation/attribute not found */
+create table stars(starid  i, stname  c20, plays  c12, soapid  i);
+load stars("../stars.data");
+create index star(starid);
+create index stars(id);
+drop index star(starid);
+drop index stars(id);
+
+/* SM warning: index already exists */
+create index stars(starid);
+create index stars(starid);
+
+/* SM warning: index not found */
+drop index stars(starid);
+drop index stars(starid);
+
+exit;

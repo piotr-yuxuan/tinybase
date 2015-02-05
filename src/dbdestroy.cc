@@ -1,54 +1,48 @@
 //
-// dbdestroy.cc
+// File:        dbdestroy.cc
+// Description: dbdestroy command line utility
+// Author:      Hyunjung Park (hyunjung@stanford.edu)
 //
 
 #include <iostream>
-#include <cstdio>
 #include <cstring>
-#include <unistd.h>
-#include "rm.h"
-#include "sm.h"
-#include "tinybase.h"
-
-#include "printer.h" //This includes allows us to use the DataAttrInfo struct
+#include "redbase.h"
+#include "sm_internal.h"
 
 using namespace std;
 
 //
 // main
 //
-main(int argc, char *argv[])
+int main(int argc, char *argv[])
 {
-    char *dbname;
-    char command[80] = "rm -r ";
-    RC rc;
+   char *dbname;
+   char command[8+MAXDBNAME] = "rm -r ";
 
-    // Look for 2 arguments. The first is always the name of the program
-    // that was executed, and the second should be the name of the
-    // database.
-    if (argc != 2) {
-        cerr << "Usage: " << argv[0] << " dbname \n";
-        exit(1);
-    }
+   // Look for 2 arguments. The first is always the name of the program
+   // that was executed, and the second should be the name of the
+   // database.
+   if (argc != 2) {
+      cerr << "Usage: " << argv[0] << " DBname\n";
+      goto err_exit;
+   }
 
-    // The database name is the second argument
-    dbname = argv[1];
+   // The database name is the second argument
+   dbname = argv[1];
 
-    //Checks the directory exists before removing
-    if (chdir(dbname) < 0) {
-        cerr << argv[0] << " Database " << dbname << " not found\n";
-        exit(1);
-    }
-    chdir("..");
+   // Sanity Check: Length of the argument should be less than MAXDBNAME
+   //               DBname cannot contain ' ' or '/' 
+   if (strlen(dbname) > MAXDBNAME
+       || strchr(dbname, ' ') || strchr(dbname, '/')) {
+      SM_PrintError(SM_INVALIDDBNAME);
+      goto err_exit;
+   }
 
-    // Remove the subdirectory of the database
-    system(strcat(command, dbname));
+   // Remove a subdirectory for the database
+   return system(strcat(command, dbname));
 
-    //Checks the directory was actually removed
-    if (!(chdir(dbname) < 0)) {
-        cerr << argv[0] << " chdir error to " << dbname << "\n";
-        exit(1);
-    }
-
-    return(0);
+   // Return error
+err_exit:
+   return (1);
 }
+

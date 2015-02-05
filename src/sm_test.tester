@@ -37,8 +37,8 @@ if ( $#argv == 0 ) then
 
    foreach queryfile ( `ls $TESTSDIR/sm_test.*` )
       echo running test '#' $queryfile:e '****************' >> $OUTPUT
-      $DBHOME/dbcreate  $TESTDB
-      $DBHOME/tinybase   $TESTDB < $queryfile >>& $OUTPUT
+      $DBHOME/dbcreate  $TESTDB >> $OUTPUT
+      $DBHOME/redbase   $TESTDB < $queryfile >>& $OUTPUT
       $DBHOME/dbdestroy $TESTDB
    end
 
@@ -51,7 +51,7 @@ else
       if ( -r $TESTSDIR/sm_test.$testnum ) then
          echo running test '#' $testnum '****************' >> $OUTPUT
          $DBHOME/dbcreate  $TESTDB
-         $DBHOME/tinybase   $TESTDB < $TESTSDIR/sm_test.$testnum >>& $OUTPUT
+         $DBHOME/redbase   $TESTDB < $TESTSDIR/sm_test.$testnum >>& $OUTPUT
          $DBHOME/dbdestroy $TESTDB
       else
          echo I can not find a test number $testnum. >> $OUTPUT

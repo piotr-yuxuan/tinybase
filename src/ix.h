@@ -9,9 +9,9 @@
 
 // Please do not include any other files than the ones below in this file.
 
+#include "redbase.h"  // Please don't change these lines
 #include "rm_rid.h"  // Please don't change these lines
 #include "pf.h"
-#include "tinybase.h"  // Please don't change these lines
 
 //
 // IX_IndexHandle: IX Index File interface

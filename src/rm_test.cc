@@ -22,9 +22,9 @@
 #include <cstdlib>
 #include <cassert>
 
+#include "redbase.h"
 #include "pf.h"
 #include "rm.h"
-#include "tinybase.h"
 
 using namespace std;
 
