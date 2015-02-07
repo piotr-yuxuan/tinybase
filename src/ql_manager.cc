@@ -13,6 +13,7 @@
 #include <cassert>
 #include <unistd.h>
 #include "tinybase.h"
+#include "printer.h"
 #include "ql.h"
 #include "sm.h"
 #include "ix.h"
@@ -29,6 +30,10 @@ QL_Manager::QL_Manager(SM_Manager &smm, IX_Manager &ixm, RM_Manager &rmm)
 {
     // Can't stand unused variable warnings!
     assert (&smm && &ixm && &rmm);
+    //Sets pointers
+    this->pSmm = &smm;
+    this->pIxm = &ixm;
+    this->pRmm = &rmm;
 }
 
 //
@@ -80,6 +85,56 @@ RC QL_Manager::Insert(const char *relName,
     cout << "   nValues = " << nValues << "\n";
     for (i = 0; i < nValues; i++)
         cout << "   values[" << i << "]:" << values[i] << "\n";
+
+    RC rc = 0;
+
+    //Opens the relation in fileHandle
+    RM_FileHandle rmfh;
+    if((rc = this->pRmm->OpenFile(relName, rmfh))){
+        return rc;
+    }
+
+    //Gets the tuple length for the relation
+    char * pData;
+    RM_Record record;
+    if((rc = this->pSmm->GetRelationInfo(relName, record, pData))){
+        return rc;
+    }
+    int tupleLength;
+    memcpy(&tupleLength, pData+MAXNAME+1, sizeof(int));
+
+    //Allocates the data for the new record
+    char * pDataRecord = (char *) malloc(tupleLength);
+
+    //Creates list of attributes
+    DataAttrInfo attributes[nValues];
+    RM_FileScan attrCatFh;
+    if((rc = attrCatFh.OpenScan(pSmm->fhAttrcat, STRING, MAXNAME+1, 0, EQ_OP, relName))){
+        return rc;
+    }
+    int i=0;
+    RM_Record attrRecord;
+    while(attrCatFh.GetNextRec(attrRecord)!=RM_EOF){
+        char * pAttrData;
+        if((rc = attrRecord.GetData(pAttrData))){
+            return rc;
+        }
+        memcpy(&attributes[i], pAttrData, sizeof(DataAttrInfo));
+        i++;
+    }
+
+    int pdrOffset = 0;
+    for (i = 0; i < nValues; i++){
+        memcpy(pDataRecord+attributes[i].offset, (char * ) values[i].data, attributes[i].attrLength);
+    }
+
+    RID rid;
+    //Inserts the record
+    if((rc = rmfh.InsertRec(pDataRecord, rid))){
+        return rc;
+    }
+
+    free(pDataRecord);
 
     return 0;
 }
