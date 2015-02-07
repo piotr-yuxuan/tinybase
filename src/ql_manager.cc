@@ -1,5 +1,5 @@
 //
-// ql_manager_stub.cc
+// ql_manager.cc
 //
 
 // Note that for the SM component (HW3) the QL is actually a
@@ -12,7 +12,7 @@
 #include <sys/types.h>
 #include <cassert>
 #include <unistd.h>
-#include "redbase.h"
+#include "tinybase.h"
 #include "ql.h"
 #include "sm.h"
 #include "ix.h"

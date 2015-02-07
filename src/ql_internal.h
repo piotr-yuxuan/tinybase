@@ -30,17 +30,17 @@ struct QL_RelAttrInfo {
 
 class QL_Operator {
 public:
-    QL_Operator            ()            {};
-    virtual ~QL_Operator   ()            {};
+    QL_Operator            ()            {}
+    virtual ~QL_Operator   ()            {}
     virtual RC Initialize  (AttrType = INT, int = 0, char * = NULL)
-                                         { return (0); };
-    virtual RC GetNext     (RM_Record &) { return (0); };
-    virtual RC Finalize    ()            { return (0); };
+                                         { return (0); }
+    virtual RC GetNext     (RM_Record &) { return (0); }
+    virtual RC Finalize    ()            { return (0); }
     virtual RC SchemaLookup(const RelAttr &, QL_RelAttrInfo &)
-                                         { return (0); };
-    virtual RC EstimateCard(double &)    { return (0); };
-    virtual RC EstimateIO  (double &)    { return (0); };
-    virtual void Print     (ostream &, int = 0) {};
+                                         { return (0); }
+    virtual RC EstimateCard(double &)    { return (0); }
+    virtual RC EstimateIO  (double &)    { return (0); }
+    virtual void Print     (ostream &, int = 0) {}
 
     int tupleLength;
 
@@ -51,11 +51,11 @@ private:
 
 class QL_TblScanOp : public QL_Operator {
 public:
-    QL_TblScanOp     (const char *, RM_FileHandle &, const Condition &,
-                      SM_Manager *);
+    QL_TblScanOp     (const char * tableName, RM_FileHandle &rmfh, const Condition &condition,
+                      SM_Manager *smm);
     ~QL_TblScanOp    ();
-    RC Initialize    (AttrType, int, char *);
-    RC GetNext       (RM_Record &);
+    RC Initialize    (AttrType attrType, int attrLength, char *value);
+    RC GetNext       (RM_Record &record);
     RC Finalize      ();
     RC SchemaLookup  (const RelAttr &, QL_RelAttrInfo &);
     RC EstimateCard  (double &);
